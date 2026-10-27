@@ -43,6 +43,10 @@ describe('portable forms', () => {
       'default',
     );
     expect(() => serialize(v.object({ nested: v.object({}) }))).toThrow('Unsupported field');
+    for (const name of ['__proto__', 'prototype', 'constructor'])
+      expect(() => serialize(v.object({ [name]: v.string() }))).toThrow(
+        `Reserved field name: ${name}`,
+      );
   });
   it('rejects malformed and incompatible stored definitions', () => {
     expect(() => deserialize('{"version":2}')).toThrow();
@@ -64,6 +68,26 @@ describe('portable forms', () => {
         }),
       ),
     ).toThrow('Invalid requirement');
+    expect(() =>
+      deserialize(
+        JSON.stringify({
+          version: 1,
+          fields: { email: { type: 'string', rules: [{ type: 'email', requirement: 5 }] } },
+          ui: {},
+        }),
+      ),
+    ).toThrow('Invalid requirement for email');
+  });
+  it('rejects reserved field names in stored definitions rather than dropping them', () => {
+    for (const name of ['__proto__', 'prototype', 'constructor'])
+      expect(() =>
+        deserialize(`{"version":1,"fields":{"${name}":{"type":"string","rules":[]}},"ui":{}}`),
+      ).toThrow(`Reserved field name: ${name}`);
+    expect(() =>
+      deserialize(
+        '{"version":1,"fields":{"name":{"type":"string","rules":[]}},"ui":{"constructor":{"label":"Name"}}}',
+      ),
+    ).toThrow('Reserved field name: constructor');
   });
 });
 
