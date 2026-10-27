@@ -32,7 +32,20 @@ const definitionSchema = v.strictObject({
   ),
 });
 
+// v.record silently drops these keys, so reject them before parsing.
+const reservedNames = ['__proto__', 'prototype', 'constructor'];
+
+function rejectReservedNames(input: unknown) {
+  const { fields, ui } = (input ?? {}) as { fields?: unknown; ui?: unknown };
+  for (const record of [fields, ui]) {
+    if (!record || typeof record !== 'object') continue;
+    for (const name of Object.keys(record))
+      if (reservedNames.includes(name)) throw new Error(`Reserved field name: ${name}`);
+  }
+}
+
 export function fromDefinition(input: FormDefinition): { schema: FormSchema; ui: UISchema } {
+  rejectReservedNames(input);
   const definition = v.parse(definitionSchema, input);
   const entries: Record<string, v.GenericSchema> = Object.create(null);
   for (const [name, field] of Object.entries(definition.fields)) {
@@ -47,10 +60,11 @@ export function fromDefinition(input: FormDefinition): { schema: FormSchema; ui:
             : [];
       if (!allowed.includes(rule.type)) throw new Error(`Invalid rule for ${name}`);
       if (
-        rule.type !== 'email' &&
-        (rule.requirement === undefined ||
-          (rule.type.endsWith('length') &&
-            (!Number.isInteger(rule.requirement) || rule.requirement < 0)))
+        rule.type === 'email'
+          ? rule.requirement !== undefined
+          : rule.requirement === undefined ||
+            (rule.type.endsWith('length') &&
+              (!Number.isInteger(rule.requirement) || rule.requirement < 0))
       )
         throw new Error(`Invalid requirement for ${name}`);
       // Runtime checks above correlate the schema and action types.
@@ -98,5 +112,5 @@ export function serialize(schema: FormSchema, ui: UISchema = {}): string {
 }
 
 export function deserialize(json: string): { schema: FormSchema; ui: UISchema } {
-  return fromDefinition(v.parse(definitionSchema, JSON.parse(json)));
+  return fromDefinition(JSON.parse(json));
 }
