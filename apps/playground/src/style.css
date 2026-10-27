@@ -1,0 +1,45 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #172125;
+  background: #f3f6f5;
+}
+main {
+  max-width: 720px;
+  margin: 3rem auto;
+  padding: 2rem;
+  background: white;
+  border-radius: 16px;
+}
+form > div {
+  margin: 1rem 0;
+}
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+input:not([type='checkbox']),
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #8b9c96;
+  border-radius: 6px;
+  font: inherit;
+}
+button {
+  padding: 0.7rem 1.4rem;
+  background: #146c52;
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+}
+[aria-invalid='true'] {
+  border-color: #ae2020;
+}
+pre {
+  overflow: auto;
+  background: #f3f6f5;
+  padding: 1rem;
+}
