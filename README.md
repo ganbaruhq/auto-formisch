@@ -37,7 +37,7 @@ pnpm test
 
 ## Agent skills
 
-`.claude/skills/` vendors the skills from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT, commit `eb07f19`), with their shared checklists in `.claude/references/`. Claude Code loads them automatically. The files are excluded from formatting so they stay identical to upstream; to update, copy `skills/` and `references/` from a newer upstream checkout over them.
+`.agents/skills/` vendors the skills from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT, commit `eb07f19`), with their shared checklists in `.agents/references/`. Codex reads `.agents/skills/` directly; `.claude/skills` and `.claude/references` are symlinks to the same folders so Claude Code loads them too. The files are excluded from formatting so they stay identical to upstream; to update, copy `skills/` and `references/` from a newer upstream checkout over the `.agents/` folders.
 
 ## Schema-first usage
 
