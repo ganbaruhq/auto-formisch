@@ -35,6 +35,10 @@ pnpm check
 pnpm test
 ```
 
+## Agent skills
+
+`.claude/settings.json` enables [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) as a project plugin. Claude Code offers to install it when you trust the folder; other agents can run `npx skills add addyosmani/agent-skills`.
+
 ## Schema-first usage
 
 ```tsx
