@@ -37,7 +37,7 @@ pnpm test
 
 ## Agent skills
 
-`.claude/settings.json` enables [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) as a project plugin. Claude Code offers to install it when you trust the folder; other agents can run `npx skills add addyosmani/agent-skills`.
+`.claude/skills/` vendors the skills from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT, commit `eb07f19`), with their shared checklists in `.claude/references/`. Claude Code loads them automatically. The files are excluded from formatting so they stay identical to upstream; to update, copy `skills/` and `references/` from a newer upstream checkout over them.
 
 ## Schema-first usage
 
