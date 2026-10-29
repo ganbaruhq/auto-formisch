@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
+  "changelog": ["@changesets/changelog-github", { "repo": "ganbaruhq/auto-formisch" }],
+  "commit": false,
+  "fixed": [
+    ["auto-formisch-core", "auto-formisch-json", "auto-formisch-builder", "auto-formisch-react"]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [],
+  "privatePackages": { "version": false, "tag": false }
+}

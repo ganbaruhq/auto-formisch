@@ -1,0 +1,38 @@
+name: Bug report
+description: Something in an Auto Formisch package doesn't work as documented.
+labels: [bug]
+body:
+  - type: input
+    id: packages
+    attributes:
+      label: Packages and versions
+      description: Which packages and versions are affected? Include valibot and @formisch/react versions if relevant.
+      placeholder: auto-formisch-json 0.1.0, valibot 1.5.0
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: The smallest schema, definition, or code that shows the problem.
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the full error message or stack trace if there is one.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Chrome 140, Node 24, Cloudflare Workers, …

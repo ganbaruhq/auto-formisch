@@ -1,0 +1,119 @@
+# Release flow (see RELEASING.md):
+# - Pending changesets on main → open or update the "Version Packages" PR.
+# - Version PR merged (versions not yet on npm) → pack and publish to npm with
+#   trusted publishing (OIDC + provenance), then tag and create GitHub releases.
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Reset permissions and grant them per job.
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  select-mode:
+    # Off until the one-time npm setup in RELEASING.md is done; also a kill switch.
+    if: vars.RELEASES_ENABLED == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
+      publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - name: Select Changesets mode
+        id: select-mode
+        uses: changesets/action/select-mode@v2.1.2
+
+  version:
+    if: needs.select-mode.outputs.mode == 'version'
+    needs: select-mode
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # commit version changes to the changeset-release/main branch
+      pull-requests: write # open or update the Version Packages PR
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - name: Create or update the Version Packages PR
+        uses: changesets/action/version@v2.1.2
+        with:
+          script: pnpm version-packages
+          commit-message: 'chore: version packages'
+          pr-title: 'chore: version packages'
+
+  pack:
+    if: needs.select-mode.outputs.mode == 'publish'
+    needs: select-mode
+    runs-on: ubuntu-latest
+    outputs:
+      pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      # Never publish what CI would reject.
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm check
+      - run: pnpm test
+      - name: Pack packages
+        id: pack
+        uses: changesets/action/pack@v2.1.2
+        with:
+          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
+
+  publish:
+    needs: pack
+    runs-on: ubuntu-latest
+    # Add required reviewers to this environment to gate every npm publish.
+    environment: npm
+    permissions:
+      contents: write # push tags and create GitHub releases
+      id-token: write # npm trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      # Trusted publishing needs npm >= 11.5.1; pnpm publish hands off to npm.
+      - run: npm install --global npm@^11.5.1
+      - run: pnpm install --frozen-lockfile
+      - name: Publish packages
+        uses: changesets/action/publish@v2.1.2
+        with:
+          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}

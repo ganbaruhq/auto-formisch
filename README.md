@@ -16,7 +16,17 @@ This is an early working starter. The builder is a programmatic compiler; a visu
 
 Tooling: pnpm workspaces, TypeScript, Vite+ (`vp pack`, `vp build`, `vp test`, `vp check`), GitHub Actions.
 
+## Install
+
+```sh
+pnpm add auto-formisch-react @formisch/react valibot react
+```
+
+Use `auto-formisch-json` and `auto-formisch-builder` on their own for server-side or framework-neutral code. All four packages are released together with the same version number; see each package's `CHANGELOG.md` for changes.
+
 ## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide and [RELEASING.md](RELEASING.md) for how releases are published.
 
 Use Node.js from `.node-version`, pnpm 10.34.7, and the project-local Vite+ CLI installed with dependencies.
 
@@ -106,3 +116,11 @@ Core, JSON, and builder packages use no Node-specific runtime APIs or DOM APIs. 
 - [Vite+ library packaging](https://viteplus.dev/guide/pack)
 - [Formisch React](https://formisch.dev/react/guides/introduction/)
 - [Valibot](https://valibot.dev/)
+
+## Contributing
+
+Bug reports, fixes, and new schema support are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and report security issues privately as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE)

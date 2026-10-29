@@ -1,6 +1,23 @@
 {
   "name": "auto-formisch-json",
   "version": "0.0.0",
+  "description": "Serialize supported Valibot schemas and UI schemas to versioned JSON and rebuild executable schemas.",
+  "keywords": [
+    "forms",
+    "json",
+    "serialization",
+    "valibot"
+  ],
+  "homepage": "https://github.com/ganbaruhq/auto-formisch/tree/main/packages/auto-formisch-json#readme",
+  "bugs": {
+    "url": "https://github.com/ganbaruhq/auto-formisch/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ganbaruhq/auto-formisch.git",
+    "directory": "packages/auto-formisch-json"
+  },
   "files": [
     "dist"
   ],
@@ -10,7 +27,11 @@
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
-    }
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "vp pack"
