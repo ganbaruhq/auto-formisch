@@ -1,6 +1,22 @@
 {
   "name": "auto-formisch-builder",
   "version": "0.0.0",
+  "description": "Compile editable form definitions into Valibot and UI schemas for Auto Formisch.",
+  "keywords": [
+    "form-builder",
+    "forms",
+    "valibot"
+  ],
+  "homepage": "https://github.com/ganbaruhq/auto-formisch/tree/main/packages/auto-formisch-builder#readme",
+  "bugs": {
+    "url": "https://github.com/ganbaruhq/auto-formisch/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ganbaruhq/auto-formisch.git",
+    "directory": "packages/auto-formisch-builder"
+  },
   "files": [
     "dist"
   ],
@@ -10,7 +26,11 @@
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
-    }
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "vp pack"

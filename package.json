@@ -1,15 +1,20 @@
 {
   "name": "auto-formisch",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
     "test": "vp test run",
     "check": "vp check",
     "typecheck": "tsc --noEmit",
-    "dev": "pnpm --filter playground dev"
+    "dev": "pnpm --filter playground dev",
+    "changeset": "changeset",
+    "version-packages": "changeset version && vp fmt"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.0",
