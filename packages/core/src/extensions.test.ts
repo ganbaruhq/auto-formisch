@@ -327,6 +327,29 @@ describe('lock on a custom Field Type', () => {
   });
 });
 
+describe('initialInput of a custom Field Type', () => {
+  it('drops a value of the wrong JavaScript type with a warning, and keeps one out of range', () => {
+    const compiled = compile(root(score(), { type: 'place', name: 'home' }), extensions);
+    expect(compiled.normalize({ score: '4', home: { lat: 'x', lng: 0 } })).toEqual({
+      input: {},
+      warnings: [
+        {
+          message: 'Expected a value of the Field Type "rating", not a string; left empty',
+          path: ['score'],
+        },
+        {
+          message: 'Expected a value of the Field Type "place", not an object; left empty',
+          path: ['home'],
+        },
+      ],
+    });
+    expect(compiled.normalize({ score: 9, home: { lat: 99, lng: 0 } })).toEqual({
+      input: { score: 9, home: { lat: 99, lng: 0 } },
+      warnings: [],
+    });
+  });
+});
+
 describe('custom Field Type in Conditions', () => {
   const driven = (condition: object) =>
     root(score(), { type: 'text', name: 'why', required: true, visible: condition });

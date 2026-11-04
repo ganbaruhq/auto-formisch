@@ -20,8 +20,8 @@ export interface FieldTypeSpec {
   /**
    * The JavaScript type of a value, which its Widget can rely on. A starting
    * value of another type is dropped; one of this type is kept even when
-   * `value` would reject it, so that submitting reports it. Without one,
-   * every starting value is kept.
+   * `value` would reject it, so that submitting reports it. A custom Field
+   * Type has none: the loader derives one per node from its schema.
    */
   readonly shape?: ValueShape;
 }

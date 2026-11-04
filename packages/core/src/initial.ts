@@ -1,7 +1,7 @@
-import type { Component, RepeaterField } from './definition';
+import type { Component, RepeaterField, ValueField } from './definition';
 import { isEmpty } from './empty';
 import type { PathKey } from './errors';
-import { builtinFieldTypes, shapeMessage } from './field-types';
+import { shapeMessage, type ValueShape } from './field-types';
 import { fieldsIn, isRecord } from './fields';
 
 /*
@@ -65,12 +65,17 @@ export interface NormalizedInput {
 /**
  * The input a form starts with for `record`, such as one saved under an older
  * Definition. Every `object` and Repeater gets its full shape, keys without a
- * Field are dropped, and a value of the wrong JavaScript type for its Field,
- * at a leaf or in the structure, becomes empty with a warning. A value of the
+ * Field are dropped, and a value of the wrong JavaScript type for its Field
+ * (`shapeOf`, a custom Field Type's included), at a leaf or in the structure,
+ * becomes empty with a warning. A value of the
  * right type is kept even outside `choices` or breaking a Rule, so that
  * submitting reports it. No `default` is applied, not even to missing keys.
  */
-export function normalize(components: readonly Component[], record: unknown): NormalizedInput {
+export function normalize(
+  components: readonly Component[],
+  record: unknown,
+  shapeOf: (field: ValueField) => ValueShape | undefined,
+): NormalizedInput {
   const warnings: InputWarning[] = [];
   const drop = (path: readonly PathKey[], expected: string, value: unknown) => {
     warnings.push({ message: `${shapeMessage(expected, value)}; left empty`, path });
@@ -100,9 +105,9 @@ export function normalize(components: readonly Component[], record: unknown): No
           }
           break;
         default: {
-          const shape = builtinFieldTypes.get(field.type)?.shape;
-          // A type with no shape, such as a custom Field Type, keeps every
-          // value but an empty one.
+          // Every value Field of a loaded Definition has a shape: a custom
+          // Field Type's comes from the type checks of its schema.
+          const shape = shapeOf(field);
           if (shape?.is(given) ?? !isEmpty(given)) out[field.name] = copy(given);
           else if (shape !== undefined && !isEmpty(given)) drop(at, shape.expected, given);
         }

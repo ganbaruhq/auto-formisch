@@ -157,7 +157,9 @@ function compiledForm(
       return withLocks(defaultsOf(components), locks);
     },
     normalize: (record) => {
-      const { input, warnings } = normalize(components, record);
+      const { input, warnings } = normalize(components, record, (field) =>
+        typing.shapes.get(field),
+      );
       return {
         input: withLocks(input, locks),
         // A Locked value replaces whatever the record held there.
