@@ -1,0 +1,378 @@
+
+ RUN  v3.2.4 /private/var/folders/rm/x0wd87pd6pv2lgpl44qvng8c0000gn/T/tmp.HhFTjt8z6Q
+
+
+=== T1 forward(partialCheck)
+other Field a has a RULE issue, b!=c {"issues":[{"message":"a-min3","path":["a"]},{"message":"b!=c","path":["c"]}]}
+other Field a has a TYPE issue, b!=c {"issues":[{"message":"Invalid type: Expected string but received 1","path":["a"]},{"message":"b!=c","path":["c"]}]}
+selected Field b has a TYPE issue {"issues":[{"message":"Invalid type: Expected string but received 1","path":["b"]}]}
+
+=== T2 per-row
+row-level sibling condition {"issues":[{"message":"street-req","path":["addresses",2,"street"]}]}
+row-level requirement arg (no access to kind) {"type":"home","street":""}
+
+=== native sync? true
+issue.path raw [{"type":"object","origin":"value","input":"{obj}","key":"groups","value":"[obj]"},{"type":"array","origin":"value","input":"[array]","key":0,"value":"[obj]"},{"type":"object","origin":"value","input":"{obj}","key":"members","value":"[obj]"},{"type":"array","origin":"value","input":"[array]","key":1,"value":"[obj]"},{"type":"object","origin":"value","input":"{obj}","key":"name","value":"a"}]
+all issue keys ["kind","type","input","expected","received","message","requirement","path","issues","lang","abortEarly","abortPipeEarly"]
+plain [{"message":"min2","path":["groups",0,"members",1,"name"]}]
+getDotPath "groups.0.members.1.name"
+flatten {"nested":{"groups.0.members.1.name":["min2"]}}
+Array.isArray(path)/first item type [true,"object"]
+
+=== C sync? true
+issue.path raw [{"type":"object","origin":"value","input":"{obj}","key":"groups","value":"[obj]"},{"type":"array","origin":"value","input":"[array]","key":0,"value":"[obj]"},{"type":"object","origin":"value","input":"{obj}","key":"members","value":"[obj]"},{"type":"array","origin":"value","input":"[array]","key":1,"value":"[obj]"},{"type":"object","origin":"value","input":"{obj}","key":"name","value":"a"}]
+all issue keys ["kind","type","input","expected","received","message","requirement","path","issues","lang","abortEarly","abortPipeEarly"]
+plain [{"message":"min2","path":["groups",0,"members",1,"name"]}]
+getDotPath "groups.0.members.1.name"
+flatten {"nested":{"groups.0.members.1.name":["min2"]}}
+Array.isArray(path)/first item type [true,"object"]
+
+=== E sync? true
+issue.path raw [{"type":"object","origin":"value","input":"{obj}","key":"groups","value":"[obj]"},{"type":"array","origin":"value","input":"[array]","key":0,"value":"[obj]"},{"type":"object","origin":"value","input":"{obj}","key":"members","value":"[obj]"},{"type":"array","origin":"value","input":"[array]","key":1,"value":"[obj]"},{"type":"object","origin":"value","input":"{obj}","key":"name","value":"a"}]
+all issue keys ["kind","type","input","expected","received","message","requirement","path","issues","lang","abortEarly","abortPipeEarly"]
+plain [{"message":"min2","path":["groups",0,"members",1,"name"]}]
+getDotPath "groups.0.members.1.name"
+flatten {"nested":{"groups.0.members.1.name":["min2"]}}
+Array.isArray(path)/first item type [true,"object"]
+
+root-level issue path [["Invalid type: Expected Object but received null","<undefined>"]]
+~standard version/vendor [1,"valibot"]
+ ✓ test/q4.test.tsx (1 test) 2ms
+
+=== E2E C
+
+=== A0 optional(ruled) [baseline]
+
+=== Q5 mode table C: [rootRuns, aErrors, bErrors] after each DOM event on field a only
+
+=== introspection
+  formisch addresses.2.street ["street-req"]
+root-level $ no forward {"issues":[{"message":"root-$","path":"<undefined>"}]}
+C root ["object",["object","raw_transform"],"optional","unknown"]
+E root ["object",["object","transform","object"],"unknown","last.nick.pipe",["unknown","check","string","min_length"]]
+D root ["lazy",false]
+  formisch form.errors / addresses.0.street [["root-$"],null]
+forward with $ in path {"issues":[{"message":"fwd-$","path":["addresses","$"]}]}
+forward static idx (row cap 4, 3 rows) {"issues":[{"message":"req-0","path":["addresses",0,"street"]},{"message":"req-1","path":["addresses",1,"street"]},{"message":"req-2","path":["addresses",2,"street"]}]}
+forward static idx, 6 rows: rows 4,5 not covered {"issues":[{"message":"req-0","path":["addresses",0,"street"]},{"message":"req-1","path":["addresses",1,"street"]},{"message":"req-2","path":["addresses",2,"street"]},{"message":"req-3","path":["addresses",3,"street"]}]}
+
+=== T3 rawCheck/rawTransform
+   dataset.typed in action = true
+rawCheck, no type issue {"issues":[{"message":"row-street-req","path":["addresses",2,"street"]}]}
+   dataset.typed in action = true
+rawTransform, no type issue {"issues":[{"message":"row-street-req","path":["addresses",2,"street"]}]}
+toJsonSchema C THROWS "The \"raw_transform\" action cannot be converted to JSON Schema."
+toJsonSchema C ignore {"type":"object","properties":{"nick":{},"rows":{"type":"array","items":{"type":"object","properties":{"a":{},"b":{}},"required":[]}}},"required":["rows"],"$schema":"http://json-schema.org/draft-07/schema#"}
+toJsonSchema E ignore {"type":"object","properties":{"nick":{"type":"string","minLength":3},"rows":{"type":"array","items":{"type":"object","properties":{"a":{"type":"string","minLength":2},"b":{"type":"number"}},"required":[]}}},"required":[],"$schema":"http://json-schema.org/draft-07/schema#"}
+toJsonSchema E last stage ignore {"type":"object","properties":{"nick":{"type":"string","minLength":3},"rows":{"type":"array","items":{"type":"object","properties":{"a":{"type":"string","minLength":2},"b":{"type":"number"}},"required":[]}}},"required":[],"$schema":"http://json-schema.org/draft-07/schema#"}
+getDefaults C/E [{"nick":"<undefined>","rows":"<undefined>"},{"nick":"<undefined>","rows":"<undefined>"}]
+   dataset.typed in action = true
+  formisch rawCheck field.errors addresses.2.street ["row-street-req"]
+  formisch rawCheck form.errors null
+
+=== bench 1000 rows, 200 iterations, ms total (one machine, indicative only)
+   dataset.typed in action = true
+  formisch rawTransform field.errors addresses.2.street ["row-street-req"]
+   dataset.typed in action = false
+rawCheck WITH type issue on age {"issues":[{"message":"Invalid type: Expected number but received \"abc\"","path":["age"]},{"message":"row-street-req","path":["addresses",2,"street"]}]}
+  rawCheck runs 1
+rawTransform WITH type issue on age {"issues":[{"message":"Invalid type: Expected number but received \"abc\"","path":["age"]}]}
+  rawTransform runs 0
+formisch[tags=false] accepted; kinds {"nick":"value","count":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+
+=== T4 hidden wrong type
+typed leaf + root transform(omit hidden) {"issues":[{"message":"Invalid type: Expected number but received \"abc\"","path":["age"]}]}
+formisch errors {"success":false,"form":null,"nick":["min3"],"count":["min0"],"city":["min2"],"a0":["min3"],"a1":["min3"],"a2":["min3"],"rawPaths":["nick","count","profile.city","addresses.0.street","addresses.1.street","addresses.2.street"]}
+A2 union leaf {"issues":[{"message":"Invalid type: Expected (unknown | number) but received \"abc\"","path":["age"]}]}
+B1 pipe leaf {"issues":[{"message":"Invalid type: Expected number but received \"abc\"","path":["age"]}]}
+formisch[tags=true] accepted; kinds {"nick":"value","count":"value","tags":"array","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+std ruleErr {"issues":[{"message":"min3","path":["nick"]},{"message":"min3","path":["addresses",0,"street"]},{"message":"min3","path":["addresses",1,"street"]}]}
+std allEmpty {"issues":[{"message":"Invalid type: Expected number but received null","path":["count"]},{"message":"Invalid type: Expected string but received null","path":["addresses",0,"street"]}]}
+std zeroFalse {"value":{"count":0,"agree":false,"profile":{},"addresses":[]}}
+std missingKeys {"issues":[{"message":"Invalid key: Expected \"profile\" but received undefined","path":["profile"]},{"message":"Invalid key: Expected \"addresses\" but received undefined","path":["addresses"]}]}
+std nullContainers {"issues":[{"message":"Invalid type: Expected Object but received null","path":["profile"]},{"message":"Invalid type: Expected Array but received null","path":["addresses"]}]}
+std noTrim {"value":{"nick":" ab ","profile":{"city":" x "},"addresses":[]}}
+std tags=[]  {"value":{"tags":[],"profile":{},"addresses":[]}}
+
+=== A1 optional(union[literal(""),ruled])
+formisch[tags=false] accepted; kinds {"nick":"value","count":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+formisch errors {"success":false,"form":null,"nick":["min3"],"count":["min0"],"city":["min2"],"a0":null,"a1":null,"a2":["min3"],"rawPaths":["nick","count","profile.city","addresses.2.street"]}
+formisch[tags=true] THROWS "Store initialized as \"value\" cannot be reinitialized as \"array\""
+std ruleErr {"issues":[{"message":"min3","path":["addresses",1,"street"]}]}
+std allEmpty {"issues":[{"message":"Invalid type: Expected (\"\" | number) but received null","path":["count"]},{"message":"Invalid type: Expected (\"\" | string) but received null","path":["addresses",0,"street"]}]}
+std zeroFalse {"value":{"count":0,"agree":false,"profile":{},"addresses":[]}}
+std missingKeys {"issues":[{"message":"Invalid key: Expected \"profile\" but received undefined","path":["profile"]},{"message":"Invalid key: Expected \"addresses\" but received undefined","path":["addresses"]}]}
+std nullContainers {"issues":[{"message":"Invalid type: Expected Object but received null","path":["profile"]},{"message":"Invalid type: Expected Array but received null","path":["addresses"]}]}
+std noTrim {"value":{"nick":" ab ","profile":{"city":" x "},"addresses":[]}}
+std tags=[]  {"value":{"tags":[],"profile":{},"addresses":[]}}
+
+=== A2 optional(union[custom(isEmpty)->undefined,ruled]) + root omit
+  formisch success/age errors [false,["Invalid type: Expected number but received \"abc\""]]
+hidden type issue + partialCheck + transform + later check {"issues":[{"message":"Invalid type: Expected number but received \"abc\"","path":["age"]},{"message":"a!=b","path":["b"]}]}
+hack: rawCheck mutates dataset.issues {"value":{"kind":"child"}}
+hack: visible age {"issues":[{"message":"min18","path":["age"]}]}
+variant hidden junk {"value":{"kind":"child"}}
+  variant kinds ["value","value",{"kind":"child","age":"abc"}]
+
+=== T5 C
+S1 child: everything hidden/disabled, hidden wrong types {"value":{"kind":"child","addresses":[{"type":"other"}],"groups":[]}}
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,"abc"]
+S2 adult: required/rules per-row incl. nested repeater {"issues":[{"message":"required","path":["age"]},{"message":"required","path":["email"]},{"message":"required","path":["locked"]},{"message":"required","path":["group","zip"]},{"message":"required","path":["addresses",2,"street"]},{"message":"required","path":["addresses",2,"note"]},{"message":"min2","path":["groups",0,"members",0,"name"]},{"message":"required","path":["groups",0,"members",1,"name"]}]}
+formisch[tags=false] accepted; kinds {"nick":"value","count":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+formisch errors {"success":false,"form":null,"nick":["min3"],"count":["min0"],"city":["min2"],"a0":null,"a1":null,"a2":["min3"],"rawPaths":["nick","count","profile.city","addresses.2.street"]}
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,"<undefined>"]
+S3 adult: visible wrong type & rule fails on 0 {"issues":[{"message":"Invalid type: Expected number but received \"abc\"","path":["age"]},{"message":"min5","path":["email"]},{"message":"Invalid type: Expected number but received \"nope\"","path":["addresses",0,"secret"]}]}
+formisch[tags=true] THROWS "Store initialized as \"value\" cannot be reinitialized as \"array\""
+std ruleErr {"issues":[{"message":"min3","path":["addresses",1,"street"]}]}
+std allEmpty {"value":{"agree":false,"profile":{},"addresses":[{}]}}
+std zeroFalse {"value":{"count":0,"agree":false,"profile":{},"addresses":[]}}
+std missingKeys {"issues":[{"message":"Invalid key: Expected \"profile\" but received undefined","path":["profile"]},{"message":"Invalid key: Expected \"addresses\" but received undefined","path":["addresses"]}]}
+std nullContainers {"issues":[{"message":"Invalid type: Expected Object but received null","path":["profile"]},{"message":"Invalid type: Expected Array but received null","path":["addresses"]}]}
+std noTrim {"value":{"nick":" ab ","profile":{"city":" x "},"addresses":[]}}
+std tags=[]  {"value":{"profile":{},"addresses":[]}}
+
+=== B1 optional(pipe(unknown,transform(empty->undefined),optional(ruled))) + root omit
+formisch[tags=false] accepted; kinds {"nick":"value","count":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,"abc"]
+S4 adult valid; 0 is not empty {"value":{"kind":"adult","age":18,"locked":" l ","group":{"zip":"z"},"addresses":[{"type":"work","note":"n","secret":0}],"groups":[{"members":[{"name":"ab","title":"t"}]}]}}
+formisch errors {"success":false,"form":null,"nick":["min3"],"count":["min0"],"city":["min2"],"a0":null,"a1":null,"a2":["min3"],"rawPaths":["nick","count","profile.city","addresses.2.street"]}
+formisch[tags=true] accepted; kinds {"nick":"value","count":"value","tags":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+std ruleErr {"issues":[{"message":"min3","path":["addresses",1,"street"]}]}
+std allEmpty {"value":{"agree":false,"profile":{},"addresses":[{}]}}
+std zeroFalse {"value":{"count":0,"agree":false,"profile":{},"addresses":[]}}
+std missingKeys {"issues":[{"message":"Invalid key: Expected \"profile\" but received undefined","path":["profile"]},{"message":"Invalid key: Expected \"addresses\" but received undefined","path":["addresses"]}]}
+std nullContainers {"issues":[{"message":"Invalid type: Expected Object but received null","path":["profile"]},{"message":"Invalid type: Expected Array but received null","path":["addresses"]}]}
+std noTrim {"value":{"nick":" ab ","profile":{"city":" x "},"addresses":[]}}
+std tags=[]  {"value":{"profile":{},"addresses":[]}}
+
+=== B2 optional(pipe(string,transform,optional(ruled))) string-first (all leaves)
+formisch[tags=false] accepted; kinds {"nick":"value","count":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,18]
+S5 server junk: visible repeater wrong shape {"issues":[{"message":"expected object","path":["group"]},{"message":"expected array","path":["addresses"]},{"message":"expected object","path":["groups",0]}]}
+S6 server junk: hidden group wrong shape {"value":{"kind":"child","addresses":[],"groups":[]}}
+S7 root null {"issues":[{"message":"Invalid type: Expected Object but received null","path":"<undefined>"}]}
+abortEarly [{"message":"required","path":["age"]},{"message":"required","path":["email"]},{"message":"required","path":["locked"]},{"message":"required","path":["group","zip"]},{"message":"required","path":["addresses",2,"street"]},{"message":"required","path":["addresses",2,"note"]},{"message":"min2","path":["groups",0,"members",0,"name"]},{"message":"required","path":["groups",0,"members",1,"name"]}]
+abortPipeEarly 8
+
+=== T5 D
+formisch errors {"success":false,"form":null,"nick":["min3"],"count":["Invalid type: Expected string but received -1"],"city":["min2"],"a0":null,"a1":null,"a2":["min3"],"rawPaths":["nick","count","profile.city","addresses.2.street"]}
+S1 child: everything hidden/disabled, hidden wrong types {"value":{"kind":"child","addresses":[{"type":"other"}],"groups":[]}}
+initial bio/age mounted [false,false]
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,"abc"]
+S2 adult: required/rules per-row incl. nested repeater {"issues":[{"message":"required","path":["age"]},{"message":"required","path":["email"]},{"message":"required","path":["locked"]},{"message":"required","path":["group","zip"]},{"message":"required","path":["addresses",2,"street"]},{"message":"required","path":["addresses",2,"note"]},{"message":"min2","path":["groups",0,"members",0,"name"]},{"message":"required","path":["groups",0,"members",1,"name"]}]}
+formisch[tags=true] accepted; kinds {"nick":"value","count":"value","tags":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+std ruleErr {"issues":[{"message":"Invalid type: Expected string but received 0","path":["count"]},{"message":"Invalid type: Expected string but received false","path":["agree"]},{"message":"min3","path":["addresses",1,"street"]}]}
+std allEmpty {"issues":[{"message":"Invalid type: Expected string but received null","path":["count"]},{"message":"Invalid type: Expected string but received false","path":["agree"]},{"message":"Invalid type: Expected string but received null","path":["addresses",0,"street"]}]}
+std zeroFalse {"issues":[{"message":"Invalid type: Expected string but received 0","path":["count"]},{"message":"Invalid type: Expected string but received false","path":["agree"]}]}
+std missingKeys {"issues":[{"message":"Invalid key: Expected \"profile\" but received undefined","path":["profile"]},{"message":"Invalid key: Expected \"addresses\" but received undefined","path":["addresses"]}]}
+std nullContainers {"issues":[{"message":"Invalid type: Expected Object but received null","path":["profile"]},{"message":"Invalid type: Expected Array but received null","path":["addresses"]}]}
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,"<undefined>"]
+S3 adult: visible wrong type & rule fails on 0 {"issues":[{"message":"Invalid type: Expected number but received \"abc\"","path":["age"]},{"message":"min5","path":["email"]},{"message":"Invalid type: Expected number but received \"nope\"","path":["addresses",0,"secret"]}]}
+std noTrim {"value":{"nick":" ab ","profile":{"city":" x "},"addresses":[]}}
+std tags=[]  {"issues":[{"message":"Invalid type: Expected string but received Array","path":["tags"]}]}
+
+=== A2+ A2 with nullish(container, default) containers
+formisch[tags=false] accepted; kinds {"nick":"value","count":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,"abc"]
+formisch errors {"success":false,"form":null,"nick":["min3"],"count":["min0"],"city":["min2"],"a0":null,"a1":null,"a2":["min3"],"rawPaths":["nick","count","profile.city","addresses.2.street"]}
+S4 adult valid; 0 is not empty {"value":{"kind":"adult","age":18,"locked":" l ","group":{"zip":"z"},"addresses":[{"type":"work","note":"n","secret":0}],"groups":[{"members":[{"name":"ab","title":"t"}]}]}}
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,18]
+S5 server junk: visible repeater wrong shape {"issues":[{"message":"Invalid type: Expected Object but received 5","path":["group"]},{"message":"Invalid type: Expected Array but received \"x\"","path":["addresses"]},{"message":"Invalid type: Expected Object but received 5","path":["groups",0]}]}
+S6 server junk: hidden group wrong shape {"value":{"kind":"child","addresses":[],"groups":[]}}
+formisch[tags=true] THROWS "Store initialized as \"value\" cannot be reinitialized as \"array\""
+std ruleErr {"issues":[{"message":"min3","path":["addresses",1,"street"]}]}
+S7 root null {"issues":[{"message":"Invalid type: Expected Object but received null","path":"<undefined>"}]}
+std allEmpty {"value":{"agree":false,"profile":{},"addresses":[{}]}}
+std zeroFalse {"value":{"count":0,"agree":false,"profile":{},"addresses":[]}}
+std missingKeys {"value":{"profile":{},"addresses":[]}}
+std nullContainers {"value":{"profile":{},"addresses":[]}}
+std noTrim {"value":{"nick":" ab ","profile":{"city":" x "},"addresses":[]}}
+std tags=[]  {"value":{"profile":{},"addresses":[]}}
+abortEarly [{"message":"required","path":["age"]}]
+abortPipeEarly 8
+
+=== B1+ B1 with nullish(container, default) containers
+
+=== T5 E
+formisch[tags=false] accepted; kinds {"nick":"value","count":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+formisch errors {"success":false,"form":null,"nick":["min3"],"count":["min0"],"city":["min2"],"a0":null,"a1":null,"a2":["min3"],"rawPaths":["nick","count","profile.city","addresses.2.street"]}
+S1 child: everything hidden/disabled, hidden wrong types {"value":{"kind":"child","addresses":[{"type":"other"}],"groups":[]}}
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,"abc"]
+formisch[tags=true] accepted; kinds {"nick":"value","count":"value","tags":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+std ruleErr {"issues":[{"message":"min3","path":["addresses",1,"street"]}]}
+std allEmpty {"value":{"agree":false,"profile":{},"addresses":[{}]}}
+std zeroFalse {"value":{"count":0,"agree":false,"profile":{},"addresses":[]}}
+std missingKeys {"value":{"profile":{},"addresses":[]}}
+std nullContainers {"value":{"profile":{},"addresses":[]}}
+std noTrim {"value":{"nick":" ab ","profile":{"city":" x "},"addresses":[]}}
+std tags=[]  {"value":{"profile":{},"addresses":[]}}
+S2 adult: required/rules per-row incl. nested repeater {"issues":[{"message":"required","path":["age"]},{"message":"required","path":["email"]},{"message":"required","path":["locked"]},{"message":"required","path":["group","zip"]},{"message":"required","path":["addresses",2,"street"]},{"message":"required","path":["addresses",2,"note"]},{"message":"min2","path":["groups",0,"members",0,"name"]},{"message":"required","path":["groups",0,"members",1,"name"]}]}
+
+=== G pipe(unknown,transform(normalise),object) root preprocess
+formisch[tags=false] accepted; kinds {"nick":"THROW No field store found at path [\"nick\"]","count":"THROW No field store found at path [\"count\"]","profile":"THROW No field store found at path [\"profile\"]","profile.city":"THROW No field store found at path [\"profile\",\"city\"]","addresses":"THROW No field store found at path [\"addresses\"]","addresses.0":"THROW No field store found at path [\"addresses\",0]","addresses.0.street":"THROW No field store found at path [\"addresses\",0,\"street\"]"}
+formisch validate THROWS "No field store found at path [\"nick\"]"
+formisch[tags=true] accepted; kinds {"nick":"THROW No field store found at path [\"nick\"]","count":"THROW No field store found at path [\"count\"]","tags":"THROW No field store found at path [\"tags\"]","profile":"THROW No field store found at path [\"profile\"]","profile.city":"THROW No field store found at path [\"profile\",\"city\"]","addresses":"THROW No field store found at path [\"addresses\"]","addresses.0":"THROW No field store found at path [\"addresses\",0]","addresses.0.street":"THROW No field store found at path [\"addresses\",0,\"street\"]"}
+std ruleErr {"issues":[{"message":"min3","path":["nick"]},{"message":"min3","path":["addresses",0,"street"]},{"message":"min3","path":["addresses",1,"street"]}]}
+std allEmpty {"issues":[{"message":"Invalid type: Expected number but received null","path":["count"]},{"message":"Invalid type: Expected string but received null","path":["addresses",0,"street"]}]}
+std zeroFalse {"value":{"count":0,"agree":false,"profile":{},"addresses":[]}}
+std missingKeys {"issues":[{"message":"Invalid key: Expected \"profile\" but received undefined","path":["profile"]},{"message":"Invalid key: Expected \"addresses\" but received undefined","path":["addresses"]}]}
+std nullContainers {"issues":[{"message":"Invalid type: Expected Object but received null","path":["profile"]},{"message":"Invalid type: Expected Array but received null","path":["addresses"]}]}
+std noTrim {"value":{"nick":" ab ","profile":{"city":" x "},"addresses":[]}}
+std tags=[]  {"value":{"tags":[],"profile":{},"addresses":[]}}
+
+=== C skeleton + root rawTransform interpreter
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,"<undefined>"]
+S3 adult: visible wrong type & rule fails on 0 {"issues":[{"message":"Invalid type: Expected number but received \"abc\"","path":["age"]},{"message":"min5","path":["email"]},{"message":"Invalid type: Expected number but received \"nope\"","path":["addresses",0,"secret"]}]}
+formisch[tags=false] accepted; kinds {"nick":"value","count":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+formisch errors {"success":false,"form":null,"nick":["min3"],"count":["min0"],"city":["min2"],"a0":null,"a1":null,"a2":["min3"],"rawPaths":["nick","count","profile.city","addresses.2.street"]}
+formisch[tags=true] accepted; kinds {"nick":"value","count":"value","tags":"array","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+std ruleErr {"issues":[{"message":"min3","path":["addresses",1,"street"]}]}
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,"abc"]
+after kind=adult bio/age mounted [true,true]
+S4 adult valid; 0 is not empty {"value":{"kind":"adult","age":18,"locked":" l ","group":{"zip":"z"},"addresses":[{"type":"work","note":"n","secret":0}],"groups":[{"members":[{"name":"ab","title":"t"}]}]}}
+std allEmpty {"value":{"agree":false,"profile":{},"addresses":[{}]}}
+std zeroFalse {"value":{"count":0,"agree":false,"profile":{},"addresses":[]}}
+std missingKeys {"value":{"profile":{},"addresses":[]}}
+std nullContainers {"value":{"profile":{},"addresses":[]}}
+std noTrim {"value":{"nick":" ab ","profile":{"city":" x "},"addresses":[]}}
+std tags=[]  {"value":{"profile":{},"addresses":[]}}
+   formisch: same-as-std/all-routed-to-field/form.errors/hidden-store-kept [true,true,null,18]
+
+=== D root v.lazy per-input schema
+S5 server junk: visible repeater wrong shape {"issues":[{"message":"Invalid type: Expected Object but received 5","path":["group"]},{"message":"Invalid type: Expected Array but received \"x\"","path":["addresses"]},{"message":"Invalid type: Expected Object but received 5","path":["groups",0]}]}
+S6 server junk: hidden group wrong shape {"value":{"kind":"child","addresses":[],"groups":[]}}
+S7 root null {"issues":[{"message":"Invalid type: Expected Object but received null","path":"<undefined>"}]}
+abortEarly [{"message":"required","path":["age"]}]
+abortPipeEarly 8
+formisch[tags=false] accepted; kinds {"nick":"value","count":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+
+=== T6 routing edge cases
+formisch errors {"success":false,"form":null,"nick":["min3"],"count":["min0"],"city":["min2"],"a0":null,"a1":null,"a2":["min3"],"rawPaths":["nick","count","profile.city","addresses.2.street"]}
+undefined path {"success":false,"formErrors":["boom"],"a":null,"rows":null,"isValidFlag":false}
+formisch[tags=true] accepted; kinds {"nick":"value","count":"value","tags":"array","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+std ruleErr {"issues":[{"message":"min3","path":["addresses",1,"street"]}]}
+std allEmpty {"value":{"agree":false,"profile":{},"addresses":[{}]}}
+std zeroFalse {"value":{"count":0,"agree":false,"profile":{},"addresses":[]}}
+std missingKeys {"value":{"profile":{},"addresses":[]}}
+path: [] {"success":false,"formErrors":null,"a":null,"rows":null,"isValidFlag":true}
+std nullContainers {"value":{"profile":{},"addresses":[]}}
+std noTrim {"value":{"nick":" ab ","profile":{"city":" x "},"addresses":[]}}
+std tags=[]  {"value":{"profile":{},"addresses":[]}}
+
+=== E skeleton -> transform(prep) -> typed object
+unknown field {"success":false,"formErrors":null,"a":null,"rows":null,"isValidFlag":true}
+formisch[tags=false] accepted; kinds {"nick":"value","count":"value","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+row beyond length {"success":false,"formErrors":null,"a":null,"rows":null,"isValidFlag":true}
+formisch errors {"success":false,"form":null,"nick":["min3"],"count":["min0"],"city":["min2"],"a0":null,"a1":null,"a2":["min3"],"rawPaths":["nick","count","profile.city","addresses.2.street"]}
+array itself {"success":false,"formErrors":null,"a":null,"rows":["boom"],"isValidFlag":false}
+formisch[tags=true] accepted; kinds {"nick":"value","count":"value","tags":"array","profile":"object","profile.city":"value","addresses":"array","addresses.0":"object","addresses.0.street":"value"}
+std ruleErr {"issues":[{"message":"min3","path":["addresses",1,"street"]}]}
+std allEmpty {"value":{"agree":false,"profile":{},"addresses":[{}]}}
+std zeroFalse {"value":{"count":0,"agree":false,"profile":{},"addresses":[]}}
+std missingKeys {"value":{"profile":{},"addresses":[]}}
+std nullContainers {"value":{"profile":{},"addresses":[]}}
+std noTrim {"value":{"nick":" ab ","profile":{"city":" x "},"addresses":[]}}
+std tags=[]  {"value":{"profile":{},"addresses":[]}}
+deeper than value store {"success":false,"formErrors":null,"a":null,"rows":null,"isValidFlag":true}
+minimal {key} only {"success":false,"formErrors":null,"a":["boom"],"rows":null,"isValidFlag":false}
+
+=== T7 array vs value in union
+ ✓ test/q1.test.tsx (11 tests) 34ms
+validate=initial {"mount":[1,["required"],["required"]],"focus":[1,["required"],["required"]],"change":[2,["a-min3"],["required"]],"blur":[2,["a-min3"],["required"]],"change2_afterErrors":[3,null,["required"]],"submit":[4,null,["required"]],"changeB_afterSubmit":[5,null,null]}
+throws "Store initialized as \"array\" cannot be reinitialized as \"value\""
+throws "Store initialized as \"array\" cannot be reinitialized as \"value\""
+submit errors DOM {"kind":"","bio":"","age":"required","r0street":"","r2street":"required","r0note":"required","form":"","activeElement":"age","submits":0}
+ ✓ test/q2.test.tsx (9 tests) 47ms
+age native <input type=number> store value + error ["25","Invalid type: Expected number but received \"25\""]
+age after setInput(25) [25,""]
+bio x error "bio-min3"
+validate=touch {"mount":[0,null,null],"focus":[1,["required"],["required"]],"change":[2,["a-min3"],["required"]],"blur":[2,["a-min3"],["required"]],"change2_afterErrors":[3,null,["required"]],"submit":[4,null,["required"]],"changeB_afterSubmit":[5,null,null]}
+after hide: mounted/store/errors [false,"x",null,null,null]
+hidden age wrongly typed, errors null
+submit output while hidden {"kind":"child","addresses":[{},{},{"type":"home","street":"main st"}]}
+store still has hidden {"kind":"child","age":"not-a-number","bio":"x","tags":[],"addresses":[{"type":"<undefined>","street":"<undefined>","note":"<undefined>"},{"type":"<undefined>","street":"<undefined>","note":"<undefined>"},{"type":"home","street":"main st","note":"<undefined>"}]}
+validate=input {"mount":[0,null,null],"focus":[0,null,null],"change":[1,["a-min3"],["required"]],"blur":[1,["a-min3"],["required"]],"change2_afterErrors":[2,null,["required"]],"submit":[3,null,["required"]],"changeB_afterSubmit":[4,null,null]}
+after show again: bio DOM value / age store ["x","not-a-number","bio-min3","Invalid type: Expected number but received \"not-a-number\""]
+before remove: r2 err / r0 note err ["","required"]
+C 72
+r2 street-min3 "street-min3"
+after remove row1: r1 street err (was r2) ["street-min3","x"]
+after insert row0 type=home: r0/r2 street err ["required","street-min3"]
+array field errors ""
+multi-select store (array kind) ["x","y"]
+validate=change {"mount":[0,null,null],"focus":[0,null,null],"change":[1,["a-min3"],["required"]],"blur":[1,["a-min3"],["required"]],"change2_afterErrors":[2,null,["required"]],"submit":[3,null,["required"]],"changeB_afterSubmit":[4,null,null]}
+multi-select deselected store []
+after reset {"kind":"<undefined>","age":"<undefined>","bio":"<undefined>","tags":[],"addresses":[{"type":"<undefined>","street":"<undefined>","note":"<undefined>"},{"type":"<undefined>","street":"<undefined>","note":"<undefined>"},{"type":"<undefined>","street":"<undefined>","note":"<undefined>"}]}
+
+=== E2E E
+initial bio/age mounted [false,false]
+after kind=adult bio/age mounted [true,true]
+validate=blur {"mount":[0,null,null],"focus":[0,null,null],"change":[0,null,null],"blur":[1,["a-min3"],["required"]],"change2_afterErrors":[2,null,["required"]],"submit":[3,null,["required"]],"changeB_afterSubmit":[4,null,null]}
+submit errors DOM {"kind":"","bio":"","age":"required","r0street":"","r2street":"required","r0note":"required","form":"","activeElement":"age","submits":0}
+age native <input type=number> store value + error ["25","Invalid type: Expected number but received \"25\""]
+age after setInput(25) [25,""]
+bio x error "bio-min3"
+validate=submit {"mount":[0,null,null],"focus":[0,null,null],"change":[0,null,null],"blur":[0,null,null],"change2_afterErrors":[0,null,null],"submit":[1,null,["required"]],"changeB_afterSubmit":[2,null,null]}
+
+=== Q5 mode table E: [rootRuns, aErrors, bErrors] after each DOM event on field a only
+after hide: mounted/store/errors [false,"x",null,null,null]
+hidden age wrongly typed, errors null
+validate=initial {"mount":[1,["required"],["required"]],"focus":[1,["required"],["required"]],"change":[2,["a-min3"],["required"]],"blur":[2,["a-min3"],["required"]],"change2_afterErrors":[3,null,["required"]],"submit":[4,null,["required"]],"changeB_afterSubmit":[5,null,null]}
+submit output while hidden {"kind":"child","addresses":[{},{},{"type":"home","street":"main st"}]}
+store still has hidden {"kind":"child","age":"not-a-number","bio":"x","tags":[],"addresses":[{"type":"<undefined>","street":"<undefined>","note":"<undefined>"},{"type":"<undefined>","street":"<undefined>","note":"<undefined>"},{"type":"home","street":"main st","note":"<undefined>"}]}
+after show again: bio DOM value / age store ["x","not-a-number","bio-min3","Invalid type: Expected number but received \"not-a-number\""]
+before remove: r2 err / r0 note err ["","required"]
+r2 street-min3 "street-min3"
+after remove row1: r1 street err (was r2) ["street-min3","x"]
+validate=touch {"mount":[0,null,null],"focus":[1,["required"],["required"]],"change":[2,["a-min3"],["required"]],"blur":[2,["a-min3"],["required"]],"change2_afterErrors":[3,null,["required"]],"submit":[4,null,["required"]],"changeB_afterSubmit":[5,null,null]}
+after insert row0 type=home: r0/r2 street err ["required","street-min3"]
+array field errors ""
+multi-select store (array kind) ["x","y"]
+multi-select deselected store []
+after reset {"kind":"<undefined>","age":"<undefined>","bio":"<undefined>","tags":[],"addresses":[{"type":"<undefined>","street":"<undefined>","note":"<undefined>"},{"type":"<undefined>","street":"<undefined>","note":"<undefined>"},{"type":"<undefined>","street":"<undefined>","note":"<undefined>"}]}
+
+=== multi-value item error
+C std {"issues":[{"message":"Invalid type: Expected string but received 1","path":["tags",1]}]}
+C formisch tags / tags.1 / deep [null,["Invalid type: Expected string but received 1"],["Invalid type: Expected string but received 1"]]
+E std {"issues":[{"message":"Invalid type: Expected string but received 1","path":["tags",1]}]}
+E formisch tags / tags.1 / deep [null,["Invalid type: Expected string but received 1"],["Invalid type: Expected string but received 1"]]
+
+=== E probes
+C layout+object inside row, row-scope cond {"issues":[{"message":"required","path":["rows",1,"inLayout"]},{"message":"required","path":["rows",1,"sub","deep"]}]}
+E layout+object inside row, row-scope cond {"issues":[{"message":"required","path":["rows",1,"inLayout"]},{"message":"required","path":["rows",1,"sub","deep"]}]}
+E Condition reading a HIDDEN Field (spike evaluates against raw input) {"issues":[{"message":"required","path":["b"]},{"message":"required","path":["c"]}]}
+E Condition notEmpty on whitespace driver {"value":{}}
+E required-sentinel issue fields {"type":"check","received":"symbol","inputType":"symbol","pathValueType":"symbol"}
+E extra keys stripped {"value":{"x":"a"}}
+
+=== B1 multi-select with value-kind store
+validate=input {"mount":[0,null,null],"focus":[0,null,null],"change":[1,["a-min3"],["required"]],"blur":[1,["a-min3"],["required"]],"change2_afterErrors":[2,null,["required"]],"submit":[3,null,["required"]],"changeB_afterSubmit":[4,null,null]}
+store "x"
+ ✓ test/e2e.test.tsx (5 tests) 172ms
+validate=change {"mount":[0,null,null],"focus":[0,null,null],"change":[1,["a-min3"],["required"]],"blur":[1,["a-min3"],["required"]],"change2_afterErrors":[2,null,["required"]],"submit":[3,null,["required"]],"changeB_afterSubmit":[4,null,null]}
+validate=blur {"mount":[0,null,null],"focus":[0,null,null],"change":[0,null,null],"blur":[1,["a-min3"],["required"]],"change2_afterErrors":[2,null,["required"]],"submit":[3,null,["required"]],"changeB_afterSubmit":[4,null,null]}
+validate=submit {"mount":[0,null,null],"focus":[0,null,null],"change":[0,null,null],"blur":[0,null,null],"change2_afterErrors":[0,null,null],"submit":[1,null,["required"]],"changeB_afterSubmit":[2,null,null]}
+
+=== Q5 stale dependent error (validate=blur, revalidate=input)
+C blur {"shown":[1,["required"]],"afterToggleNoBlur":[1,["required"]],"afterBlur":[2,null]}
+C submit {"shown":[1,["required"]],"afterToggleNoBlur":[2,null],"afterBlur":[2,null]}
+E blur {"shown":[1,["required"]],"afterToggleNoBlur":[1,["required"]],"afterBlur":[2,null]}
+E submit {"shown":[1,["required"]],"afterToggleNoBlur":[2,null],"afterBlur":[2,null]}
+
+=== Q5 revalidate table: runs after each DOM event, post-submit, field a only
+revalidate=touch {"submit":2,"focus":3,"change":3,"blur":3}
+revalidate=input {"submit":1,"focus":1,"change":2,"blur":2}
+revalidate=change {"submit":1,"focus":1,"change":2,"blur":2}
+revalidate=blur {"submit":1,"focus":1,"change":1,"blur":2}
+revalidate=submit {"submit":1,"focus":1,"change":1,"blur":1}
+ ✓ test/q5.test.tsx (4 tests) 279ms
+D 249
+E 48
+ ✓ test/costs.test.tsx (2 tests) 374ms
+   ✓ bench  370ms
+
+ Test Files  6 passed (6)
+      Tests  32 passed (32)
+   Start at  11:16:52
+   Duration  1.19s (transform 130ms, setup 0ms, collect 681ms, tests 908ms, environment 2.56s, prepare 295ms)
+
