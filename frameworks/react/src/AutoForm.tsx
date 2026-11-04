@@ -36,7 +36,7 @@ import {
 } from './submission';
 import { useAutoForm, type AutoFormStore } from './useAutoForm';
 import { DataScopeContext } from './useFormValue';
-import { CurrentPage, useWizard, useWizardController, WizardProvider } from './wizard';
+import { CurrentPage, useWizard, useWizardController, WizardProvider } from './Wizard';
 import { defaultWidgets } from './widgets';
 
 export interface AutoFormProps<TOutput extends FormOutput = FormOutput> {

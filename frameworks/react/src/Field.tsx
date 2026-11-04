@@ -4,7 +4,7 @@ import type { PathKey, ValueField } from '@auto-formisch/core';
 import type { InputProps, WidgetProps } from './contracts';
 import { useRenderContext } from './context';
 import { keyOf } from './submission';
-import { ShowErrorsContext } from './wizard';
+import { ShowErrorsContext } from './Wizard';
 
 interface FieldProps {
   readonly node: ValueField;

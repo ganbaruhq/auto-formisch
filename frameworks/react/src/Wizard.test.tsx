@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { getInput, setInput, submit } from '@formisch/react';
 import {
   AutoForm,
+  AutoFormError,
   compile,
   useAutoForm,
   type AutoFormProps,
@@ -420,6 +421,36 @@ describe('Wizard: submitting', () => {
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({ rows: [{ street: 'Main' }, { street: 'Side' }] }),
     );
+  });
+});
+
+describe('Wizard: Widgets and overrides', () => {
+  it('checks every Page on mount, not just the open one', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const form = wizard(page('One', [text('a')]), page('Two', [text('b', { widget: 'nope' })]));
+    let errors: unknown;
+    try {
+      render(<AutoForm form={form} onSubmit={() => {}} overrides={{ c: { label: 'C' } }} />);
+    } catch (error) {
+      errors = (error as AutoFormError).errors;
+    } finally {
+      consoleError.mockRestore();
+    }
+    expect(errors).toEqual([
+      { message: 'No Field at "c"', path: ['overrides', 'c'] },
+      {
+        message: 'No Widget "nope" for the Field at "b"',
+        path: ['pages', 1, 'components', 0, 'widget'],
+      },
+    ]);
+  });
+
+  it('applies overrides to a Field on a later Page', async () => {
+    const { user, next } = setup(twoPages, { overrides: { city: { label: 'Town' } } });
+    await user.type(input('name'), 'Ada');
+    await next();
+    await onPage('Address');
+    expect(input('Town')).toBeTruthy();
   });
 });
 

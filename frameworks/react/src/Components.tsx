@@ -27,7 +27,7 @@ import { useRenderContext } from './context';
 import { Field } from './Field';
 import { FocusTargetContext, keyOf, leadsInto, namesIn } from './submission';
 import { DataScopeContext } from './useFormValue';
-import { ShowErrorsContext } from './wizard';
+import { ShowErrorsContext } from './Wizard';
 
 type Scope = readonly PathKey[];
 
