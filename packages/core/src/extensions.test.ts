@@ -447,17 +447,31 @@ describe('custom Rule', () => {
     ).toEqual({ issues: [{ message: 'Use VN', path: ['code'] }] });
   });
 
-  it('combines with built-in Rules, all errors on the Field path', () => {
+  it('combines with built-in Rules, which run in order up to the first that fails', () => {
     const definition = code([
       { type: 'min_length', requirement: 5 },
       { type: 'starts_with', requirement: 'VN' },
     ]);
     expect(validate(definition, { code: 'US' })).toEqual({
-      issues: [
-        { message: 'Invalid length: Expected >=5 but received 2', path: ['code'] },
-        { message: 'Wrong prefix', path: ['code'] },
-      ],
+      issues: [{ message: 'Invalid length: Expected >=5 but received 2', path: ['code'] }],
     });
+    expect(validate(definition, { code: 'US-123' })).toEqual({
+      issues: [{ message: 'Wrong prefix', path: ['code'] }],
+    });
+  });
+
+  it('never runs after a max_length that failed, so a long value never reaches its pattern', () => {
+    const check = vi.fn(() => true);
+    const pattern = defineRule({ type: 'pattern', appliesTo: ['text'], check });
+    const definition = code([{ type: 'max_length', requirement: 8 }, { type: 'pattern' }]);
+    expect(validate(definition, { code: 'x'.repeat(10_000) }, { rules: [pattern] })).toEqual({
+      issues: [{ message: 'Invalid length: Expected <=8 but received 10000', path: ['code'] }],
+    });
+    expect(check).not.toHaveBeenCalled();
+    expect(validate(definition, { code: 'short' }, { rules: [pattern] })).toEqual({
+      value: { code: 'short' },
+    });
+    expect(check).toHaveBeenCalledOnce();
   });
 
   it('runs only on a non-empty value of the Field type', () => {

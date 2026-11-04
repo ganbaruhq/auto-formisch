@@ -529,7 +529,6 @@ describe('Form Definition with every value Field Type: round trip', () => {
     expect(validate(everyType, inputs[3]).issues?.map((issue) => issue.path.join('.'))).toEqual([
       'website',
       'age',
-      'age',
       'country',
       'sizes',
       'start',

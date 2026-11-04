@@ -105,9 +105,43 @@ export const builtinRules: ReadonlyMap<string, RuleSpec> = new Map(
   ),
 );
 
-/** The actions of loaded `rules`, in order, from the Rules the load knew. */
+/**
+ * The loaded `rules` as one action, or none when there are none, from the
+ * Rules the load knew. They run in Definition order and stop at the first
+ * that fails, so a Field shows one Rule error at a time, and a custom Rule
+ * after a failed `max_length` never sees an overlong value.
+ */
 export const ruleActions = (
   rules: readonly RuleNode[] = [],
   specs: ReadonlyMap<string, RuleSpec> = builtinRules,
 ): RuleAction[] =>
-  rules.map((rule) => specs.get(rule.type)!.action(rule.requirement, rule.message));
+  rules.length === 0
+    ? []
+    : [
+        untilFirstFailure(
+          rules.map((rule) => specs.get(rule.type)!.action(rule.requirement, rule.message)),
+        ),
+      ];
+
+/** A Rule's action: every Rule only validates. */
+type Validation = v.BaseValidation<any, any, v.BaseIssue<unknown>>;
+
+/** One validation action that runs `actions` in order up to the first that adds an issue. */
+function untilFirstFailure(actions: readonly RuleAction[]): Validation {
+  return {
+    kind: 'validation',
+    type: 'rules',
+    reference: untilFirstFailure as (...args: any[]) => Validation,
+    async: false,
+    expects: null,
+    '~run'(dataset, config) {
+      let current = dataset;
+      for (const action of actions as readonly Validation[]) {
+        const before = current.issues?.length ?? 0;
+        current = action['~run'](current, config);
+        if ((current.issues?.length ?? 0) > before) break;
+      }
+      return current;
+    },
+  };
+}

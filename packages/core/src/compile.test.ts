@@ -99,16 +99,16 @@ describe('compile: Rules on a text Field', () => {
     }
   });
 
-  it('reports every failing Rule', () => {
+  it('runs the Rules in order and reports the first that fails', () => {
     const definition = field([
       { type: 'min_length', requirement: 3, message: 'Too short' },
       { type: 'email', message: 'Enter an email' },
     ]);
     expect(validate(definition, { value: 'a' })).toEqual({
-      issues: [
-        { message: 'Too short', path: ['value'] },
-        { message: 'Enter an email', path: ['value'] },
-      ],
+      issues: [{ message: 'Too short', path: ['value'] }],
+    });
+    expect(validate(definition, { value: 'abc' })).toEqual({
+      issues: [{ message: 'Enter an email', path: ['value'] }],
     });
   });
 

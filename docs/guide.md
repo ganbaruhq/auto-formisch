@@ -200,6 +200,8 @@ The built-in Field Types are `text`, `number`, `boolean`, `choice`, `multi_choic
 
 A **Rule** is a constraint on a Field's value: `{ "type": "min_length", "requirement": 3, "message": "Too short" }`. The built-in Rules are `email`, `url`, `min_length`, `max_length`, `min_value`, `max_value`, `integer`, `accepted`, `min_items` and `max_items`, each for some Field Types only. There is no `regex` Rule, so that a stored Definition can never make a server run a slow regular expression; write a [custom Rule](#custom-field-types-and-rules) for a pattern.
 
+A Field's Rules run in Definition order and stop at the first that fails: a Field shows one Rule error at a time, and a Rule after a failed one never runs.
+
 Two Rules need care:
 
 - Rules skip empty values, so `accepted` alone lets an unticked checkbox through. Use it with `required`, as the [Wizard example](#wizards) does.
@@ -932,7 +934,7 @@ Registration throws a `TypeError` at once for a name that is not `^[a-z][a-z0-9_
 
 **Your code runs on every server that validates the form.** That is what makes custom Rules safe to store and dangerous to write:
 
-- **ReDoS.** A custom Rule is the way to check a pattern, and a regular expression open to catastrophic backtracking, such as `/^(a+)+$/`, lets one crafted value block a server for seconds or more. Prefer simple, anchored patterns, and test the length in `check` before the pattern: a `max_length` Rule beside yours doesn't stop yours from running.
+- **ReDoS.** A custom Rule is the way to check a pattern, and a regular expression open to catastrophic backtracking, such as `/^(a+)+$/`, lets one crafted value block a server for seconds or more. Prefer simple, anchored patterns, and put a `max_length` Rule before yours: a Field's Rules run in order and stop at the first that fails, so your `check` never sees a value longer than that.
 - **Async is caught only where Valibot marks it.** An async schema is rejected at registration when Valibot knows it is async anywhere inside, such as `v.pipe(v.string(), v.checkAsync(...))`. An async function passed to a sync API such as `v.check` or `v.custom`, or a schema inside `v.lazy`, can't be detected, and its Promise counts as valid. A `check` that returns anything but a boolean throws.
 - **A throw is a bug, never a validation result.** Custom code that throws while validating makes `~standard.validate` throw. In `<AutoForm>`, Formisch catches it on submit and shows its message in the general error region, and the form never submits; in a Wizard, `next` and `goTo` reject with it.
 - **No versions.** Custom Field Types and Rules have no version of their own. Rename one, change its options or drop it, and a stored Definition that uses it throws on load until you migrate that Definition yourself.

@@ -91,7 +91,7 @@ Each Rule is `{ type, requirement?, message? }`. A Rule on a Field Type it doesn
 | `accepted`                 | `boolean`                  | none                                             | `false`                              |
 | `min_items`, `max_items`   | `multi_choice`, `repeater` | a non-negative integer                           | fewer or more items or rows          |
 
-`message` replaces Valibot's message for that Rule. Rules only run on a non-empty value, so `accepted` needs `required` to reject an unticked checkbox. `url` accepts any scheme the platform's URL parser accepts, `javascript:` included. There is no `regex` Rule; see [custom Rules](guide.md#custom-field-types-and-rules).
+`message` replaces Valibot's message for that Rule. A Field's Rules run in Definition order and stop at the first that fails, so a Field shows one Rule error at a time, and a Rule after a failed one never runs. Rules only run on a non-empty value, so `accepted` without `required` passes an untouched checkbox: an unticked box is empty, and an empty value skips every Rule. Add `required` to reject it. `url` accepts any scheme the platform's URL parser accepts, `javascript:` included. There is no `regex` Rule; see [custom Rules](guide.md#custom-field-types-and-rules).
 
 ## Conditions
 
