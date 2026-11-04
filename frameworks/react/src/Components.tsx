@@ -114,8 +114,10 @@ function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scop
   const showErrors = useContext(ShowErrorsContext);
   const [activeKey, setActiveKey] = useState('0');
   // A Formisch hook makes this component re-render when the errors it reads
-  // below change; the scope's store always exists.
-  useField(store, { path: scope as never });
+  // below change; the scope's store always exists. The counts read through
+  // its result: Formisch marks `useField` free of side effects, so a
+  // production bundle drops a call whose result is unused, subscription and all.
+  const scopeField = useField(store, { path: scope as never });
 
   const names = node.components.map((tab) => namesIn(tab.components));
   const focusTarget = useContext(FocusTargetContext);
@@ -145,7 +147,9 @@ function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scop
               ? 0
               : [...names[index]].reduce(
                   (count, name) =>
-                    count + getDeepErrorEntries(store, { path: [...scope, name] } as never).length,
+                    count +
+                    getDeepErrorEntries(store, { path: [...scopeField.path, name] } as never)
+                      .length,
                   0,
                 ),
           },

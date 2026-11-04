@@ -67,9 +67,12 @@ const openPage = (current: number, shown: readonly number[]): number =>
     ? current
     : (shown.find((index) => index > current) ?? previous(shown, current) ?? current);
 
-/** The Page each error entry of the store sits on, `undefined` for one no Page holds. */
-const errorPages = (compiled: CompiledForm, store: AutoFormStore) =>
-  getDeepErrorEntries(store).map((entry) => pageOf(compiled, entry.path));
+/**
+ * The Page each error entry of the store sits on, `undefined` for one no Page
+ * holds. `root` is the path of the root Field, `[]`, when a render reads it.
+ */
+const errorPages = (compiled: CompiledForm, store: AutoFormStore, root?: readonly PathKey[]) =>
+  getDeepErrorEntries(store, { path: root } as never).map((entry) => pageOf(compiled, entry.path));
 
 interface WizardOptions {
   readonly compiled: CompiledForm;
@@ -257,10 +260,12 @@ export function useWizard(): Wizard | null {
   const controller = useContext(WizardContext);
   const { store } = useRenderContext();
   // A Formisch hook, so that the errors read below subscribe this component.
-  useField(store, { path: [] as never });
+  // They read through its result: Formisch marks `useField` free of side
+  // effects, so a production bundle drops a call whose result is unused.
+  const root = useField(store, { path: [] as never });
   if (controller === null) return null;
   const { compiled, pages, shown, current, attempted, next, back, goTo } = controller;
-  const onPages = errorPages(compiled, store);
+  const onPages = errorPages(compiled, store, root.path);
   const position = shown.indexOf(current);
   return {
     pages: shown.map((index) => ({
