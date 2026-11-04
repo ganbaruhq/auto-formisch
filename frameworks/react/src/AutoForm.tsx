@@ -1,4 +1,12 @@
-import { useId, useMemo, type ComponentType, type ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from 'react';
 import { Form, submit, useField } from '@formisch/react';
 import type { CompiledForm, ConditionState, FormOutput } from '@auto-formisch/core';
 import { Components } from './Components';
@@ -16,6 +24,15 @@ import type {
   WidgetMap,
 } from './contracts';
 import { resolveWidgets } from './resolve';
+import {
+  firstErrorTarget,
+  FocusTargetContext,
+  keyOf,
+  placeErrors,
+  type FocusElements,
+  type FocusTarget,
+  type SubmitResult,
+} from './submission';
 import { useAutoForm, type AutoFormStore } from './useAutoForm';
 import { DataScopeContext } from './useFormValue';
 import { defaultWidgets } from './widgets';
@@ -23,8 +40,13 @@ import { defaultWidgets } from './widgets';
 export interface AutoFormProps<TOutput extends FormOutput = FormOutput> {
   /** The result of `compile`. Change the form by changing the React `key`. */
   readonly form: CompiledForm<TOutput>;
-  /** Called with the validated output, the full state of active Fields. */
-  readonly onSubmit: (output: TOutput) => void | Promise<void>;
+  /**
+   * Called with the validated output, the full state of active Fields. It may
+   * return `{ errors: [{ message, path }] }`, such as the server's: each error
+   * shows on the shown Field its path names, every other one in the form's
+   * general error region. A thrown error's `message` shows there too.
+   */
+  readonly onSubmit: (output: TOutput) => SubmitResult | Promise<SubmitResult>;
   /**
    * The Formisch store from `useAutoForm(form)`, for an application that calls
    * Formisch itself. Without it, `<AutoForm>` creates its own.
@@ -83,6 +105,7 @@ function Rendered({
   actions = DefaultActions,
 }: AutoFormProps & { readonly store: AutoFormStore }) {
   const idPrefix = useId();
+  const focusElements = useRef<FocusElements>(new Map()).current;
   const rootScope = useMemo(
     () => ({ path: [], components: compiled.definition.components, parent: null }),
     [compiled],
@@ -95,28 +118,93 @@ function Rendered({
       fieldWrapper,
       labels: { ...defaultLabels, ...definedOnly(labels) },
       idPrefix,
+      focusElements,
     }),
-    [compiled, store, idPrefix, widgets, layouts, fieldWrapper, overrides, labels],
+    [compiled, store, idPrefix, focusElements, widgets, layouts, fieldWrapper, overrides, labels],
   );
   const conditions = useConditions(compiled, store);
   const context = useMemo(() => ({ ...base, conditions }), [base, conditions]);
+  const { attempt, handle, focusTarget } = useSubmission(compiled, store, onSubmit, focusElements);
 
   return (
     <RenderContext value={context}>
-      <Form of={store} id={id} onSubmit={(output) => onSubmit(output)}>
-        <DataScopeContext value={rootScope}>
-          <Components components={rootScope.components} scope={[]} />
-        </DataScopeContext>
-        <div role="alert">{store.errors?.join(' ')}</div>
-        <Actions
-          render={actions}
-          isSubmitting={store.isSubmitting}
-          submit={() => submit(store)}
-          wizard={null}
-        />
-      </Form>
+      <FocusTargetContext value={focusTarget}>
+        <Form of={store} id={id} onSubmitCapture={attempt} onSubmit={handle}>
+          <DataScopeContext value={rootScope}>
+            <Components components={rootScope.components} scope={[]} />
+          </DataScopeContext>
+          <div role="alert">
+            {store.errors?.map((error, index) => (
+              <div key={index}>{error}</div>
+            ))}
+          </div>
+          <Actions
+            render={actions}
+            isSubmitting={store.isSubmitting}
+            submit={() => submit(store)}
+            wizard={null}
+          />
+        </Form>
+      </FocusTargetContext>
     </RenderContext>
   );
+}
+
+interface Attempt {
+  /** Validation passed, so `onSubmit` ran. */
+  reached: boolean;
+  /** `onSubmit` returned errors. */
+  rejected: boolean;
+}
+
+/**
+ * Runs `onSubmit` and places the errors it returns. Once a submit attempt that
+ * failed validation, or whose `onSubmit` returned errors, has settled, it asks
+ * for focus on the first Field with an error in Definition order: the Tabs on
+ * its way open first, then the element is focused.
+ *
+ * Formisch calls the handler only when validation passes, so an attempt is
+ * marked in the capture phase, before Formisch handles the event, and is
+ * settled on the first render where the store is no longer submitting.
+ */
+function useSubmission(
+  compiled: CompiledForm,
+  store: AutoFormStore,
+  onSubmit: AutoFormProps['onSubmit'],
+  focusElements: FocusElements,
+) {
+  const pending = useRef<Attempt | null>(null);
+  const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
+  const isSubmitting = store.isSubmitting;
+
+  useEffect(() => {
+    const attempt = pending.current;
+    if (attempt === null || isSubmitting) return;
+    pending.current = null;
+    if (attempt.reached && !attempt.rejected) return;
+    setFocusTarget(firstErrorTarget(compiled, store, focusElements));
+  });
+
+  useEffect(() => {
+    if (focusTarget !== null) focusElements.get(keyOf(focusTarget.path))?.focus();
+  }, [focusTarget, focusElements]);
+
+  return {
+    focusTarget,
+    attempt: () => {
+      pending.current = { reached: false, rejected: false };
+    },
+    handle: async (output: FormOutput) => {
+      const attempt = pending.current;
+      if (attempt !== null) attempt.reached = true;
+      const result = await onSubmit(output);
+      const errors = typeof result === 'object' && result !== null ? result.errors : undefined;
+      if (errors !== undefined && errors.length > 0) {
+        placeErrors(compiled, store, errors);
+        if (attempt !== null) attempt.rejected = true;
+      }
+    },
+  };
 }
 
 /**

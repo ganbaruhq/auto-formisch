@@ -3,6 +3,7 @@
 import type { ComponentType } from 'react';
 import { describe, expect, it } from 'vite-plus/test';
 import type {
+  AutoFormProps,
   BooleanField,
   ChoiceValue,
   NumberField,
@@ -43,5 +44,22 @@ describe('WidgetMap types', () => {
     const readOnly = (props: WidgetProps<boolean, BooleanField>): boolean => props.readOnly;
     const value = (props: WidgetProps<readonly ChoiceValue[]>) => props.value;
     expect([readOnly, value]).toHaveLength(2);
+  });
+});
+
+describe('AutoFormProps types', () => {
+  it('lets onSubmit return errors as {message, path}, in sync or async', () => {
+    const fine: AutoFormProps['onSubmit'][] = [
+      () => {},
+      async () => {},
+      () => ({ errors: [{ message: 'Taken', path: ['email'] }] }),
+      async () => ({ errors: [{ message: 'No row', path: ['pets', 0, 'kind'] }] }),
+      () => ({}),
+    ];
+    // @ts-expect-error an error needs a message
+    const noMessage: AutoFormProps['onSubmit'] = () => ({ errors: [{ path: ['email'] }] });
+    // @ts-expect-error a path is a list of keys
+    const stringPath: AutoFormProps['onSubmit'] = () => ({ errors: [{ message: 'x', path: 'a' }] });
+    expect([fine, noMessage, stringPath]).toHaveLength(3);
   });
 });

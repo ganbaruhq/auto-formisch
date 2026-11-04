@@ -3,6 +3,7 @@ import type { FormStore } from '@formisch/react';
 import type { CompiledForm, ConditionState } from '@auto-formisch/core';
 import type { FieldWrapperProps, Labels, LayoutMap } from './contracts';
 import type { WidgetResolver } from './resolve';
+import type { FocusElements } from './submission';
 
 /** What every rendered Component of one form reads. */
 export interface RenderContext {
@@ -16,6 +17,8 @@ export interface RenderContext {
   readonly labels: Labels;
   /** Prefix for element ids, unique per form instance. */
   readonly idPrefix: string;
+  /** Where a Field's focusable element is kept, for focus after a failed submit. */
+  readonly focusElements: FocusElements;
 }
 
 export const RenderContext = createContext<RenderContext | null>(null);

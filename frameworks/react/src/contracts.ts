@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode, Ref } from 'react';
+import type { ComponentType, ReactNode, Ref, RefCallback } from 'react';
 import type {
   BooleanField,
   ChoiceField,
@@ -97,6 +97,11 @@ export interface RepeaterProps {
   readonly disabled: boolean;
   /** Ready to display. */
   readonly errors: readonly string[];
+  /**
+   * Put on the element that takes focus when a failed submit stops at the
+   * Repeater's own errors, such as `min_items`. It must be focusable.
+   */
+  readonly focusRef: RefCallback<HTMLElement>;
   readonly node: RepeaterField;
 }
 
@@ -119,6 +124,8 @@ export interface TabItem {
   readonly key: string;
   readonly label: string;
   readonly children: ReactNode;
+  /** How many Fields in the Tab show errors now, so a closed Tab can say so. */
+  readonly errorCount: number;
 }
 
 /**

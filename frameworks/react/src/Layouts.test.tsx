@@ -172,7 +172,8 @@ describe('AutoForm: tabs', () => {
     await waitFor(() => expect(input('City').getAttribute('aria-invalid')).toBe('true'));
     expect(onSubmit).not.toHaveBeenCalled();
 
-    await user.click(tab('Address'));
+    // The failed submit opened the Tab with the error, which counts it.
+    expect(tab('Address (1)').getAttribute('aria-selected')).toBe('true');
     await user.type(input('City'), 'Hue');
     await user.click(tab('Notes'));
     await user.click(submit());

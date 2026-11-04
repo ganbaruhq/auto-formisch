@@ -39,6 +39,8 @@ const KEYS: Readonly<Record<string, (index: number, last: number) => number>> = 
  * The default `tabs`: a WAI-ARIA tab list with a roving `tabIndex`, where the
  * arrow keys, Home and End move and activate. Every panel stays mounted and an
  * inactive one is `hidden`, so its Fields keep their values and are validated.
+ * A Tab with errors says how many Fields have them after its label, which is
+ * part of its accessible name.
  */
 export function Tabs({ tabs, activeKey, onActiveChange }: TabsLayoutProps) {
   const id = useId();
@@ -75,6 +77,7 @@ export function Tabs({ tabs, activeKey, onActiveChange }: TabsLayoutProps) {
             onKeyDown={(event) => onKeyDown(event, index)}
           >
             {tab.label}
+            {tab.errorCount > 0 && ` (${tab.errorCount})`}
           </button>
         ))}
       </div>

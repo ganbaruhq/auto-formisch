@@ -1,5 +1,19 @@
-import { Fragment, useContext, useState, type ComponentType, type CSSProperties } from 'react';
-import { insert, move, remove, useFieldArray } from '@formisch/react';
+import {
+  Fragment,
+  useCallback,
+  useContext,
+  useState,
+  type ComponentType,
+  type CSSProperties,
+} from 'react';
+import {
+  getDeepErrorEntries,
+  insert,
+  move,
+  remove,
+  useField,
+  useFieldArray,
+} from '@formisch/react';
 import type {
   Component,
   ContentNode,
@@ -11,6 +25,7 @@ import type {
 import type { ContentProps, ObjectProps, RepeaterProps, RepeaterRow } from './contracts';
 import { useRenderContext } from './context';
 import { Field } from './Field';
+import { FocusTargetContext, keyOf, leadsInto, namesIn } from './submission';
 import { DataScopeContext } from './useFormValue';
 
 type Scope = readonly PathKey[];
@@ -87,11 +102,28 @@ function ComponentNode({ node, scope }: { readonly node: Component; readonly sco
 /**
  * Keeps the active Tab and renders every shown Tab, so inactive ones stay
  * mounted. A hidden Tab leaves the list; while the active one is hidden, the
- * first shown Tab is active.
+ * first shown Tab is active. A failed submit whose first error is in a Tab
+ * opens that Tab. Each Tab counts its Fields with errors.
  */
 function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scope }) {
-  const { layouts, conditions } = useRenderContext();
+  const { store, layouts, conditions } = useRenderContext();
   const [activeKey, setActiveKey] = useState('0');
+  // A Formisch hook makes this component re-render when the errors it reads
+  // below change; the scope's store always exists.
+  useField(store, { path: scope as never });
+
+  const names = node.components.map((tab) => namesIn(tab.components));
+  const focusTarget = useContext(FocusTargetContext);
+  const [seenTarget, setSeenTarget] = useState(focusTarget);
+  if (focusTarget !== seenTarget) {
+    setSeenTarget(focusTarget);
+    const index =
+      focusTarget === null
+        ? -1
+        : names.findIndex((tabNames) => leadsInto(focusTarget.path, scope, tabNames));
+    if (index !== -1) setActiveKey(String(index));
+  }
+
   const { tabs: TabsLayout, tab: TabLayout } = layouts;
   const tabs = node.components.flatMap((tab, index) =>
     conditions.isVisible(tab, scope)
@@ -103,6 +135,11 @@ function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scop
               <TabLayout node={tab}>
                 <Components components={tab.components} scope={scope} columns={tab.columns} />
               </TabLayout>
+            ),
+            errorCount: [...names[index]].reduce(
+              (count, name) =>
+                count + getDeepErrorEntries(store, { path: [...scope, name] } as never).length,
+              0,
             ),
           },
         ]
@@ -150,7 +187,7 @@ function ObjectGroup({ node: declared, scope }: NestedProps<ObjectField>) {
  * removing and reordering rows do nothing, whatever the Widget shows.
  */
 function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
-  const { store, widgetOf, conditions } = useRenderContext();
+  const { store, widgetOf, conditions, focusElements } = useRenderContext();
   const { node, entry } = widgetOf(declared);
   const Widget = entry.component as ComponentType<RepeaterProps>;
   const parent = useContext(DataScopeContext);
@@ -159,6 +196,17 @@ function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
   // schema, whose input type has no arrays.
   const arrayPath = path as never;
   const array = useFieldArray(store, { path: arrayPath });
+  const key = keyOf(path);
+  const focusRef = useCallback(
+    (element: HTMLElement | null) => {
+      if (element === null) return;
+      focusElements.set(key, element);
+      return () => {
+        if (focusElements.get(key) === element) focusElements.delete(key);
+      };
+    },
+    [focusElements, key],
+  );
   const disabled = conditions.isDisabled(declared, scope);
   const unlessDisabled = (change: () => void) => () => {
     if (!disabled) change();
@@ -182,6 +230,7 @@ function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
       canAdd={!disabled && (max === undefined || rows.length < max)}
       disabled={disabled}
       errors={array.errors ?? []}
+      focusRef={focusRef}
       node={node}
     />
   );

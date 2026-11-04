@@ -385,9 +385,18 @@ export function ObjectFieldset({ node, disabled, children }: ObjectProps) {
  * A Repeater as a `fieldset` named by its label (or `name`). Each row is a
  * group named "<label> <n>" with buttons to move it up or down and remove it;
  * an Add button follows the rows. The Repeater's own errors sit in a polite
- * live region that describes the `fieldset` while it has errors.
+ * live region that describes the `fieldset` while it has errors; the
+ * `fieldset` takes focus when a failed submit stops at them.
  */
-export function RepeaterList({ rows, add, canAdd, disabled, errors, node }: RepeaterProps) {
+export function RepeaterList({
+  rows,
+  add,
+  canAdd,
+  disabled,
+  errors,
+  focusRef,
+  node,
+}: RepeaterProps) {
   const { labels } = useRenderContext();
   const id = useId();
   const descriptionId = `${id}-description`;
@@ -398,7 +407,12 @@ export function RepeaterList({ rows, add, canAdd, disabled, errors, node }: Repe
     errors.length > 0 ? errorsId : undefined,
   ].filter((value) => value !== undefined);
   return (
-    <fieldset aria-describedby={describedBy.length > 0 ? describedBy.join(' ') : undefined}>
+    <fieldset
+      ref={focusRef}
+      // Focusable from script only, so a failed submit can move to the group.
+      tabIndex={-1}
+      aria-describedby={describedBy.length > 0 ? describedBy.join(' ') : undefined}
+    >
       <legend>{label}</legend>
       {node.description !== undefined && <div id={descriptionId}>{node.description}</div>}
       {rows.map((row) => (

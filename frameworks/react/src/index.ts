@@ -1,6 +1,7 @@
 export * from '@auto-formisch/core';
 export { AutoForm, type AutoFormProps } from './AutoForm';
 export { AutoFormError } from './AutoFormError';
+export type { SubmitResult } from './submission';
 export { useAutoForm, type AutoFormStore } from './useAutoForm';
 export { useFormValue } from './useFormValue';
 export type {
