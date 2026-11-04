@@ -1,10 +1,17 @@
 import type { ComponentType, ReactNode, Ref } from 'react';
 import type {
+  BooleanField,
+  ChoiceField,
+  ChoiceValue,
   ContentNode,
+  DateField,
+  MultiChoiceField,
+  NumberField,
   ObjectField,
   RepeaterField,
   SectionLayout,
   TabLayout,
+  TextField,
   ValueField,
 } from '@auto-formisch/core';
 
@@ -132,18 +139,80 @@ export interface LayoutMap {
 }
 
 /**
- * A Widget map entry, looked up by `widget ?? type` for Fields and Content.
- * Its props depend on what it presents: a value Field, an `object`, a
- * Repeater or Content.
+ * A Widget map entry with its options. A bare component is the same as
+ * `{ component }`.
  */
-export interface WidgetEntry {
-  readonly component:
-    | ComponentType<WidgetProps<any, any>>
-    | ComponentType<ObjectProps>
-    | ComponentType<RepeaterProps>
-    | ComponentType<ContentProps>;
+export interface WidgetEntry<P = any> {
+  readonly component: ComponentType<P>;
   /** The Widget is several controls, so the wrapper uses `fieldset` / `legend`. */
   readonly group?: boolean;
-  /** The Field Types this Widget can present. */
+  /**
+   * The Field (or Content) types this Widget can present. Checked on mount;
+   * without it, any type may use the Widget.
+   */
   readonly appliesTo?: readonly string[];
+}
+
+/** A Widget map value: a component, or an entry with options. */
+export type WidgetDeclaration<P = any> = ComponentType<P> | WidgetEntry<P>;
+
+/** The props of the Widget presenting each built-in type. */
+export interface WidgetPropsByType {
+  readonly text: WidgetProps<string, TextField>;
+  readonly number: WidgetProps<number, NumberField>;
+  readonly boolean: WidgetProps<boolean, BooleanField>;
+  readonly choice: WidgetProps<ChoiceValue, ChoiceField>;
+  readonly multi_choice: WidgetProps<readonly ChoiceValue[], MultiChoiceField>;
+  readonly date: WidgetProps<string, DateField>;
+  readonly object: ObjectProps;
+  readonly repeater: RepeaterProps;
+  readonly content: ContentProps;
+}
+
+/**
+ * The `widgets` prop, merged over the default Widgets. A Field or Content uses
+ * the entry named by its `widget ?? type`. An entry named after a built-in type
+ * must take that type's props.
+ */
+export type WidgetMap = {
+  readonly [K in keyof WidgetPropsByType]?: WidgetDeclaration<WidgetPropsByType[K]>;
+} & { readonly [name: string]: WidgetDeclaration };
+
+/**
+ * What `overrides` may change on one Field: presentation only, so validation
+ * stays the same as on the server. `widget` must name a Widget in the map.
+ */
+export interface FieldOverride {
+  readonly widget?: string;
+  readonly label?: string;
+  readonly description?: string;
+  readonly placeholder?: string;
+}
+
+/**
+ * The `overrides` prop, by data path without Repeater indices, such as
+ * `'address.city'` or `'pets.kind'` for every row of `pets`. Layouts have no
+ * path, so they can't be overridden.
+ */
+export type Overrides = Readonly<Record<string, FieldOverride>>;
+
+/**
+ * The wording of the default buttons, as plain strings. The submit button is
+ * the default action area's; the others are the default Repeater Widget's.
+ */
+export interface Labels {
+  readonly submit: string;
+  readonly add: string;
+  readonly remove: string;
+  readonly moveUp: string;
+  readonly moveDown: string;
+}
+
+/** What the `actions` slot gets to draw the form's buttons. */
+export interface ActionsProps {
+  readonly isSubmitting: boolean;
+  /** Validates and submits the form, as its submit button would. */
+  readonly submit: () => void;
+  /** Wizard navigation; always `null` for a form without Pages. */
+  readonly wizard: null;
 }

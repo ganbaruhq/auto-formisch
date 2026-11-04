@@ -76,6 +76,32 @@ export function ContactForm() {
 
 `AutoForm` validates on submit and revalidates on input. To show a different form, change its React `key`.
 
+### Customizing the Renderer
+
+Each of these props replaces the defaults on its own; none changes the Definition or validation.
+
+```tsx
+<AutoForm
+  form={form}
+  widgets={{ text: MyInput, rating: { component: Stars, appliesTo: ['number'] } }}
+  layouts={{ section: MySection }}
+  fieldWrapper={MyWrapper}
+  overrides={{ 'address.city': { widget: 'rating', label: 'City' } }}
+  labels={{ submit: 'Gửi', add: 'Thêm', remove: 'Xóa' }}
+  actions={({ isSubmitting, submit }) => <MyButtons busy={isSubmitting} onSave={submit} />}
+  onSubmit={save}
+/>
+```
+
+- `widgets` merges over the default Widget map. A Field or Content uses the entry named by its `widget ?? type`. An entry is a component, or `{ component, group?, appliesTo? }`: `group` makes the Field Wrapper use `fieldset`/`legend`, and `appliesTo` lists the types the Widget can present. In TypeScript, an entry named after a built-in type must take that type's props.
+- A value Field's Widget gets `WidgetProps`: `value`, `onChange`, `inputProps` (spread onto the control: id, name, ref, focus handlers and ARIA state), `errors`, `disabled`, `readOnly`, `required` and `node`. It draws only the control, converts its own values (such as a string to a number) and calls `onChange(undefined)` when empty. `object`, `repeater` and `content` Widgets get `ObjectProps`, `RepeaterProps` and `ContentProps`.
+- `layouts` merges over the default `section`, `tabs` and `tab`; `fieldWrapper` replaces the frame that draws every value Field's label, description and errors.
+- `overrides` changes `widget`, `label`, `description` or `placeholder` by data path, without Repeater indices (`'pets.kind'` is every row's `kind`).
+- On mount, `AutoForm` checks the whole tree, rendered or not, and throws an `AutoFormError` whose `errors` lists every unknown Widget name, Widget whose `appliesTo` leaves out the type, and unknown `overrides` path or key, as `{message, path}`.
+- `labels` sets the wording of the default buttons (`submit`, `add`, `remove`, `moveUp`, `moveDown`); `actions` draws the buttons instead of the default submit button.
+- `useAutoForm(form)` returns the Formisch store, for calling Formisch's `reset`, `setInput` or `submit`; pass it as `store`. Nested paths of a JSON Definition need a cast there.
+- `useFormValue(path)` lets a Widget read another Field, with the path syntax of Conditions, such as `useFormValue('../country')` from a Repeater row.
+
 ### On a server or in a Worker
 
 ```ts
@@ -129,6 +155,8 @@ Like Valibot, a message set for one language doesn't fall back to another; `dele
   | `choice`       | one value of `choices`                    | `choices`, `placeholder` | `select` with an empty option         |
   | `multi_choice` | distinct values of `choices`, as an array | `choices`                | one checkbox per choice in a fieldset |
   | `date`         | `YYYY-MM-DD` calendar date                |                          | `input[type=date]`                    |
+
+  Other default Widgets, chosen with `widget`: `textarea`, `email`, `url` and `password` for `text`; `toggle` (a checkbox with `role="switch"`) for `boolean`; `radio` for `choice`; `multi_select` (`select multiple`) for `multi_choice`. A `widget` changes presentation only: `email` does not add the `email` Rule.
 
   `choices` is required: a non-empty list of strings or finite numbers, or `{value, label?}`, with no empty, duplicate or mixed string and number values.
 

@@ -11,17 +11,12 @@ interface FieldProps {
 }
 
 /** Renders one single-value Field: its Widget inside the Field Wrapper. */
-export function Field({ node, path }: FieldProps) {
-  const { store, widgets, fieldWrapper: Wrapper, idPrefix } = useRenderContext();
+export function Field({ node: declared, path }: FieldProps) {
+  const { store, widgetOf, fieldWrapper: Wrapper, idPrefix } = useRenderContext();
   // Paths come from a JSON Definition, so they cannot be typed against the schema.
   const field = useField(store, { path: path as [string] });
 
-  const key = node.widget ?? node.type;
-  const entry = widgets[key];
-  if (entry === undefined) {
-    throw new Error(`No Widget "${key}" for the Field at "${path.join('.')}"`);
-  }
-
+  const { node, entry } = widgetOf(declared);
   const id = `${idPrefix}-${path.join('.')}`;
   const descriptionId = `${id}-description`;
   const errorsId = `${id}-errors`;

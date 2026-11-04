@@ -1,4 +1,4 @@
-import { Fragment, useState, type ComponentType, type CSSProperties } from 'react';
+import { Fragment, useContext, useState, type ComponentType, type CSSProperties } from 'react';
 import { insert, move, remove, useFieldArray } from '@formisch/react';
 import type {
   Component,
@@ -11,6 +11,7 @@ import type {
 import type { ContentProps, ObjectProps, RepeaterProps, RepeaterRow } from './contracts';
 import { useRenderContext } from './context';
 import { Field } from './Field';
+import { DataScopeContext } from './useFormValue';
 
 type Scope = readonly PathKey[];
 
@@ -95,11 +96,9 @@ function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scop
 }
 
 /** Content: looked up in the Widget map by `widget ?? type`, like a Field. */
-function Content({ node }: { readonly node: ContentNode }) {
-  const { widgets } = useRenderContext();
-  const key = node.widget ?? node.type;
-  const entry = widgets[key];
-  if (entry === undefined) throw new Error(`No Widget "${key}" for a Content Component`);
+function Content({ node: declared }: { readonly node: ContentNode }) {
+  const { widgetOf } = useRenderContext();
+  const { node, entry } = widgetOf(declared);
   const Widget = entry.component as ComponentType<ContentProps>;
   return <Widget node={node} />;
 }
@@ -111,11 +110,16 @@ interface NestedProps<N> {
 }
 
 /** An `object`: its Widget around its Components, which add `name` to their path. */
-function ObjectGroup({ node, path }: NestedProps<ObjectField>) {
-  const Widget = useNestedWidget<ObjectProps>(node, path);
+function ObjectGroup({ node: declared, path }: NestedProps<ObjectField>) {
+  const { widgetOf } = useRenderContext();
+  const { node, entry } = widgetOf(declared);
+  const Widget = entry.component as ComponentType<ObjectProps>;
+  const parent = useContext(DataScopeContext);
   return (
     <Widget node={node} disabled={false}>
-      <Components components={node.components} scope={path} />
+      <DataScopeContext value={{ path, components: node.components, parent }}>
+        <Components components={node.components} scope={path} />
+      </DataScopeContext>
     </Widget>
   );
 }
@@ -125,9 +129,11 @@ function ObjectGroup({ node, path }: NestedProps<ObjectField>) {
  * A row's `key` comes from Formisch's `items`, so a row's values, errors, DOM
  * and local state go with it when it moves.
  */
-function Repeater({ node, path }: NestedProps<RepeaterField>) {
-  const { store } = useRenderContext();
-  const Widget = useNestedWidget<RepeaterProps>(node, path);
+function Repeater({ node: declared, path }: NestedProps<RepeaterField>) {
+  const { store, widgetOf } = useRenderContext();
+  const { node, entry } = widgetOf(declared);
+  const Widget = entry.component as ComponentType<RepeaterProps>;
+  const parent = useContext(DataScopeContext);
   // Paths come from a JSON Definition, so they cannot be typed against the
   // schema, whose input type has no arrays.
   const arrayPath = path as never;
@@ -136,7 +142,11 @@ function Repeater({ node, path }: NestedProps<RepeaterField>) {
   const rows = array.items.map((key, index): RepeaterRow => ({
     key,
     index,
-    children: <Components components={node.components} scope={[...path, index]} />,
+    children: (
+      <DataScopeContext value={{ path: [...path, index], components: node.components, parent }}>
+        <Components components={node.components} scope={[...path, index]} />
+      </DataScopeContext>
+    ),
     remove: () => remove(store, { path: arrayPath, at: index }),
     moveTo: (to) => move(store, { path: arrayPath, from: index, to }),
   }));
@@ -158,15 +168,4 @@ function maxItems(node: RepeaterField): number | undefined {
     .filter((rule) => rule.type === 'max_items')
     .map((rule) => rule.requirement as number);
   return limits.length > 0 ? Math.min(...limits) : undefined;
-}
-
-/** An `object` or Repeater Widget, looked up by `widget ?? type` like a value Field's. */
-function useNestedWidget<P>(node: ObjectField | RepeaterField, path: readonly PathKey[]) {
-  const { widgets } = useRenderContext();
-  const key = node.widget ?? node.type;
-  const entry = widgets[key];
-  if (entry === undefined) {
-    throw new Error(`No Widget "${key}" for the Field at "${path.join('.')}"`);
-  }
-  return entry.component as ComponentType<P>;
 }
