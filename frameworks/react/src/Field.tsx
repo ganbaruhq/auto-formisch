@@ -25,6 +25,7 @@ export function Field({ node: declared, scope }: FieldProps) {
     conditions,
     widgetOf,
     fieldWrapper: Wrapper,
+    labels,
     idPrefix,
     focusElements,
   } = useRenderContext();
@@ -52,7 +53,10 @@ export function Field({ node: declared, scope }: FieldProps) {
   const descriptionId = `${id}-description`;
   const errorsId = `${id}-errors`;
   // A Wizard Page not attempted yet keeps its errors to itself.
-  const errors = (useContext(ShowErrorsContext) && field.errors) || [];
+  const shown = (useContext(ShowErrorsContext) && field.errors) || [];
+  // `NaN` is text the Widget could not read as a number: the type error that
+  // it fails with would read "Expected number but received NaN".
+  const errors = shown.length > 0 && Number.isNaN(field.input) ? [labels.invalidNumber] : shown;
   // The declared node, which the evaluator knows; `node` has the overrides.
   const disabled = conditions.isDisabled(declared, scope);
   // Locks never reach into Repeater rows, so the declared node is enough.

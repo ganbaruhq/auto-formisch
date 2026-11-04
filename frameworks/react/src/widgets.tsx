@@ -82,8 +82,10 @@ export function Textarea({
 }
 
 /**
- * `input[type=number]`. Emits a number, or `undefined` while the input holds
- * no valid number, so the store never holds the input's string.
+ * `input[type=number]`. Emits a number, `undefined` when emptied, and `NaN`
+ * for text the browser can't parse (`validity.badInput`, such as "1e"), which
+ * fails validation as "Enter a number" (`labels.invalidNumber`) rather than
+ * reading as empty. The store never holds the input's string.
  */
 export function NumberInput({
   value,
@@ -97,13 +99,16 @@ export function NumberInput({
     <input
       {...inputProps}
       type="number"
-      value={value ?? ''}
+      // The browser keeps showing unparsable text while its value is "".
+      value={value === undefined || Number.isNaN(value) ? '' : value}
       placeholder={node.placeholder}
       disabled={disabled}
       readOnly={readOnly}
       onChange={(event) => {
-        const text = event.currentTarget.value;
-        onChange(text === '' ? undefined : Number(text));
+        const { value: text, validity } = event.currentTarget;
+        // Text such as "1e" or "-" reads as "": it is not empty, but no number.
+        if (text === '') onChange(validity.badInput ? Number.NaN : undefined);
+        else onChange(Number(text));
       }}
     />
   );

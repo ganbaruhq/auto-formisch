@@ -113,6 +113,7 @@ const defaultLabels: Labels = {
   remove: 'Remove',
   moveUp: 'Move up',
   moveDown: 'Move down',
+  invalidNumber: 'Enter a number',
 };
 
 /**

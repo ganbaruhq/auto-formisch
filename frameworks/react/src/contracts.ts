@@ -267,6 +267,11 @@ export interface Labels {
   readonly remove: string;
   readonly moveUp: string;
   readonly moveDown: string;
+  /**
+   * The error of a Field whose Widget holds text that is no number, such as
+   * "1e" in a number input (the Widget emits `NaN`), in place of the type error.
+   */
+  readonly invalidNumber: string;
 }
 
 /** What the `actions` slot gets to draw the form's buttons. */

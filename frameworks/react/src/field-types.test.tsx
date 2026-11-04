@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AutoForm, compile, type CompiledForm, type FormOutput } from './index';
+import { AutoForm, compile, type AutoFormProps, type CompiledForm, type FormOutput } from './index';
 
 afterEach(cleanup);
 
-function setup(form: CompiledForm) {
+function setup(form: CompiledForm, props: Partial<AutoFormProps> = {}) {
   const onSubmit = vi.fn<(output: FormOutput) => void>();
-  render(<AutoForm form={form} onSubmit={onSubmit} />);
+  render(<AutoForm form={form} onSubmit={onSubmit} {...props} />);
   const user = userEvent.setup();
   return {
     user,
@@ -55,6 +55,57 @@ describe('AutoForm: number Field', () => {
     await user.clear(input());
     await submit();
     expect(await submitted()).toEqual({});
+  });
+});
+
+describe('AutoForm: number Field with text the browser cannot parse', () => {
+  const input = () => screen.getByLabelText<HTMLInputElement>('Value');
+  /** The texts of the Field's error region. */
+  const errors = () => {
+    const ids = (input().getAttribute('aria-describedby') ?? '').split(' ');
+    const id = ids.find((each) => each.endsWith('-errors'));
+    return id === undefined
+      ? []
+      : [...document.getElementById(id)!.children].map((child) => child.textContent);
+  };
+  /**
+   * What a browser does for text such as "1e", "-" or ".": the input's value
+   * is "" and `validity.badInput` is true, while the box still shows the text.
+   */
+  const typeUnparsable = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.type(input(), '1');
+    Object.defineProperty(input(), 'validity', {
+      configurable: true,
+      value: { badInput: true },
+    });
+    fireEvent.change(input(), { target: { value: '' } });
+  };
+
+  for (const required of [true, false]) {
+    it(`says "Enter a number" on ${required ? 'a required' : 'an optional'} Field, never dropping it`, async () => {
+      const { user, submit, onSubmit } = setup(one('number', { required }));
+      await typeUnparsable(user);
+      await submit();
+      await waitFor(() => expect(errors()).toEqual(['Enter a number']));
+      expect(input().getAttribute('aria-invalid')).toBe('true');
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+  }
+
+  it('takes its message from labels', async () => {
+    const { user, submit } = setup(one('number'), { labels: { invalidNumber: 'Nhập một số' } });
+    await typeUnparsable(user);
+    await submit();
+    await waitFor(() => expect(errors()).toEqual(['Nhập một số']));
+  });
+
+  it('submits once the text parses again', async () => {
+    const { user, submit, submitted } = setup(one('number'));
+    await typeUnparsable(user);
+    Object.defineProperty(input(), 'validity', { configurable: true, value: { badInput: false } });
+    fireEvent.change(input(), { target: { value: '15' } });
+    await submit();
+    expect(await submitted()).toEqual({ value: 15 });
   });
 });
 

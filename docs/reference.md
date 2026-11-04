@@ -53,6 +53,8 @@ Every value Field takes these keys, besides `type` and `name`:
 | `multi_choice` | distinct values of `choices`, as a list | `choices`                | a checkbox per choice, in a `fieldset` | `multi_select` (`select multiple`)       |
 | `date`         | a `YYYY-MM-DD` string of a real date    |                          | `input[type=date]`                     |                                          |
 
+The default `number` Widget never reads text the browser can't parse, such as `1e`, `-` or `.`, as empty: it emits `NaN`, the Field fails with `labels.invalidNumber` (`Enter a number`), and the text stays in the box while it is mounted. A Wizard Page change remounts it, which clears the box but keeps the error.
+
 Any value Field can also use the `hidden` Widget, which keeps the value with no UI and no Field Wrapper; its errors show in the form's general error region as `label: message` (the name when it has no label). A required one with no `default` logs a `console.warn` on mount.
 
 `choices` is required on `choice` and `multi_choice`: a non-empty list of strings or finite numbers, or of `{ value, label? }`, with no empty or duplicate values, and not mixing strings and numbers. A `multi_choice` value is a list in any order with no duplicates, and all its errors show on the Field itself.
@@ -206,7 +208,7 @@ Fluent Builder functions, each its own export:
 | `layouts`      | `section`, `tabs`, `tab` and `page` Layouts, merged over the defaults.                                                                              |
 | `fieldWrapper` | The Field Wrapper.                                                                                                                                  |
 | `overrides`    | `widget`, `label`, `description` and `placeholder` by data path.                                                                                    |
-| `labels`       | `submit`, `next`, `back`, `add`, `remove`, `moveUp`, `moveDown`.                                                                                    |
+| `labels`       | `submit`, `next`, `back`, `add`, `remove`, `moveUp`, `moveDown`, and `invalidNumber` (`Enter a number`).                                            |
 | `actions`      | `(props: ActionsProps) => ReactNode`, drawn in place of the default buttons.                                                                        |
 | `id`           | Set on the `form` element, so buttons outside it can use `form="id"`.                                                                               |
 

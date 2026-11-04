@@ -27,3 +27,4 @@
 - A failed submit moves focus once, to the first Field with an error in Definition order, even when it sits in a closed Tab or on an earlier Wizard Page: Formisch's own submit no longer focuses a later Field first. Formisch's `focus(store, ...)` no longer finds the Fields' elements.
 - An error returned by `onSubmit` for a disabled Field, which is Inactive, shows in the general error region, like one for a hidden Field.
 - An error of a `hidden`-Widget Field shows in the general error region named by the Field (`id: Required`), and a required `hidden`-Widget Field with no `default` that the user could never fill logs a `console.warn` on mount.
+- The default number Widget no longer reads text the browser can't parse ("1e", "-", ".") as empty: it emits `NaN`, the Field shows `labels.invalidNumber` (`Enter a number`), the form doesn't submit, and the text stays in the box. New label `invalidNumber`.
