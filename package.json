@@ -6,7 +6,7 @@
     "build": "pnpm -r build",
     "test": "vp test run",
     "check": "vp check",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p packages/core",
     "dev": "pnpm --filter playground dev"
   },
   "devDependencies": {

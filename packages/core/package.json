@@ -1,8 +1,10 @@
 {
-  "name": "auto-formisch-react",
+  "name": "@auto-formisch/core",
   "version": "0.0.0",
+  "description": "Framework-neutral loader, compiler and validator for Auto Formisch Form Definitions.",
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "sideEffects": false,
@@ -15,12 +17,13 @@
   "scripts": {
     "build": "vp pack"
   },
-  "dependencies": {
-    "auto-formisch-core": "workspace:*"
-  },
   "peerDependencies": {
-    "@formisch/react": "^1.1.1",
-    "react": "^19.2.0",
+    "typescript": ">=5",
     "valibot": "^1.5.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
   }
 }
