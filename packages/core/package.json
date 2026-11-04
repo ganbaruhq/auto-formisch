@@ -1,0 +1,30 @@
+{
+  "name": "@auto-formisch/core",
+  "version": "0.0.0",
+  "description": "Framework-neutral loader, compiler and validator for Auto Formisch Form Definitions.",
+  "files": [
+    "dist",
+    "schema",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "vp pack"
+  },
+  "peerDependencies": {
+    "typescript": ">=5",
+    "valibot": "^1.5.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@auto-formisch/core/schema/v1.json",
+  "version": 1,
+  "components": [
+    { "type": "text", "name": "name", "label": "Name", "required": true },
+    {
+      "type": "text",
+      "name": "email",
+      "label": "Email address",
+      "widget": "email",
+      "required": true,
+      "rules": [{ "type": "email", "message": "Enter a valid email address" }]
+    },
+    {
+      "type": "choice",
+      "name": "topic",
+      "label": "Topic",
+      "choices": [
+        { "value": "sales", "label": "Sales" },
+        { "value": "support", "label": "Support" }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "message",
+      "label": "Message",
+      "widget": "textarea",
+      "rules": [{ "type": "max_length", "requirement": 2000 }]
+    }
+  ]
+}

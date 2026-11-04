@@ -43,3 +43,9 @@ pre {
   background: #f3f6f5;
   padding: 1rem;
 }
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1.5rem;
+}
