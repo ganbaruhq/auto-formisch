@@ -41,18 +41,12 @@ importers:
 
   apps/playground:
     dependencies:
+      '@auto-formisch/react':
+        specifier: workspace:*
+        version: link:../../frameworks/react
       '@formisch/react':
-        specifier: ^1.1.1
-        version: 1.1.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)(valibot@1.5.0(typescript@5.9.3))
-      auto-formisch-builder:
-        specifier: workspace:*
-        version: link:../../packages/auto-formisch-builder
-      auto-formisch-json:
-        specifier: workspace:*
-        version: link:../../packages/auto-formisch-json
-      auto-formisch-react:
-        specifier: workspace:*
-        version: link:../../packages/auto-formisch-react
+        specifier: ^1.2.0
+        version: 1.2.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)(valibot@1.5.0(typescript@5.9.3))
       react:
         specifier: ^19.2.0
         version: 19.3.1
@@ -63,44 +57,33 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0(typescript@5.9.3)
 
-  packages/auto-formisch-builder:
+  frameworks/react:
     dependencies:
-      auto-formisch-core:
+      '@auto-formisch/core':
         specifier: workspace:*
-        version: link:../auto-formisch-core
-      auto-formisch-json:
-        specifier: workspace:*
-        version: link:../auto-formisch-json
-      valibot:
-        specifier: ^1.5.0
-        version: 1.5.0(typescript@5.9.3)
-
-  packages/auto-formisch-core:
-    dependencies:
-      valibot:
-        specifier: ^1.5.0
-        version: 1.5.0(typescript@5.9.3)
-
-  packages/auto-formisch-json:
-    dependencies:
-      auto-formisch-core:
-        specifier: workspace:*
-        version: link:../auto-formisch-core
-      valibot:
-        specifier: ^1.5.0
-        version: 1.5.0(typescript@5.9.3)
-
-  packages/auto-formisch-react:
-    dependencies:
-      '@formisch/react':
-        specifier: ^1.1.1
-        version: 1.1.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)(valibot@1.5.0(typescript@5.9.3))
-      auto-formisch-core:
-        specifier: workspace:*
-        version: link:../auto-formisch-core
+        version: link:../../packages/core
       react:
         specifier: ^19.2.0
         version: 19.3.1
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.3.1(react@19.3.1)
+      typescript:
+        specifier: '>=5'
+        version: 5.9.3
+      valibot:
+        specifier: ^1.5.0
+        version: 1.5.0(typescript@5.9.3)
+    devDependencies:
+      '@formisch/react':
+        specifier: ^1.2.0
+        version: 1.2.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)(valibot@1.5.0(typescript@5.9.3))
+
+  packages/core:
+    dependencies:
+      typescript:
+        specifier: '>=5'
+        version: 5.9.3
       valibot:
         specifier: ^1.5.0
         version: 1.5.0(typescript@5.9.3)
@@ -179,8 +162,8 @@ packages:
       '@noble/hashes':
         optional: true
 
-  '@formisch/react@1.1.1':
-    resolution: {integrity: sha512-R5JZ1YqM2ICK5fBU8bKoIKgcU35oWP96DqJwJFlakZK/eIKovD60XMLbXNYlbYDtYXGRRGRXAIOkQxVpWKqT6A==}
+  '@formisch/react@1.2.0':
+    resolution: {integrity: sha512-UsWPAIEt8DxfJZH9reeUkc6pAyY+YCGWTJDhrJaUEaKEUxhIFcezoBaFYSbuYuSzKlhj6lJVnIo5PMx8EgfJqg==}
     peerDependencies:
       react: '>=16.8.0 <20'
       react-dom: '>=16.8.0 <20'
@@ -1313,7 +1296,7 @@ snapshots:
 
   '@exodus/bytes@1.16.0': {}
 
-  '@formisch/react@1.1.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)(valibot@1.5.0(typescript@5.9.3))':
+  '@formisch/react@1.2.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)(valibot@1.5.0(typescript@5.9.3))':
     dependencies:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)

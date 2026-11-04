@@ -7,10 +7,8 @@
     "build": "vp build"
   },
   "dependencies": {
-    "@formisch/react": "^1.1.1",
-    "auto-formisch-builder": "workspace:*",
-    "auto-formisch-json": "workspace:*",
-    "auto-formisch-react": "workspace:*",
+    "@auto-formisch/react": "workspace:*",
+    "@formisch/react": "^1.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "valibot": "^1.5.0"

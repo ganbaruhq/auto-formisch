@@ -1,44 +1,45 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { buildForm } from 'auto-formisch-builder';
-import { serialize } from 'auto-formisch-json';
-import { AutoForm } from 'auto-formisch-react';
+import { AutoForm, compile, type FormOutput } from '@auto-formisch/react';
 import './style.css';
-const { schema, ui } = buildForm({
+
+// A stored Form Definition: plain JSON, checked and compiled once, outside React.
+const definition = {
   version: 1,
-  fields: {
-    email: { type: 'string', rules: [{ type: 'email', message: 'Enter a valid email address' }] },
-    guests: { type: 'number', rules: [{ type: 'min_value', requirement: 1 }] },
-    notes: { type: 'string', optional: true, rules: [] },
-    newsletter: { type: 'boolean', rules: [] },
-  },
-  ui: {
-    email: { label: 'Email address' },
-    guests: { label: 'Number of guests' },
-    notes: { label: 'Notes', widget: 'textarea' },
-    newsletter: { label: 'Receive updates' },
-  },
-});
+  components: [
+    {
+      type: 'text',
+      name: 'email',
+      label: 'Email address',
+      description: 'We only use it to reply to you.',
+      placeholder: 'ada@example.com',
+      required: true,
+      requiredMessage: 'Enter your email address',
+      rules: [
+        { type: 'email', message: 'Enter a valid email address' },
+        { type: 'max_length', requirement: 254 },
+      ],
+    },
+  ],
+};
+
+const form = compile(definition);
+
 function App() {
-  const [result, setResult] = useState<unknown>(null);
+  const [submission, setSubmission] = useState<FormOutput | null>(null);
   return (
     <main>
       <h1>Auto Formisch</h1>
-      <p>Portable definitions. Valibot validation. Formisch state.</p>
-      <AutoForm
-        schema={schema}
-        ui={ui}
-        onSubmit={(values) => {
-          setResult(values);
-        }}
-      />
+      <p>One Form Definition. The same validation on the client and the server.</p>
+      <AutoForm form={form} onSubmit={setSubmission} />
       <h2>Submission</h2>
-      <pre>{JSON.stringify(result, null, 2)}</pre>
+      <pre>{JSON.stringify(submission, null, 2)}</pre>
       <details>
-        <summary>Portable form JSON</summary>
-        <pre>{JSON.stringify(JSON.parse(serialize(schema, ui)), null, 2)}</pre>
+        <summary>Form Definition</summary>
+        <pre>{JSON.stringify(form.definition, null, 2)}</pre>
       </details>
     </main>
   );
 }
+
 createRoot(document.getElementById('root')!).render(<App />);
