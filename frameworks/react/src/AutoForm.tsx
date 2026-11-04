@@ -208,9 +208,6 @@ function Rendered({
               {store.errors?.map((error, index) => (
                 <div key={index}>{error}</div>
               ))}
-              {wizard?.generalErrors.map((error, index) => (
-                <div key={`wizard#${index}`}>{error}</div>
-              ))}
               {hasHidden && <HiddenWidgetErrors />}
             </div>
             <Actions

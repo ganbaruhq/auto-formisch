@@ -7,7 +7,10 @@
  * that mistake. Add a fixture here with every new key, `type` or Rule.
  */
 
+import * as v from 'valibot';
 import * as b from '../builder';
+import { defineFieldType, defineRule } from '../extensions';
+import type { LoadOptions } from '../registry';
 
 /** A Definition the loader rejects with `error` among its messages. */
 export interface InvalidDefinition {
@@ -25,6 +28,33 @@ export interface InvalidDefinition {
 export const SCHEMA_URL = 'https://cdn.jsdelivr.net/npm/@auto-formisch/core/schema/v1.json';
 
 type Node = Record<string, unknown>;
+
+/**
+ * The custom Field Types and Rules every fixture is loaded with. The JSON
+ * Schema knows none of them: it takes their names loosely.
+ */
+export const extensions: LoadOptions = {
+  fieldTypes: [
+    defineFieldType({
+      type: 'rating',
+      options: { max: v.pipe(v.number(), v.integer(), v.minValue(1)) },
+      schema: (node) => v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(node.max)),
+      conditionAs: 'number',
+    }),
+    defineFieldType({
+      type: 'place',
+      schema: v.object({ lat: v.number(), lng: v.number() }),
+    }),
+  ],
+  rules: [
+    defineRule({
+      type: 'starts_with',
+      appliesTo: ['text', 'choice'],
+      requirement: v.string(),
+      check: (value, requirement) => String(value).startsWith(requirement),
+    }),
+  ],
+};
 
 const root = (...components: unknown[]) => ({ version: 1, components });
 const text = (name: string, extra: Node = {}) => ({ type: 'text', name, ...extra });
@@ -305,6 +335,38 @@ export const validDefinitions: Readonly<Record<string, unknown>> = {
     text('email', { required: leaf('phone', 'empty') }),
   ),
   'with a widget name the Renderer defines': field('text', { widget: 'my_rich_editor' }),
+  'with registered custom Field Types and Rules': root(
+    {
+      type: 'section',
+      columns: 2,
+      components: [
+        {
+          type: 'rating',
+          name: 'score',
+          max: 5,
+          label: 'Score',
+          description: 'From 1 to 5',
+          placeholder: 'Pick',
+          widget: 'stars',
+          required: true,
+          requiredMessage: 'Rate it',
+          disabled: false,
+          colSpan: 2,
+          default: 3,
+        },
+      ],
+    },
+    { type: 'place', name: 'where', default: { lat: 1, lng: 2 }, visible: leaf('score', 'gt', 3) },
+    text('code', {
+      rules: [{ type: 'starts_with', requirement: 'VN', message: 'Starts with VN' }],
+    }),
+    {
+      type: 'choice',
+      name: 'plan',
+      choices: ['basic', 'business'],
+      rules: [{ type: 'starts_with', requirement: 'b' }],
+    },
+  ),
   'built with the Fluent Builder': b.form([
     b.section('Contact', [
       b.grid(2, [
@@ -980,11 +1042,11 @@ export const invalidDefinitions: readonly InvalidDefinition[] = [
     loaderOnly: 'a JSON Schema cannot follow references',
   },
 
-  // Custom Field Types and Rules.
+  // Custom Field Types and Rules: `extensions` registers `rating`, `place` and `starts_with`.
   {
     name: 'with an unregistered custom Field Type',
-    definition: root({ type: 'rating', name: 'score', max: 5 }),
-    error: 'Unknown type "rating"',
+    definition: root({ type: 'stars', name: 'score', max: 5 }),
+    error: 'Unknown type "stars"',
     loaderOnly: 'the JSON Schema takes an unknown type as a custom Field Type',
   },
   {
@@ -995,9 +1057,49 @@ export const invalidDefinitions: readonly InvalidDefinition[] = [
   },
   {
     name: 'with an unregistered custom Rule',
-    definition: field('text', { rules: [{ type: 'starts_with', requirement: 'VN' }] }),
-    error: 'Unknown Rule "starts_with"',
+    definition: field('text', { rules: [{ type: 'ends_with', requirement: 'VN' }] }),
+    error: 'Unknown Rule "ends_with"',
     loaderOnly: 'the JSON Schema takes an unknown Rule as a custom Rule',
+  },
+  {
+    name: 'with an unknown option on a custom Field Type',
+    definition: root({ type: 'rating', name: 'score', max: 5, maxx: 5 }),
+    error: 'Unknown key "maxx"',
+    loaderOnly: "a custom Field Type's options belong to the application",
+  },
+  {
+    name: 'with an option of the wrong type on a custom Field Type',
+    definition: root({ type: 'rating', name: 'score', max: '5' }),
+    error: 'Invalid type: Expected number but received "5"',
+    loaderOnly: "a custom Field Type's options belong to the application",
+  },
+  {
+    name: 'with a custom Field Type default its schema rejects',
+    definition: root({ type: 'rating', name: 'score', max: 5, default: 9 }),
+    error: 'Invalid value: Expected <=5 but received 9',
+    loaderOnly: "a custom Field Type's schema belongs to the application",
+  },
+  {
+    name: 'with a custom Rule on a Field Type it does not apply to',
+    definition: field('number', { rules: [{ type: 'starts_with', requirement: 'VN' }] }),
+    error: 'Rule "starts_with" does not apply to a "number" Field',
+    loaderOnly: "a custom Rule's appliesTo belongs to the application",
+  },
+  {
+    name: 'with a custom Rule requirement its schema rejects',
+    definition: field('text', { rules: [{ type: 'starts_with', requirement: 1 }] }),
+    error: 'Invalid type: Expected string but received 1',
+    loaderOnly: "a custom Rule's requirement belongs to the application",
+  },
+  {
+    name: 'with a custom Rule on a Repeater',
+    definition: root({
+      type: 'repeater',
+      name: 'r',
+      rules: [{ type: 'starts_with', requirement: 'VN' }],
+      components: [text('x')],
+    }),
+    error: 'Rule "starts_with" does not apply to a "repeater" Field',
   },
   {
     name: 'with a type no custom Field Type can have',
@@ -1007,21 +1109,36 @@ export const invalidDefinitions: readonly InvalidDefinition[] = [
   {
     name: 'with a custom Field Type with no name',
     definition: root({ type: 'rating', max: 5 }),
-    error: 'Unknown type "rating"',
+    error: 'Missing key "name"',
+  },
+  {
+    name: 'with a bad name on a custom Field Type',
+    definition: root({ type: 'rating', name: 'my score', max: 5 }),
+    error: 'A name is letters, digits and _, and does not start with a digit',
   },
   {
     name: 'with rules on a custom Field Type',
-    definition: root({ type: 'rating', name: 'score', rules: [] }),
-    error: 'Unknown type "rating"',
+    definition: root({ type: 'rating', name: 'score', max: 5, rules: [] }),
+    error: 'Unknown key "rules"',
+  },
+  {
+    name: 'with a label that is not a string on a custom Field Type',
+    definition: root({ type: 'rating', name: 'score', max: 5, label: 1 }),
+    error: 'Invalid type: Expected string but received 1',
+  },
+  {
+    name: 'with visible set to true on a custom Field Type',
+    definition: root({ type: 'rating', name: 'score', max: 5, visible: true }),
+    error: 'Expected a Condition',
   },
   {
     name: 'with a custom Field Type inside tabs',
-    definition: root({ type: 'tabs', components: [{ type: 'rating', name: 'score' }] }),
-    error: 'Unknown type "rating"',
+    definition: root({ type: 'tabs', components: [{ type: 'rating', name: 'score', max: 5 }] }),
+    error: 'Expected "tab" inside "tabs", not "rating"',
   },
   {
     name: 'with colSpan on a custom Field Type outside a grid',
-    definition: root({ type: 'rating', name: 'score', colSpan: 1 }),
-    error: 'Unknown type "rating"',
+    definition: root({ type: 'rating', name: 'score', max: 5, colSpan: 1 }),
+    error: '"colSpan" needs "columns" on its parent',
   },
 ];

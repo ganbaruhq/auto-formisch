@@ -4,7 +4,12 @@ import pkg from '../package.json';
 import schema from '../schema/v1.json';
 import { builtinComponents } from './components';
 import { builtinFieldTypes, fieldKeys } from './field-types';
-import { invalidDefinitions, SCHEMA_URL, validDefinitions } from './fixtures/definitions';
+import {
+  extensions,
+  invalidDefinitions,
+  SCHEMA_URL,
+  validDefinitions,
+} from './fixtures/definitions';
 import { compile, DefinitionError, type FormError } from './index';
 import { builtinRules } from './rules';
 
@@ -17,10 +22,10 @@ type Node = Record<string, unknown>;
 type SchemaNode = { [key: string]: any };
 const definitions = schema.definitions as Record<string, SchemaNode>;
 
-/** The load errors of a Definition, or `[]` when it loads. */
+/** The load errors of a Definition, with the fixtures' custom types and Rules, or `[]`. */
 function loadErrors(definition: unknown): readonly FormError[] {
   try {
-    compile(definition);
+    compile(definition, extensions);
     return [];
   } catch (error) {
     expect(error).toBeInstanceOf(DefinitionError);

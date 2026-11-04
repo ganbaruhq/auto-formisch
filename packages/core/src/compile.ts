@@ -7,16 +7,18 @@ import {
   type FieldNode,
   type FormDefinition,
   type RepeaterField,
+  type RuleNode,
   type ValueField,
 } from './definition';
 import { toFormErrors } from './errors';
-import { builtinFieldTypes } from './field-types';
 import { fieldsIn } from './fields';
 import { defaultsOf, newRowOf, normalize, type NormalizedInput } from './initial';
-import { loadDefinition } from './load';
+import { load } from './load';
 import { getRequiredMessage, type RequiredMessage } from './messages';
+import { withLocks, type Locks } from './locks';
 import { MISSING, prep } from './prep';
-import { ruleActions } from './rules';
+import { registryOf, type LoadOptions, type Registry } from './registry';
+import { ruleActions, type RuleAction } from './rules';
 import type { StandardSchemaV1 } from './standard';
 
 /** The submitted value of a form compiled from JSON. */
@@ -37,6 +39,13 @@ export interface CompiledForm<TOutput extends FormOutput = FormOutput> extends S
    * shown, disabled and required, so the form cannot drift from validation.
    */
   readonly conditions: FormConditions;
+  /**
+   * The Locked Fields of this form instance and their values, set by `lock`;
+   * empty for the result of `compile`. A Renderer shows these Fields read-only
+   * and ignores their changes. `conditions`, `defaults`, `normalize` and
+   * `schema` already put the Locked values in place of the input's.
+   */
+  readonly locked: ReadonlyMap<ValueField, unknown>;
   /**
    * The input a new form starts with, from the Definition's `default`s: every
    * `object` and Repeater in its full shape. A fresh copy on every read, so
@@ -70,26 +79,88 @@ export interface CompiledForm<TOutput extends FormOutput = FormOutput> extends S
  * gives a server the same result as the form.
  *
  * A Definition built by `form()` gives its inferred output type; JSON gives
- * `FormOutput`.
+ * `FormOutput`. `options` lists the custom Field Types and Rules it may use;
+ * any other unknown `type` is a load error.
  *
  * @throws {DefinitionError} with every load error as `{message, path}`.
+ * @throws {TypeError} for invalid `options`, such as a name registered twice.
  */
 export function compile<TOutput extends FormOutput>(
   input: TypedDefinition<TOutput>,
+  options?: LoadOptions,
 ): CompiledForm<TOutput>;
-export function compile(input: unknown): CompiledForm;
-export function compile(input: unknown): CompiledForm {
-  const definition = loadDefinition(input);
+export function compile(input: unknown, options?: LoadOptions): CompiledForm;
+export function compile(input: unknown, options?: LoadOptions): CompiledForm {
+  const registry = registryOf(options);
+  const { definition, valueSchemas } = load(input, registry);
+  return compiledForm(definition, conditionsOf(rootComponents(definition)), {
+    registry,
+    valueSchemas,
+    locks: new Map(),
+  });
+}
+
+/** What `lock` needs from a form that `compile` made. Not public. */
+export interface CompiledInternals {
+  /** The same form with these Locked Fields. */
+  readonly relock: (locks: Locks) => CompiledForm;
+  /** The typed value schema of a value Field of this form, without `rules`. */
+  readonly valueSchema: (field: ValueField) => v.GenericSchema;
+}
+
+const internals = new WeakMap<object, CompiledInternals>();
+
+/** The internals of a form from `compile` or `lock`; `undefined` for anything else. */
+export const internalsOf = (form: unknown): CompiledInternals | undefined =>
+  typeof form === 'object' && form !== null ? internals.get(form) : undefined;
+
+/**
+ * What the typed stage needs: the Rules the load knew, each value Field's
+ * value schema (built once on load, a custom Field Type's included), and the
+ * Locked Fields.
+ */
+interface Typing {
+  readonly registry: Registry;
+  readonly valueSchemas: ReadonlyMap<Component, v.GenericSchema>;
+  readonly locks: Locks;
+}
+
+/**
+ * One compiled form. `base` evaluates the input as given; with `typing.locks`,
+ * the Locked values replace the input's before anything reads it (ADR 0003).
+ */
+function compiledForm(
+  definition: FormDefinition,
+  base: FormConditions,
+  typing: Typing,
+): CompiledForm {
+  const { locks, valueSchemas } = typing;
+  const conditions: FormConditions =
+    locks.size === 0
+      ? base
+      : {
+          readsValues: base.readsValues,
+          evaluate: (input) => base.evaluate(withLocks(input, locks)),
+        };
   const components = rootComponents(definition);
-  const conditions = conditionsOf(components);
-  const schema = buildSchema(definition, conditions);
-  return {
+  const schema = buildSchema(definition, base, typing);
+  const lockedPaths = new Set([...locks.values()].map(({ path }) => path.join('.')));
+  const compiled: CompiledForm = {
     definition,
     conditions,
+    locked: new Map([...locks].map(([field, { value }]) => [field, value])),
+    // A getter, so every read is a fresh copy.
     get defaults() {
-      return defaultsOf(components);
+      return withLocks(defaultsOf(components), locks);
     },
-    normalize: (record) => normalize(components, record),
+    normalize: (record) => {
+      const { input, warnings } = normalize(components, record);
+      return {
+        input: withLocks(input, locks),
+        // A Locked value replaces whatever the record held there.
+        warnings: warnings.filter(({ path }) => !lockedPaths.has(path.join('.'))),
+      };
+    },
     newRow: newRowOf,
     schema,
     '~standard': {
@@ -101,18 +172,33 @@ export function compile(input: unknown): CompiledForm {
       },
     },
   };
+  internals.set(compiled, {
+    relock: (next) => compiledForm(definition, base, { ...typing, locks: next }),
+    // Built on load for every value Field of a Definition that loaded.
+    valueSchema: (field) => valueSchemas.get(field)!,
+  });
+  return compiled;
 }
 
-/** `v.pipe(skeleton, v.transform(prep), typedObject)`, per ADR 0002. */
+/**
+ * `v.pipe(skeleton, v.transform(prep), typedObject)`, per ADR 0002. `prep`
+ * first writes the Locked values over the input, so a forged value drives no
+ * Condition (ADR 0003).
+ */
 function buildSchema(
   definition: FormDefinition,
   conditions: FormConditions,
+  typing: Typing,
 ): v.GenericSchema<Record<string, unknown>, FormOutput> {
   const components = rootComponents(definition);
+  const { locks } = typing;
   return v.pipe(
     skeletonOf(components),
-    v.transform((input) => prep(components, conditions.evaluate(input), input)),
-    typedObjectOf(components),
+    v.transform((input) => {
+      const locked = withLocks(input, locks);
+      return prep(components, conditions.evaluate(locked), locked, [], locks);
+    }),
+    typedObjectOf(components, typing),
   );
 }
 
@@ -143,36 +229,42 @@ function skeletonLeaf(field: FieldNode): v.GenericSchema {
 const tolerant = (schema: v.GenericSchema): v.GenericSchema =>
   v.fallback(schema, (dataset?: { readonly value: unknown }) => dataset?.value);
 
-function typedObjectOf(components: readonly Component[]) {
+function typedObjectOf(components: readonly Component[], typing: Typing) {
   return v.object(
-    Object.fromEntries(fieldsIn(components).map((field) => [field.name, typedLeaf(field)])),
+    Object.fromEntries(fieldsIn(components).map((field) => [field.name, typedLeaf(field, typing)])),
   );
 }
 
 /**
  * A value Field: the required check, then the Field Type's value schema, then
  * its Rules. An `object` or Repeater: its own typed objects, then its Rules.
+ * A custom Field Type is a value Field with no Rules. A Locked Field skips all
+ * of it: `lock` checked its type, and the application answers for its value.
  */
-function typedLeaf(field: FieldNode): v.GenericSchema {
+function typedLeaf(field: FieldNode, typing: Typing): v.GenericSchema {
+  const rules = (list: readonly RuleNode[] | undefined): RuleAction[] =>
+    ruleActions(list, typing.registry.rules);
   switch (field.type) {
     // `undefined` only when Inactive (`INACTIVE`): nothing inside it runs.
     case 'object':
       return v.pipe(
-        v.optional(typedObjectOf(field.components)),
+        v.optional(typedObjectOf(field.components, typing)),
         v.transform((value) => value ?? {}),
       );
     case 'repeater':
       return v.pipe(
-        v.optional(v.pipe(v.array(typedObjectOf(field.components)), ...ruleActions(field.rules))),
+        v.optional(v.pipe(v.array(typedObjectOf(field.components, typing)), ...rules(field.rules))),
         v.transform((rows) => rows ?? []),
       );
     default:
+      if (typing.locks.has(field)) return v.optional(v.unknown());
       return v.optional(
         v.pipe(
           v.unknown(),
           v.check((value) => value !== MISSING, requiredMessage(field)),
-          builtinFieldTypes.get(field.type)!.value(field),
-          ...ruleActions(field.rules),
+          // Built on load for every value Field of a Definition that loaded.
+          typing.valueSchemas.get(field)!,
+          ...rules(field.rules),
         ),
       );
   }

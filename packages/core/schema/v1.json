@@ -862,7 +862,7 @@
       }
     },
     "customRule": {
-      "description": "A Rule the application registers with `defineRule`. The JSON Schema describes only the built-in Rules, so it takes any other name; loading the Definition rejects a Rule that is not registered.",
+      "description": "A Rule the application registers with `defineRule`, on a value Field. The JSON Schema describes only the built-in Rules, so it takes any other name and `requirement`; loading the Definition rejects a Rule that is not registered or does not apply to the Field.",
       "properties": {
         "type": {
           "not": {
@@ -1097,8 +1097,8 @@
         ]
       }
     },
-    "itemsRules": {
-      "description": "The Rules of a \"multi_choice\" or \"repeater\" Field, checked in order on a value that is not empty.",
+    "multiChoiceRules": {
+      "description": "The Rules of a \"multi_choice\" Field, checked in order on a value that is not empty.",
       "type": "array",
       "items": {
         "allOf": [
@@ -1134,6 +1134,46 @@
               },
               {
                 "$ref": "#/definitions/customRule"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "repeaterRules": {
+      "description": "The Rules of a \"repeater\" Field, on its list of rows. Custom Rules apply only to value Fields, not here.",
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "#/definitions/ruleShape"
+          },
+          {
+            "properties": {
+              "type": {
+                "anyOf": [
+                  {
+                    "const": "min_items",
+                    "description": "At least `requirement` items or rows."
+                  },
+                  {
+                    "const": "max_items",
+                    "description": "At most `requirement` items or rows."
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/minItemsRule"
+              },
+              {
+                "$ref": "#/definitions/maxItemsRule"
               }
             ]
           }
@@ -1450,7 +1490,7 @@
           }
         },
         "rules": {
-          "$ref": "#/definitions/itemsRules"
+          "$ref": "#/definitions/multiChoiceRules"
         }
       },
       "additionalProperties": false
@@ -1586,7 +1626,7 @@
           }
         },
         "rules": {
-          "$ref": "#/definitions/itemsRules"
+          "$ref": "#/definitions/repeaterRules"
         },
         "components": {
           "description": "The template of one row.",

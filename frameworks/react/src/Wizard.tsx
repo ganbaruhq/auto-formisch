@@ -104,7 +104,16 @@ export function useWizardController({
   const [current, setCurrent] = useState(() => shown[0] ?? 0);
   const [attempted, setAttempted] = useState<ReadonlySet<number>>(() => new Set());
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
-  const [generalErrors, setGeneralErrors] = useState<readonly string[]>([]);
+  const [, setCrash] = useState<never>();
+  /**
+   * Rethrows an error of a step the Renderer itself started (the native
+   * submit, the default Back button) during render, so it reaches an error
+   * boundary as the bug it is instead of an unhandled rejection.
+   */
+  const crash = (error: unknown) =>
+    setCrash(() => {
+      throw error;
+    });
   // What async commands read: they must see the Page they started from, not
   // the one of the render that created them.
   const currentRef = useRef(current);
@@ -152,15 +161,12 @@ export function useWizardController({
     }
     pending.current = true;
     try {
+      // Custom code that throws while validating is a bug: it rejects the
+      // step, and is never a validation result (AF-8).
       await validate(store);
-    } catch (error) {
-      // A custom Rule that throws is a bug; it must not pass as valid input.
-      setGeneralErrors([error instanceof Error ? error.message : String(error)]);
-      return false;
     } finally {
       pending.current = false;
     }
-    setGeneralErrors([]);
     const steps = visible.filter((index) => index >= from && index < target);
     setAttempted((previous) => new Set([...previous, ...steps]));
     const onPages = errorPages(compiled, store);
@@ -184,13 +190,12 @@ export function useWizardController({
   const back = () => {
     const { visible, from } = now();
     const target = previous(visible, from);
-    if (target !== undefined) void goTo(target);
+    if (target !== undefined) goTo(target).catch(crash);
   };
 
   /** Validates and submits the whole form, whichever Page is open. */
   const submit = () => {
     setAttempted(new Set(pages.map((_, index) => index)));
-    setGeneralErrors([]);
     attempt();
     void handleSubmit(store, handle)();
   };
@@ -207,7 +212,6 @@ export function useWizardController({
       back,
       goTo,
     } satisfies WizardController,
-    generalErrors,
     submit,
     /**
      * The form's native submit (Enter, a submit button, `form="id"`): "Next"
@@ -219,7 +223,7 @@ export function useWizardController({
       event.stopPropagation();
       const { visible, from } = now();
       if (from === visible.at(-1)) submit();
-      else void next();
+      else next().catch(crash);
     },
     /** After a failed submit: opens the first shown Page with an error, then focuses it. */
     openFirstError: () => {

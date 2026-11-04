@@ -1,9 +1,18 @@
 import type { RuleNode } from '../definition';
 
 /** The built-in Field Types that hold one value. */
-export type ValueType = 'text' | 'number' | 'boolean' | 'choice' | 'multi_choice' | 'date';
+export type ValueTypeName = 'text' | 'number' | 'boolean' | 'choice' | 'multi_choice' | 'date';
 
-/** Every built-in Field Type. */
+/**
+ * The target of a pipe item on a Field of a custom Field Type, whatever its
+ * name. Only metadata and settings list it; no Rule does.
+ */
+export type CustomType = '~custom';
+
+/** The Field Types that hold one value: the built-in ones and any custom one. */
+export type ValueType = ValueTypeName | CustomType;
+
+/** Every Field Type. */
 export type FieldType = ValueType | 'object' | 'repeater';
 
 /** Every built-in Component `type` the Fluent Builder makes. */

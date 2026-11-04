@@ -78,7 +78,7 @@ The URL is the schema's `$id` and stays the same across package versions: a pack
 
 The loader is the one judge of a Definition. The schema describes every built-in `type`, Rule, Condition and `default`, and catches most mistakes, but some only the loader can see: duplicate names across the tree, `colSpan` wider than its parent's `columns`, Condition references, operators and values that depend on the Field read, cycles, a `default` that fails its own Rules or `choices`, and impossible dates such as `2023-02-29`.
 
-Custom Field Types and Rules: the schema describes only the built-ins and takes any other `type` or Rule name loosely, so `"type": "txet"` is not flagged in the editor and only `compile` rejects it. An unknown `type` must still look like a custom Field: a lower-case `type` (`^[a-z][a-z0-9_]*$`), a `name`, no `rules`, and the shared Field keys (`label`, `widget`, `visible`, `required`, ...) typed as on built-ins; its own options can be anything. An unknown Rule must still be `{type, requirement?, message?}` and sit on a Field Type that takes `rules`. Registering a type or Rule with `compile` doesn't change the schema; a generated schema for an application's own registrations could be added later without changing this one.
+Custom Field Types and Rules: the schema describes only the built-ins and takes any other `type` or Rule name loosely, so `"type": "txet"` is not flagged in the editor and only `compile` rejects it. An unknown `type` must still look like a custom Field: a lower-case `type` (`^[a-z][a-z0-9_]*$`), a `name`, no `rules`, and the shared Field keys (`label`, `widget`, `visible`, `required`, ...) typed as on built-ins; its own options can be anything. An unknown Rule must still be `{type, requirement?, message?}` on a built-in value Field, never on a `repeater`, with any `requirement`. So a Definition using a registered `defineFieldType` or `defineRule` passes the schema, and the schema checks its shared keys but not its options, its `default`, its Rule's `requirement` or `appliesTo`: `compile(definition, { fieldTypes, rules })` checks those. Registering doesn't change the published schema; a generated schema for an application's own registrations could be added later without changing this one.
 
 ### In code: the Fluent Builder
 
@@ -147,6 +147,28 @@ const form = useMemo(() => compile(definition), []);
 - The `hidden` Widget (`"widget": "hidden"`) keeps a value with no UI and no Field Wrapper, such as a row's `id` so the server can match rows after a reorder. The Field stays active and in the output, and its errors show in the general error region. The client can still change the value, so the server must check it.
 - Formisch's `reset(store, { initialInput })` also works on the store from `useAutoForm`, but skips this normalization: a missing key makes an `object` or Repeater `undefined`. Read "unsaved changes" from the store's `isDirty`, knowing that an object value compares by reference, a row removed and added again stays dirty, and `getDirtyPaths` names a whole Repeater rather than the row Field that changed.
 
+### Locked Fields
+
+A value the server knows for one record, such as `type = company`, can be Locked with `lock(compiled, values)`: the user sees it read-only and cannot change it, but it still drives Conditions and is in the output. Build the form in one function that client and server share:
+
+```tsx
+const compiled = compile(definition);
+const formFor = (record: Company) => lock(compiled, { type: record.type });
+
+// Client: a new lock result needs a new key.
+const form = useMemo(() => formFor(record), [record.id]);
+<AutoForm key={record.id} form={form} initialInput={record} onSubmit={save} />;
+
+// Server
+formFor(record)['~standard'].validate(body);
+```
+
+- Keys are data paths such as `'address.country'`, to single-value Fields outside Repeaters. An empty value locks a Field empty. `lock` throws a `LockError` of `{message, path}` for an `object`, a Repeater or a Field inside one, an unknown path, a value its Field Type rejects (a choice outside `choices` included), or a form that is already Locked.
+- The Locked value beats `initialInput` and `default`. On the server, it replaces whatever the body holds before Conditions run, so a forged value changes nothing. A server that does not call `lock` gets no protection, and a value read from the URL or other client input must never be passed to it.
+- A Locked Field skips `required` and its Rules: the application answers for the value, so an old record never blocks a user on a Field they cannot fix. A Condition can still make it Inactive; it is then missing from the output like any Inactive Field.
+- The default Widgets show it with native `readonly` (text, number, date) or, where HTML has none, native `disabled` (select, radio, checkbox, multi-choice), which also takes it out of the tab order. Widgets and the Field Wrapper get `readOnly: true`. A Widget that ignores `readOnly` still cannot change the value: the Renderer passes it the Locked value and drops its `onChange`.
+- `compiled.locked` maps the Locked Fields' declared nodes to their values, for Renderers.
+
 ### Customizing the Renderer
 
 Each of these props replaces the defaults on its own; none changes the Definition or validation.
@@ -185,6 +207,53 @@ await store(result.value);
 ```
 
 `compiled['~standard']` is a Standard Schema whose issues are `{message, path}` with a plain key path; the client and the server get the same result. `compiled.schema` is the underlying Valibot pipe, for `v.safeParse` with a per-request config. Read its errors only as `{message, path}`.
+
+### Custom Field Types and Rules
+
+Register values and constraints the built-ins don't cover with `defineFieldType` and `defineRule`, and pass them explicitly to `compile` and `form`; there is no global registry. Neither holds anything of React, so a server loads them with only the core package and Valibot. Their Widgets go to `<AutoForm widgets>`.
+
+```tsx
+import * as v from 'valibot';
+import { compile, defineFieldType, defineRule, form, required, text } from '@auto-formisch/core';
+
+const rating = defineFieldType({
+  type: 'rating',
+  options: { max: v.number() },
+  schema: (node) => v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(node.max)),
+  conditionAs: 'number',
+});
+
+const startsWith = defineRule({
+  type: 'starts_with',
+  appliesTo: ['text'],
+  requirement: v.string(),
+  check: (value, requirement) => value.startsWith(requirement),
+  message: 'Wrong prefix',
+});
+
+const extensions = { fieldTypes: [rating], rules: [startsWith] };
+const definition = form(
+  [rating('score', { max: 5 }, [required()]), text('code', [startsWith('VN')])],
+  extensions,
+);
+const compiled = compile(definition, extensions); // { score: number; code?: string }
+
+<AutoForm form={compiled} widgets={{ rating: Stars }} onSubmit={save} />;
+```
+
+```jsonc
+{ "type": "rating", "name": "score", "max": 5 }
+{ "type": "text", "name": "code", "rules": [{ "type": "starts_with", "requirement": "VN" }] }
+```
+
+- A custom Field Type is a Field holding one JSON value (string, number, boolean, list or object; no `Date` or `File`). It takes `label`, `description`, `placeholder`, `widget`, `colSpan`, `visible`, `disabled`, `required`, `requiredMessage`, `default` and its own `options`, flat and strict on the node; it takes no `rules`. An option whose schema rejects `undefined` must be present, and option values must be JSON. `schema` may be a function of the node, built once per node on load; if it throws, loading reports an error at the node.
+- The schema only validates: what it outputs is ignored, so `v.trim()` has no effect, and a schema that changes its value's type or holds no JSON value fails to compile. It never sees an empty or Inactive value; empty means what it does for every Field. All its errors show on the Field's own path, after `required`.
+- `conditionAs` picks a row of the Condition operator table (`text`, `number`, `date`, `boolean` or `multi_choice`) and must fit the value; without it, Conditions can only use `empty` and `not_empty`. A Condition's `value` is checked with the type's schema on load (for `contains`, it is a string, number or boolean).
+- A custom Rule keeps the shape `{type, requirement?, message?}`; `requirement` is checked with its schema on load, and the Definition's `message` replaces the default. `appliesTo` lists built-in value Field Types, and a Rule's Builder item only fits those (`number('n', [startsWith('VN')])` fails to compile). `check` runs sync, only on a non-empty value of the Field's type. It is the official way to validate a pattern: a regex there that is open to ReDoS is the application's risk, on every server that validates the form.
+- Names match `^[a-z][a-z0-9_]*$`. A built-in name (Field Type, Layout or Rule), an invalid option key, an option that reuses a built-in key, an async schema, requirement or `check`, and a name passed twice throw a `TypeError` at once. A Definition that uses a type or Rule not passed to `compile` throws on load, so a Rule is never skipped. Adding a built-in later is a breaking change for a custom one of the same name.
+- Custom code that throws while validating is a bug: `~standard.validate` throws, and it is never a validation result; a `check` that returns anything but a boolean, such as a Promise, throws too. In `<AutoForm>`, Formisch catches it on submit and shows its message in the general error region, and the form never submits.
+- Known limit: an async check is caught only where Valibot marks it async, anywhere in a schema (`v.pipe(v.string(), v.checkAsync(...))` is caught). An async function given to a sync API such as `v.check` or `v.custom`, or a schema inside `v.lazy`, can't be detected, and its Promise counts as valid.
+- A custom type's Widget takes `WidgetProps<InferFieldValue<typeof rating>, InferFieldNode<typeof rating>>`. Custom Field Types and Rules have no version of their own: change their options or drop one, and a stored Definition that uses it throws on load until the application migrates it.
 
 ### Validation messages
 
