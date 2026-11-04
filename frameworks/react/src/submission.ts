@@ -82,7 +82,9 @@ const valueAt = (input: unknown, path: Path): unknown =>
 
 const currentFields = (compiled: CompiledForm, store: AutoFormStore) => {
   const input = getInput(store);
-  return shownFields(compiled.definition.components, compiled.conditions.evaluate(input), input);
+  const { definition, conditions } = compiled;
+  // A Wizard's Pages are Layouts: a Field on another Page counts as shown.
+  return shownFields(definition.pages ?? definition.components, conditions.evaluate(input), input);
 };
 
 /**

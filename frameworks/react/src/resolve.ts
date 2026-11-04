@@ -1,4 +1,11 @@
-import type { Component, ContentNode, FieldNode, FormError, PathKey } from '@auto-formisch/core';
+import type {
+  Component,
+  ContentNode,
+  FieldNode,
+  FormDefinition,
+  FormError,
+  PathKey,
+} from '@auto-formisch/core';
 import { AutoFormError } from './AutoFormError';
 import type { FieldOverride, Overrides, WidgetEntry } from './contracts';
 
@@ -34,12 +41,15 @@ const OVERRIDE_KEYS: readonly string[] = [
  * Widget name and Widget whose `appliesTo` leaves out the node's type.
  */
 export function resolveWidgets(
-  components: readonly Component[],
+  definition: FormDefinition,
   widgets: Readonly<Record<string, WidgetEntry>>,
   overrides: Overrides = {},
 ): WidgetResolver {
   const errors: FormError[] = [];
-  const located = locate(components, ['components'], []);
+  const located =
+    definition.pages !== undefined
+      ? locate(definition.pages, ['pages'], [])
+      : locate(definition.components, ['components'], []);
   const paths = new Set(located.flatMap(({ path }) => (path === undefined ? [] : [path])));
 
   for (const [path, override] of Object.entries(overrides)) {
@@ -102,6 +112,7 @@ function locate(
       case 'section':
       case 'tabs':
       case 'tab':
+      case 'page':
         return locate(node.components, [...location, 'components'], scope);
       case 'content':
         return [{ node, location }];
