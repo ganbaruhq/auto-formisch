@@ -16,7 +16,7 @@ import { fieldsIn } from './fields';
 import { defaultsOf, newRowOf, normalize, type NormalizedInput } from './initial';
 import { load } from './load';
 import { getRequiredMessage, type RequiredMessage } from './messages';
-import { withLocks, type Locks } from './locks';
+import { withLockedValues, type LockedValues } from './locked-values';
 import { MISSING, prep } from './prep';
 import { registryOf, type LoadOptions, type Registry } from './registry';
 import { ruleActions, type RuleAction } from './rules';
@@ -105,7 +105,7 @@ export function compile(input: unknown, options?: LoadOptions): CompiledForm {
 /** What `lock` needs from a form that `compile` made. Not public. */
 export interface CompiledInternals {
   /** The same form with these Locked Fields. */
-  readonly relock: (locks: Locks) => CompiledForm;
+  readonly relock: (locks: LockedValues) => CompiledForm;
   /** The JavaScript type of a value Field's value, which `lock` checks. */
   readonly shape: (field: ValueField) => ValueShape;
 }
@@ -125,7 +125,7 @@ interface Typing {
   readonly registry: Registry;
   readonly valueSchemas: ReadonlyMap<Component, v.GenericSchema>;
   readonly shapes: ReadonlyMap<Component, ValueShape>;
-  readonly locks: Locks;
+  readonly locks: LockedValues;
 }
 
 /**
@@ -143,7 +143,7 @@ function compiledForm(
       ? base
       : {
           readsValues: base.readsValues,
-          evaluate: (input) => base.evaluate(withLocks(input, locks)),
+          evaluate: (input) => base.evaluate(withLockedValues(input, locks)),
         };
   const components = rootComponents(definition);
   const schema = buildSchema(definition, base, typing);
@@ -154,14 +154,14 @@ function compiledForm(
     locked: new Map([...locks].map(([field, { value }]) => [field, value])),
     // A getter, so every read is a fresh copy.
     get defaults() {
-      return withLocks(defaultsOf(components), locks);
+      return withLockedValues(defaultsOf(components), locks);
     },
     normalize: (record) => {
       const { input, warnings } = normalize(components, record, (field) =>
         typing.shapes.get(field),
       );
       return {
-        input: withLocks(input, locks),
+        input: withLockedValues(input, locks),
         // A Locked value replaces whatever the record held there.
         warnings: warnings.filter(({ path }) => !lockedPaths.has(path.join('.'))),
       };
@@ -237,7 +237,7 @@ function buildSchema(
     v.transform((input) => {
       // A list passes on for `typedObject` to reject; `prep` would read it as `{}`.
       if (Array.isArray(input)) return input;
-      const locked = withLocks(input, locks);
+      const locked = withLockedValues(input, locks);
       return prep(components, conditions.evaluate(locked), locked, [], locks);
     }),
     typedObjectOf(components, typing),

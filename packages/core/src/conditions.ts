@@ -9,7 +9,7 @@ import {
   REFERENCE_SYNTAX,
   resolve,
   scopeAt,
-  segmentsOf,
+  segmentCount,
   treeOf,
   type DataScope,
   type FormTree,
@@ -110,7 +110,7 @@ class Evaluation implements ConditionState {
       const { parent } = placement;
       if (parent === undefined) return true;
       const outer =
-        parent === placement.scope.owner ? up(scope, segmentsOf(placement.scope)) : scope;
+        parent === placement.scope.owner ? up(scope, segmentCount(placement.scope)) : scope;
       return this.isVisible(parent, outer);
     });
   }
@@ -121,7 +121,9 @@ class Evaluation implements ConditionState {
       if (placement === undefined) return false;
       if (this.holds(field.disabled, placement.scope, scope, false)) return true;
       const { owner } = placement.scope;
-      return owner !== undefined && this.isDisabled(owner, up(scope, segmentsOf(placement.scope)));
+      return (
+        owner !== undefined && this.isDisabled(owner, up(scope, segmentCount(placement.scope)))
+      );
     });
   }
 

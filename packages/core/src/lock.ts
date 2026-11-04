@@ -5,7 +5,7 @@ import type { FormError, PathKey } from './errors';
 import { shapeMessage } from './field-types';
 import { copy } from './initial';
 import { deepFreeze } from './load';
-import type { Lock } from './locks';
+import type { LockedValue } from './locked-values';
 import { resolve, treeOf } from './tree';
 
 /** Thrown by `lock` for values it cannot lock. Carries every error at once. */
@@ -68,7 +68,7 @@ export function lock<TOutput extends FormOutput>(
 
   const tree = treeOf(rootComponents(compiled.definition));
   const errors: FormError[] = [];
-  const locks = new Map<ValueField, Lock>();
+  const locks = new Map<ValueField, LockedValue>();
   for (const key of Object.keys(values)) {
     const fail = (message: string) => errors.push({ message, path: [key] });
     if (!DATA_PATH.test(key)) {

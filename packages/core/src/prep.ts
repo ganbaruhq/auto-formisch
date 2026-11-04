@@ -3,7 +3,7 @@ import type { Component } from './definition';
 import { isEmpty } from './empty';
 import type { PathKey } from './errors';
 import { fieldsIn, isRecord } from './fields';
-import type { Locks } from './locks';
+import type { LockedValues } from './locked-values';
 
 /**
  * Marks a required Field whose value is empty. `typedObject` turns it into the
@@ -38,7 +38,7 @@ export function prep(
   state: ConditionState,
   input: unknown,
   scope: readonly PathKey[] = [],
-  locks?: Locks,
+  locks?: LockedValues,
 ): Record<string, unknown> {
   const source = isRecord(input) ? input : {};
   const output: Record<string, unknown> = {};

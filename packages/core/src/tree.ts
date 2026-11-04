@@ -33,8 +33,8 @@ export interface FormTree {
   scopeOf(field: ObjectField | RepeaterField): DataScope | undefined;
 }
 
-/** The data path segments a scope adds: a name, and an index for a row. */
-export const segmentsOf = (scope: DataScope): number =>
+/** How many data path segments a scope adds: 1 for a name, 2 for a name and a row index. */
+export const segmentCount = (scope: DataScope): number =>
   scope.owner === undefined ? 0 : scope.owner.type === 'repeater' ? 2 : 1;
 
 export function treeOf(components: readonly Component[]): FormTree {
@@ -127,7 +127,7 @@ export function resolve(
     if (current.parent === undefined) {
       return { error: `"${reference}" goes above the root` };
     }
-    drop += segmentsOf(current);
+    drop += segmentCount(current);
     current = current.parent;
   }
   const names = rest.split('.');
