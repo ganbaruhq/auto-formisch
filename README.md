@@ -76,6 +76,32 @@ export function ContactForm() {
 
 `AutoForm` validates on submit and revalidates on input. To show a different form, change its React `key`.
 
+### Customizing the Renderer
+
+Each of these props replaces the defaults on its own; none changes the Definition or validation.
+
+```tsx
+<AutoForm
+  form={form}
+  widgets={{ text: MyInput, rating: { component: Stars, appliesTo: ['number'] } }}
+  layouts={{ section: MySection }}
+  fieldWrapper={MyWrapper}
+  overrides={{ 'address.city': { widget: 'rating', label: 'City' } }}
+  labels={{ submit: 'Gửi', add: 'Thêm', remove: 'Xóa' }}
+  actions={({ isSubmitting, submit }) => <MyButtons busy={isSubmitting} onSave={submit} />}
+  onSubmit={save}
+/>
+```
+
+- `widgets` merges over the default Widget map. A Field or Content uses the entry named by its `widget ?? type`. An entry is a component, or `{ component, group?, appliesTo? }`: `group` makes the Field Wrapper use `fieldset`/`legend`, and `appliesTo` lists the types the Widget can present. In TypeScript, an entry named after a built-in type must take that type's props.
+- A value Field's Widget gets `WidgetProps`: `value`, `onChange`, `inputProps` (spread onto the control: id, name, ref, focus handlers and ARIA state), `errors`, `disabled`, `readOnly`, `required` and `node`. It draws only the control, converts its own values (such as a string to a number) and calls `onChange(undefined)` when empty. `object`, `repeater` and `content` Widgets get `ObjectProps`, `RepeaterProps` and `ContentProps`.
+- `layouts` merges over the default `section`, `tabs` and `tab`; `fieldWrapper` replaces the frame that draws every value Field's label, description and errors.
+- `overrides` changes `widget`, `label`, `description` or `placeholder` by data path, without Repeater indices (`'pets.kind'` is every row's `kind`).
+- On mount, `AutoForm` checks the whole tree, rendered or not, and throws an `AutoFormError` whose `errors` lists every unknown Widget name, Widget whose `appliesTo` leaves out the type, and unknown `overrides` path or key, as `{message, path}`.
+- `labels` sets the wording of the default buttons (`submit`, `add`, `remove`, `moveUp`, `moveDown`); `actions` draws the buttons instead of the default submit button.
+- `useAutoForm(form)` returns the Formisch store, for calling Formisch's `reset`, `setInput` or `submit`; pass it as `store`. Nested paths of a JSON Definition need a cast there.
+- `useFormValue(path)` lets a Widget read another Field, with the path syntax of Conditions, such as `useFormValue('../country')` from a Repeater row.
+
 ### On a server or in a Worker
 
 ```ts
@@ -130,6 +156,8 @@ Like Valibot, a message set for one language doesn't fall back to another; `dele
   | `multi_choice` | distinct values of `choices`, as an array | `choices`                | one checkbox per choice in a fieldset |
   | `date`         | `YYYY-MM-DD` calendar date                |                          | `input[type=date]`                    |
 
+  Other default Widgets, chosen with `widget`: `textarea`, `email`, `url` and `password` for `text`; `toggle` (a checkbox with `role="switch"`) for `boolean`; `radio` for `choice`; `multi_select` (`select multiple`) for `multi_choice`. A `widget` changes presentation only: `email` does not add the `email` Rule.
+
   `choices` is required: a non-empty list of strings or finite numbers, or `{value, label?}`, with no empty, duplicate or mixed string and number values.
 
 - Nested Fields: `object` and `repeater` take `name`, `label`, `description`, `widget` and a non-empty `components`, but no `required`; they always keep their key in the output, as `{}` and `[]`. An `object` nests its Fields' values under its `name`. A `repeater` holds a list of rows, each an object made from its `components`; `min_items: 1` asks for at least one row. Each `object` and each row is its own data scope, so a `name` need only be unique within it, and errors carry plain key paths into rows, such as `['contacts', 1, 'name']`. Repeaters nest. The default Widgets are a `fieldset` for an `object`, and for a `repeater` a `fieldset` with one group per row (Move up, Move down, Remove) and an Add button that is disabled at `max_items`; values and errors stay with their row when it moves.
@@ -146,6 +174,18 @@ Like Valibot, a message set for one language doesn't fall back to another; `dele
   | `min_items`, `max_items`   | `multi_choice`, `repeater` | non-negative integer                             |
 
 - Empty means `undefined`, `null`, `''`, a whitespace-only string or `[]`; `0` and `false` are values. An empty value Field drops its key from the output and skips its Rules; a required one reports `Required` or its `requiredMessage`.
+- Conditions: every Component takes `visible`, and every Field takes `disabled`, as a Condition (`disabled` also as `true` or `false`); a value Field's `required` is `true`, `false` or a Condition. A Condition is a leaf `{field, operator, value?}` or a group `{all: [...]}`, `{any: [...]}` or `{not: ...}`, at most 8 levels deep. `field` is relative to the Component's data scope: `../` steps out of an `object` or Repeater row, then names joined by `.` reach into `object`s, never into a Repeater's rows.
+
+  | Field `type`     | Operators                                         |
+  | ---------------- | ------------------------------------------------- |
+  | `text`, `choice` | `eq`, `neq`, `in`, `not_in`, `empty`, `not_empty` |
+  | `number`, `date` | the same, and `gt`, `gte`, `lt`, `lte`            |
+  | `boolean`        | `eq`, `neq`, `empty`, `not_empty`                 |
+  | `multi_choice`   | `contains`, `empty`, `not_empty`                  |
+  | `repeater`       | `empty`, `not_empty`                              |
+
+  `value` must fit the Field (a `choice` value is one of its `choices`); `in` and `not_in` take a non-empty list, and `empty` and `not_empty` take none. Comparisons are strict, with no trimming or coercion, and an empty or wrongly typed value makes them false (`neq` and `not_in` true). A Field hidden or disabled, itself or through a Component around it, is Inactive: it is not validated, not in the output (an `object` or Repeater outputs `{}` or `[]`), and reads as empty to Conditions and `useFormValue`, so a value a client forges into it changes nothing. Its value stays in the form and comes back when it reappears. A missing Field, an operator that doesn't fit, or a cycle through `visible` or `disabled` is rejected on load; `required` only reads values, so "at least one of these two" is fine. The server gets the same result from `~standard.validate`.
+
 - Output holds only the keys the Definition declares.
 - Layouts `section` (`label`, `description`, `columns`), `tabs` and `tab` (`label`, `description`, `columns`; a `tab` sits only directly inside `tabs`), and Content `{type: 'content', text}` add no data path: moving a Field in or out of them changes neither its path nor the output. Inside a Layout with `columns`, any child but a `tab` takes `colSpan` (at most `columns`). The default Layouts are native HTML: a `fieldset` for a labelled section, a WAI-ARIA tab list whose inactive panels stay mounted (so their Fields are still validated), and an inline CSS grid whose column count is the fallback of `--af-columns`, so a media query can change it. Content renders as plain text, never as HTML.
 

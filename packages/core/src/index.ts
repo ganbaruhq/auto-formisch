@@ -1,5 +1,5 @@
 export { compile, type CompiledForm, type FormOutput } from './compile';
-export type { ConditionState, FormConditions } from './conditions';
+export type { ConditionState, FieldLocation, FormConditions } from './conditions';
 export type {
   AllCondition,
   AnyCondition,

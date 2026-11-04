@@ -13,6 +13,7 @@ import { builtinComponents, gridSize, type ComponentSpec } from './components';
 import { DefinitionError, toFormErrors, type FormError, type PathKey } from './errors';
 import { builtinFieldTypes, fieldKeys, type FieldTypeSpec } from './field-types';
 import { builtinRules } from './rules';
+import { REFERENCE, REFERENCE_SYNTAX } from './tree';
 
 type Path = readonly PathKey[];
 type Node = Record<string, unknown>;
@@ -54,8 +55,6 @@ const OPERATORS: ReadonlySet<string> = new Set<ConditionOperator>([
   'empty',
   'not_empty',
 ]);
-/** `../` steps, then one or more names joined by `.`. No index. */
-const REFERENCE = /^(?:\.\.\/)*[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
 
 /**
  * Checks an untrusted Form Definition and returns a frozen copy of it.
@@ -268,7 +267,7 @@ class Loader {
     const leaf = this.copy(node, LEAF_KEYS, (key, value) => {
       if (key === 'field') {
         if (typeof value === 'string' && REFERENCE.test(value)) return value;
-        return this.fail([...path, key], 'A reference is "../" steps, then names joined by "."');
+        return this.fail([...path, key], REFERENCE_SYNTAX);
       }
       if (key === 'operator') {
         if (typeof value === 'string' && OPERATORS.has(value)) return value;

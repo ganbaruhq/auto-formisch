@@ -4,7 +4,17 @@ import type { Component, Condition, ConditionLeaf, FieldNode, ValueField } from 
 import { isEmpty } from './empty';
 import type { PathKey } from './errors';
 import { isRecord } from './fields';
-import { resolve, segmentsOf, treeOf, type DataScope, type FormTree, type Reference } from './tree';
+import {
+  REFERENCE,
+  REFERENCE_SYNTAX,
+  resolve,
+  scopeAt,
+  segmentsOf,
+  treeOf,
+  type DataScope,
+  type FormTree,
+  type Reference,
+} from './tree';
 
 type Path = readonly PathKey[];
 
@@ -22,6 +32,21 @@ export interface ConditionState {
   isDisabled(field: FieldNode, scope: Path): boolean;
   /** The Field must have a value, if it is active. */
   isRequired(field: ValueField, scope: Path): boolean;
+  /**
+   * Where a reference in Condition syntax leads from the data scope at
+   * `scope`, or why it leads nowhere. A Renderer reads another Field with it
+   * the way a Condition does: as empty while that Field is Inactive.
+   */
+  locate(reference: string, scope: Path): FieldLocation | { readonly error: string };
+}
+
+/** The Field a reference leads to. */
+export interface FieldLocation {
+  readonly field: FieldNode;
+  /** Its data path, with Repeater indexes. */
+  readonly path: readonly PathKey[];
+  /** It is neither hidden nor disabled, itself or through a Component around it. */
+  readonly active: boolean;
 }
 
 /**
@@ -98,6 +123,25 @@ class Evaluation implements ConditionState {
     return placement !== undefined && this.holds(field.required, placement.scope, scope, false);
   }
 
+  locate(reference: string, scope: Path): FieldLocation | { readonly error: string } {
+    if (!REFERENCE.test(reference)) return { error: REFERENCE_SYNTAX };
+    const from = scopeAt(this.tree, scope);
+    if (from === undefined) return { error: `No data scope at "${scope.join('.')}"` };
+    const resolved = resolve(this.tree, reference, from);
+    if ('error' in resolved) return resolved;
+    const { target, drop, via } = resolved;
+    const targetScope = [...up(scope, drop), ...via];
+    return {
+      field: target,
+      path: [...targetScope, target.name],
+      active: this.isActive(target, targetScope),
+    };
+  }
+
+  private isActive(field: FieldNode, scope: Path): boolean {
+    return this.isVisible(field, scope) && !this.isDisabled(field, scope);
+  }
+
   /**
    * Remembers each answer per Component and scope. A Component in progress
    * answers `false`, so even a cycle the loader would reject cannot recurse
@@ -144,9 +188,7 @@ class Evaluation implements ConditionState {
     if (reference === undefined) return undefined;
     const { target, drop, via } = reference;
     const targetScope = [...up(path, drop), ...via];
-    if (!this.isVisible(target, targetScope) || this.isDisabled(target, targetScope)) {
-      return undefined;
-    }
+    if (!this.isActive(target, targetScope)) return undefined;
     return at(this.input, [...targetScope, target.name]);
   }
 }

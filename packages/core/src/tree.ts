@@ -1,4 +1,5 @@
 import type { Component, FieldNode, ObjectField, RepeaterField } from './definition';
+import type { PathKey } from './errors';
 import { fieldsIn } from './fields';
 
 /**
@@ -23,6 +24,8 @@ export interface Placement {
 
 /** The parents and data scopes of every Component of one Definition. */
 export interface FormTree {
+  /** The data scope of the root Components. */
+  readonly root: DataScope;
   /** Every Component, parents before children, in Definition order. */
   readonly components: readonly Component[];
   placement(component: Component): Placement | undefined;
@@ -65,13 +68,37 @@ export function treeOf(components: readonly Component[]): FormTree {
       }
     }
   };
-  visit(components, scopeFor(components));
+  const root = scopeFor(components);
+  visit(components, root);
 
   return {
+    root,
     components: all,
     placement: (component) => placements.get(component),
     scopeOf: (field) => scopes.get(field),
   };
+}
+
+/** A Condition reference: `../` steps, then one or more names joined by `.`. No index. */
+export const REFERENCE_SYNTAX = 'A reference is "../" steps, then names joined by "."';
+export const REFERENCE = /^(?:\.\.\/)*[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
+
+/**
+ * The data scope at a data path such as `['items', 2, 'address']`: the root,
+ * then into `object`s by name and into Repeater rows by name and index.
+ */
+export function scopeAt(tree: FormTree, path: readonly PathKey[]): DataScope | undefined {
+  let scope: DataScope | undefined = tree.root;
+  for (let index = 0; scope !== undefined && index < path.length; index++) {
+    const field =
+      typeof path[index] === 'string' ? scope.fields.get(path[index] as string) : undefined;
+    if (field?.type === 'object') scope = tree.scopeOf(field);
+    else if (field?.type === 'repeater' && typeof path[index + 1] === 'number') {
+      scope = tree.scopeOf(field);
+      index++;
+    } else scope = undefined;
+  }
+  return scope;
 }
 
 /**

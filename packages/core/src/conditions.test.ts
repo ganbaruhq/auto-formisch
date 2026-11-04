@@ -620,6 +620,43 @@ describe('cycles', () => {
   });
 });
 
+describe('locate', () => {
+  const compiled = compile(
+    root(
+      { type: 'boolean', name: 'off' },
+      repeater('items', [text('a'), text('b', { visible: leaf('a', 'not_empty') })], {
+        disabled: leaf('off', 'eq', true),
+      }),
+    ),
+  );
+  const locate = (input: unknown, reference: string, scope: (string | number)[]) => {
+    const found = compiled.conditions.evaluate(input).locate(reference, scope);
+    return 'error' in found ? found : { path: found.path, active: found.active };
+  };
+
+  it('finds a Field from a data scope, and whether it is active', () => {
+    const input = { items: [{ a: 'x' }, {}] };
+    expect(locate(input, 'b', ['items', 0])).toEqual({ path: ['items', 0, 'b'], active: true });
+    expect(locate(input, 'b', ['items', 1])).toEqual({ path: ['items', 1, 'b'], active: false });
+    expect(locate(input, '../off', ['items', 1])).toEqual({ path: ['off'], active: true });
+    expect(locate({ ...input, off: true }, 'a', ['items', 0])).toEqual({
+      path: ['items', 0, 'a'],
+      active: false,
+    });
+    expect(locate(input, 'items', [])).toEqual({ path: ['items'], active: true });
+  });
+
+  it('says why a reference leads nowhere', () => {
+    expect(locate({}, 'items.a', [])).toEqual({
+      error: '"items.a" goes inside the rows of the Repeater "items"',
+    });
+    expect(locate({}, 'items.0', [])).toEqual({
+      error: 'A reference is "../" steps, then names joined by "."',
+    });
+    expect(locate({}, 'a', ['items'])).toEqual({ error: 'No data scope at "items"' });
+  });
+});
+
 describe('evaluation', () => {
   const form = root(
     { type: 'number', name: 'n' },

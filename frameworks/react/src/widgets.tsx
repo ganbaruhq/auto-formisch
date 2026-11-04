@@ -9,6 +9,7 @@ import type {
   TextField,
 } from '@auto-formisch/core';
 import { useId } from 'react';
+import { useRenderContext } from './context';
 import type {
   ContentProps,
   ObjectProps,
@@ -18,7 +19,49 @@ import type {
 } from './contracts';
 
 /** `input[type=text]`. Emits `undefined` when emptied. */
-export function TextInput({
+export const TextInput = (props: WidgetProps<string, TextField>) => (
+  <TextLikeInput {...props} type="text" />
+);
+
+/** `input[type=email]`, the `email` Widget. Validation is still the Field's Rules. */
+export const EmailInput = (props: WidgetProps<string, TextField>) => (
+  <TextLikeInput {...props} type="email" />
+);
+
+/** `input[type=url]`, the `url` Widget. Validation is still the Field's Rules. */
+export const UrlInput = (props: WidgetProps<string, TextField>) => (
+  <TextLikeInput {...props} type="url" />
+);
+
+/** `input[type=password]`, the `password` Widget. */
+export const PasswordInput = (props: WidgetProps<string, TextField>) => (
+  <TextLikeInput {...props} type="password" />
+);
+
+function TextLikeInput({
+  value,
+  onChange,
+  inputProps,
+  disabled,
+  readOnly,
+  node,
+  type,
+}: WidgetProps<string, TextField> & { readonly type: 'text' | 'email' | 'url' | 'password' }) {
+  return (
+    <input
+      {...inputProps}
+      type={type}
+      value={value ?? ''}
+      placeholder={node.placeholder}
+      disabled={disabled}
+      readOnly={readOnly}
+      onChange={(event) => onChange(event.currentTarget.value || undefined)}
+    />
+  );
+}
+
+/** `textarea`, the `textarea` Widget. Emits `undefined` when emptied. */
+export function Textarea({
   value,
   onChange,
   inputProps,
@@ -27,9 +70,8 @@ export function TextInput({
   node,
 }: WidgetProps<string, TextField>) {
   return (
-    <input
+    <textarea
       {...inputProps}
-      type="text"
       value={value ?? ''}
       placeholder={node.placeholder}
       disabled={disabled}
@@ -71,18 +113,30 @@ export function NumberInput({
  * `input[type=checkbox]`. Emits `true` or `false`; `false` is a value, so an
  * unchecked box the user has touched submits `false`.
  */
-export function Checkbox({
+export const Checkbox = (props: WidgetProps<boolean, BooleanField>) => (
+  <BooleanCheckbox {...props} />
+);
+
+/** The `toggle` Widget: a checkbox with the `switch` role. Emits like `Checkbox`. */
+export const Toggle = (props: WidgetProps<boolean, BooleanField>) => (
+  <BooleanCheckbox {...props} role="switch" />
+);
+
+function BooleanCheckbox({
   value,
   onChange,
   inputProps,
   disabled,
   readOnly,
-}: WidgetProps<boolean, BooleanField>) {
+  role,
+}: WidgetProps<boolean, BooleanField> & { readonly role?: 'switch' }) {
   return (
     <input
       {...inputProps}
       type="checkbox"
+      role={role}
       checked={value === true}
+      aria-checked={role === undefined ? undefined : value === true}
       disabled={disabled}
       // A checkbox has no native read-only state.
       aria-readonly={readOnly || undefined}
@@ -149,6 +203,105 @@ export function Select({
       }}
     >
       <option value="">{node.placeholder ?? ''}</option>
+      {options.map((option, index) => (
+        <option key={index} value={String(index)}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/**
+ * The `radio` Widget: one labelled radio per choice in a `radiogroup` that
+ * carries the Field's required, invalid and described-by state. Options map
+ * back by position, like `Select`. The first radio takes the Field's id and
+ * ref, so focus on error lands on it.
+ */
+export function Radios({
+  value,
+  onChange,
+  inputProps,
+  disabled,
+  readOnly,
+  node,
+}: WidgetProps<ChoiceValue, ChoiceField>) {
+  const {
+    id,
+    ref,
+    'aria-invalid': invalid,
+    'aria-describedby': describedBy,
+    'aria-required': required,
+    ...shared
+  } = inputProps;
+  const options = optionsOf(node.choices);
+  return (
+    <div
+      role="radiogroup"
+      // The Field Wrapper's legend names the fieldset; a radiogroup needs its own name.
+      aria-label={node.label ?? node.name}
+      aria-invalid={invalid}
+      aria-describedby={describedBy}
+      aria-required={required}
+      aria-readonly={readOnly || undefined}
+    >
+      {options.map((option, index) => {
+        const optionId = index === 0 ? id : `${id}-${index}`;
+        return (
+          <div key={index}>
+            <input
+              {...shared}
+              ref={index === 0 ? ref : undefined}
+              id={optionId}
+              type="radio"
+              value={String(index)}
+              checked={option.value === value}
+              disabled={disabled}
+              onChange={() => {
+                if (!readOnly) onChange(option.value);
+              }}
+            />
+            <label htmlFor={optionId}>{option.label}</label>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * The `multi_select` Widget: `select multiple`. Emits the selected values in
+ * the order of `choices`, or `undefined` when none is; options map back by
+ * position, so number values stay numbers.
+ */
+export function MultiSelect({
+  value,
+  onChange,
+  inputProps,
+  disabled,
+  readOnly,
+  node,
+}: WidgetProps<readonly ChoiceValue[], MultiChoiceField>) {
+  const options = optionsOf(node.choices);
+  const selected = options.flatMap((option, index) =>
+    (value ?? []).includes(option.value) ? [String(index)] : [],
+  );
+  return (
+    <select
+      {...inputProps}
+      multiple
+      value={selected}
+      disabled={disabled}
+      // A select has no native read-only state.
+      aria-readonly={readOnly || undefined}
+      onChange={(event) => {
+        if (readOnly) return;
+        const next = [...event.currentTarget.selectedOptions].map(
+          (option) => options[Number(option.value)].value,
+        );
+        onChange(next.length > 0 ? next : undefined);
+      }}
+    >
       {options.map((option, index) => (
         <option key={index} value={String(index)}>
           {option.label}
@@ -235,6 +388,7 @@ export function ObjectFieldset({ node, disabled, children }: ObjectProps) {
  * live region that describes the `fieldset` while it has errors.
  */
 export function RepeaterList({ rows, add, canAdd, disabled, errors, node }: RepeaterProps) {
+  const { labels } = useRenderContext();
   const id = useId();
   const descriptionId = `${id}-description`;
   const errorsId = `${id}-errors`;
@@ -255,17 +409,17 @@ export function RepeaterList({ rows, add, canAdd, disabled, errors, node }: Repe
             disabled={disabled || row.index === 0}
             onClick={() => row.moveTo(row.index - 1)}
           >
-            Move up
+            {labels.moveUp}
           </button>
           <button
             type="button"
             disabled={disabled || row.index === rows.length - 1}
             onClick={() => row.moveTo(row.index + 1)}
           >
-            Move down
+            {labels.moveDown}
           </button>
           <button type="button" disabled={disabled} onClick={row.remove}>
-            Remove
+            {labels.remove}
           </button>
         </div>
       ))}
@@ -275,7 +429,7 @@ export function RepeaterList({ rows, add, canAdd, disabled, errors, node }: Repe
         ))}
       </div>
       <button type="button" disabled={!canAdd} onClick={add}>
-        Add
+        {labels.add}
       </button>
     </fieldset>
   );
@@ -284,10 +438,17 @@ export function RepeaterList({ rows, add, canAdd, disabled, errors, node }: Repe
 /** The default Widget map. Keys are a Field's or Content's `widget ?? type`. */
 export const defaultWidgets: Readonly<Record<string, WidgetEntry>> = {
   text: { component: TextInput, appliesTo: ['text'] },
+  textarea: { component: Textarea, appliesTo: ['text'] },
+  email: { component: EmailInput, appliesTo: ['text'] },
+  url: { component: UrlInput, appliesTo: ['text'] },
+  password: { component: PasswordInput, appliesTo: ['text'] },
   number: { component: NumberInput, appliesTo: ['number'] },
   boolean: { component: Checkbox, appliesTo: ['boolean'] },
+  toggle: { component: Toggle, appliesTo: ['boolean'] },
   choice: { component: Select, appliesTo: ['choice'] },
+  radio: { component: Radios, group: true, appliesTo: ['choice'] },
   multi_choice: { component: Checkboxes, group: true, appliesTo: ['multi_choice'] },
+  multi_select: { component: MultiSelect, appliesTo: ['multi_choice'] },
   date: { component: DateInput, appliesTo: ['date'] },
   object: { component: ObjectFieldset, appliesTo: ['object'] },
   repeater: { component: RepeaterList, appliesTo: ['repeater'] },

@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AutoForm, compile, type CompiledForm, type FormOutput } from './index';
+import { setInput } from '@formisch/react';
+import {
+  AutoForm,
+  compile,
+  useAutoForm,
+  type AutoFormStore,
+  type CompiledForm,
+  type FormOutput,
+} from './index';
 
 afterEach(cleanup);
 
@@ -152,6 +160,27 @@ describe('AutoForm: visible', () => {
     expect(query('C')).toBeNull();
     await submit();
     expect(await submitted()).toEqual({ on: false });
+  });
+
+  it('follows the input of a store the application owns', async () => {
+    const form = root(
+      text('country', 'Country'),
+      text('taxId', 'Tax ID', { visible: leaf('country', 'eq', 'VN') }),
+    );
+    let owned: AutoFormStore | undefined;
+    function Owner() {
+      const store = useAutoForm(form);
+      owned = store;
+      return <AutoForm form={form} store={store} onSubmit={() => {}} />;
+    }
+    render(<Owner />);
+    const user = userEvent.setup();
+    expect(query('Tax ID')).toBeNull();
+    await user.type(input('Country'), 'VN');
+    expect(query('Tax ID')).not.toBeNull();
+    // A change the application makes through Formisch, not through a Widget.
+    act(() => setInput(owned!, { path: ['country'] as never, input: 'US' as never }));
+    expect(query('Tax ID')).toBeNull();
   });
 });
 

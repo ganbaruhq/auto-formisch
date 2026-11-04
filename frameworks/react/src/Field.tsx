@@ -14,24 +14,20 @@ interface FieldProps {
  * Renders one single-value Field: its Widget inside the Field Wrapper. A
  * disabled Field is Inactive, so it is never required.
  */
-export function Field({ node, scope }: FieldProps) {
-  const { store, conditions, widgets, fieldWrapper: Wrapper, idPrefix } = useRenderContext();
-  const path = [...scope, node.name];
+export function Field({ node: declared, scope }: FieldProps) {
+  const { store, conditions, widgetOf, fieldWrapper: Wrapper, idPrefix } = useRenderContext();
+  const path = [...scope, declared.name];
   // Paths come from a JSON Definition, so they cannot be typed against the schema.
   const field = useField(store, { path: path as [string] });
 
-  const key = node.widget ?? node.type;
-  const entry = widgets[key];
-  if (entry === undefined) {
-    throw new Error(`No Widget "${key}" for the Field at "${path.join('.')}"`);
-  }
-
+  const { node, entry } = widgetOf(declared);
   const id = `${idPrefix}-${path.join('.')}`;
   const descriptionId = `${id}-description`;
   const errorsId = `${id}-errors`;
   const errors = field.errors ?? [];
-  const disabled = conditions.isDisabled(node, scope);
-  const required = !disabled && conditions.isRequired(node, scope);
+  // The declared node, which the evaluator knows; `node` has the overrides.
+  const disabled = conditions.isDisabled(declared, scope);
+  const required = !disabled && conditions.isRequired(declared, scope);
   const describedBy = [
     node.description !== undefined ? descriptionId : undefined,
     errors.length > 0 ? errorsId : undefined,
