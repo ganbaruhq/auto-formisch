@@ -8,7 +8,7 @@ import type {
   NumberField,
   TextField,
 } from '@auto-formisch/core';
-import { useId } from 'react';
+import { useId, useLayoutEffect, useRef } from 'react';
 import { useRenderContext } from './context';
 import type {
   ContentProps,
@@ -411,6 +411,32 @@ export function RepeaterList({
     node.description !== undefined ? descriptionId : undefined,
     errors.length > 0 ? errorsId : undefined,
   ].filter((value) => value !== undefined);
+  // A moved row's DOM moves too, and the browser drops focus from it, or from
+  // a button that turns disabled at the first or last place: focus goes back
+  // to the button pressed, or to the row's other move button.
+  const moveButtons = useRef(new Map<string, HTMLButtonElement>()).current;
+  const moved = useRef<{
+    readonly key: string;
+    readonly from: number;
+    readonly button: 'up' | 'down';
+  } | null>(null);
+  useLayoutEffect(() => {
+    const request = moved.current;
+    if (request === null) return;
+    moved.current = null;
+    // A render with the row still in place moved nothing.
+    if (rows.find((row) => row.key === request.key)?.index === request.from) return;
+    const other = request.button === 'up' ? 'down' : 'up';
+    const target = [request.button, other]
+      .map((button) => moveButtons.get(`${request.key}:${button}`))
+      .find((element) => element !== undefined && !element.disabled);
+    target?.focus();
+  });
+  const moveButton =
+    (key: string, button: 'up' | 'down') => (element: HTMLButtonElement | null) => {
+      if (element === null) moveButtons.delete(`${key}:${button}`);
+      else moveButtons.set(`${key}:${button}`, element);
+    };
   return (
     <fieldset
       ref={focusRef}
@@ -425,15 +451,23 @@ export function RepeaterList({
           {row.children}
           <button
             type="button"
+            ref={moveButton(row.key, 'up')}
             disabled={disabled || row.index === 0}
-            onClick={() => row.moveTo(row.index - 1)}
+            onClick={() => {
+              moved.current = { key: row.key, from: row.index, button: 'up' };
+              row.moveTo(row.index - 1);
+            }}
           >
             {labels.moveUp}
           </button>
           <button
             type="button"
+            ref={moveButton(row.key, 'down')}
             disabled={disabled || row.index === rows.length - 1}
-            onClick={() => row.moveTo(row.index + 1)}
+            onClick={() => {
+              moved.current = { key: row.key, from: row.index, button: 'down' };
+              row.moveTo(row.index + 1);
+            }}
           >
             {labels.moveDown}
           </button>

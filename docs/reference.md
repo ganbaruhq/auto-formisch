@@ -73,7 +73,7 @@ A list of rows, each an object made from its `components` (the template), in its
 
 A `default` is a non-empty list of rows, such as `[{}]` for one empty row. Each row may only use the template's names, each value must be a valid `default` for its Field, and the list must pass the Repeater's Rules. A key a row leaves out takes its Field's own `default`. Inside a row, a nested Repeater may hold an empty list, `inner: []`, for a row with no inner rows; its Rules, such as `min_items`, still apply.
 
-It always keeps its key, as at least `[]`. Errors carry the row index: `['contacts', 1, 'name']`. Row errors are reported before `max_items`, which only shows once every row is valid. The default Widget is a `fieldset` with a group per row (Move up, Move down, Remove) and an Add button, disabled at `max_items`.
+It always keeps its key, as at least `[]`. Errors carry the row index: `['contacts', 1, 'name']`. Row errors are reported before `max_items`, which only shows once every row is valid. The default Widget is a `fieldset` with a group per row (Move up, Move down, Remove) and an Add button, disabled at `max_items`. After a move, focus stays on the moved row's button, or on its other move button when the pressed one turns disabled at the first or last place.
 
 ### Custom Field Types
 

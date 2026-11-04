@@ -31,3 +31,4 @@
 - A keystroke in a form with Conditions re-renders only the Field typed into and the Components whose Condition result changed, not every mounted Field: each Component subscribes to its own result.
 - `useFormValue` reads a whole `object` or Repeater without its Inactive Fields, and a Locked Field as its Locked value, as Conditions do.
 - A grid cell spans at most `--af-columns` columns, so an application that lowers the variable in a media query no longer gets implicit columns from a wider `colSpan`.
+- The default Repeater keeps keyboard focus on a row moved with Move up or Move down: on the same button, or on the row's other move button when the pressed one turns disabled at an edge.

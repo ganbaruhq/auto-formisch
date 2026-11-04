@@ -152,6 +152,34 @@ describe('AutoForm: repeater', () => {
     });
   });
 
+  it('keeps focus on the moved row, on its other move button at an edge', async () => {
+    const { user } = setup(contacts());
+    for (const name of ['Ada', 'Grace', 'Alan']) {
+      await user.click(button('Add', group('Contacts')));
+      await user.type(input('Name', row(rows().length - 1)), name);
+    }
+    const nameOf = (element: Element | null) =>
+      input('Name', element!.closest<HTMLElement>('[role="group"]')!).value;
+    const press = async (name: string, at: number) => {
+      button(name, row(at)).focus();
+      await user.keyboard('{Enter}');
+    };
+
+    // Grace moves to the top, where Move up turns disabled: focus on Move down.
+    await press('Move up', 1);
+    await waitFor(() => expect(document.activeElement).toBe(button('Move down', row(0))));
+    expect(nameOf(document.activeElement)).toBe('Grace');
+    // Down again: the same button keeps focus.
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(document.activeElement).toBe(button('Move down', row(1))));
+    expect(nameOf(document.activeElement)).toBe('Grace');
+    // To the bottom, where Move down turns disabled: focus on Move up.
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(document.activeElement).toBe(button('Move up', row(2))));
+    expect(nameOf(document.activeElement)).toBe('Grace');
+    expect(rows().map((element) => input('Name', element).value)).toEqual(['Ada', 'Alan', 'Grace']);
+  });
+
   it('keeps errors with their row after a reorder', async () => {
     const { user, submit, onSubmit } = setup(contacts());
     await user.click(button('Add', group('Contacts')));
