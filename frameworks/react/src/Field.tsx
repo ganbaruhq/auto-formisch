@@ -3,7 +3,7 @@ import { useField } from '@formisch/react';
 import type { PathKey, ValueField } from '@auto-formisch/core';
 import type { InputProps, WidgetProps } from './contracts';
 import { useRenderContext } from './context';
-import { keyOf } from './submission';
+import { isHiddenWidget, keyOf } from './submission';
 import { ShowErrorsContext } from './Wizard';
 
 interface FieldProps {
@@ -79,6 +79,9 @@ export function Field({ node: declared, scope }: FieldProps) {
     node,
   };
   const Widget = entry.component as ComponentType<WidgetProps>;
+  // The one Widget with no Field Wrapper: its errors show in the general
+  // error region instead.
+  if (isHiddenWidget(node)) return <Widget {...widgetProps} />;
 
   return (
     <Wrapper

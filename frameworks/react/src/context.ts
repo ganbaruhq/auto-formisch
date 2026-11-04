@@ -7,6 +7,7 @@ import type { FocusElements } from './submission';
 
 /** What every rendered Component of one form reads. */
 export interface RenderContext {
+  readonly form: CompiledForm;
   readonly store: FormStore<CompiledForm['schema']>;
   /** What the Conditions decide for the current input, from `prep`'s own evaluator. */
   readonly conditions: ConditionState;

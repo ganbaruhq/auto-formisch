@@ -6,11 +6,13 @@ import {
   type Component,
   type FieldNode,
   type FormDefinition,
+  type RepeaterField,
   type ValueField,
 } from './definition';
 import { toFormErrors } from './errors';
 import { builtinFieldTypes } from './field-types';
 import { fieldsIn } from './fields';
+import { defaultsOf, newRowOf, normalize, type NormalizedInput } from './initial';
 import { loadDefinition } from './load';
 import { getRequiredMessage, type RequiredMessage } from './messages';
 import { MISSING, prep } from './prep';
@@ -35,6 +37,19 @@ export interface CompiledForm<TOutput extends FormOutput = FormOutput> extends S
    * shown, disabled and required, so the form cannot drift from validation.
    */
   readonly conditions: FormConditions;
+  /**
+   * The input a new form starts with, from the Definition's `default`s: every
+   * `object` and Repeater in its full shape. A fresh copy on every read, so
+   * `{ ...compiled.defaults, ...prefill }` is safe to hand to a form.
+   */
+  readonly defaults: Record<string, unknown>;
+  /**
+   * For a Renderer: the store's starting input for a record passed as
+   * `initialInput`, which replaces every `default`. See `NormalizedInput`.
+   */
+  readonly normalize: (record: unknown) => NormalizedInput;
+  /** For a Renderer: a new row of a Repeater of this form, from its template's defaults. */
+  readonly newRow: (repeater: RepeaterField) => Record<string, unknown>;
   /**
    * The root pipe `skeleton -> prep -> typedObject` (ADR 0002), for Formisch
    * and for `v.safeParse` with a per-request config. Read errors from it only
@@ -65,11 +80,17 @@ export function compile<TOutput extends FormOutput>(
 export function compile(input: unknown): CompiledForm;
 export function compile(input: unknown): CompiledForm {
   const definition = loadDefinition(input);
-  const conditions = conditionsOf(rootComponents(definition));
+  const components = rootComponents(definition);
+  const conditions = conditionsOf(components);
   const schema = buildSchema(definition, conditions);
   return {
     definition,
     conditions,
+    get defaults() {
+      return defaultsOf(components);
+    },
+    normalize: (record) => normalize(components, record),
+    newRow: newRowOf,
     schema,
     '~standard': {
       version: 1,

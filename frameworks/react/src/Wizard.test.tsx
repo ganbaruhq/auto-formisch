@@ -445,6 +445,38 @@ describe('Wizard: Widgets and overrides', () => {
     ]);
   });
 
+  it('shows a hidden-Widget Field’s errors in the alert only once its Page is attempted', async () => {
+    const form = wizard(
+      page('One', [text('a')]),
+      page('Two', [text('id', { widget: 'hidden', required: true }), text('b')]),
+    );
+    const { user, next, click } = setup(form);
+    await user.type(input('a'), 'x');
+    expect(screen.getByRole('alert').textContent).toBe('');
+    await next();
+    await onPage('Two');
+    expect(screen.getByRole('alert').textContent).toBe('');
+    await click('Submit');
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Required'));
+  });
+
+  it('seeds every Page from defaults, and from initialInput', async () => {
+    const form = wizard(
+      page('One', [text('a', { default: 'first' })]),
+      page('Two', [text('b', { default: 'second' })]),
+    );
+    const { next } = setup(form);
+    expect(input('a').value).toBe('first');
+    await next();
+    await onPage('Two');
+    expect(input('b').value).toBe('second');
+    cleanup();
+    const edited = setup(form, { initialInput: { b: 'kept' } });
+    await edited.next();
+    await onPage('Two');
+    expect(input('b').value).toBe('kept');
+  });
+
   it('applies overrides to a Field on a later Page', async () => {
     const { user, next } = setup(twoPages, { overrides: { city: { label: 'Town' } } });
     await user.type(input('name'), 'Ada');

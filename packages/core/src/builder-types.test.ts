@@ -204,8 +204,22 @@ describe('pipe items are typed by the Field they sit on', () => {
       multiChoice('tags', ['a', 'b'], [defaultValue(['c'])]),
       // @ts-expect-error a boolean default is a boolean
       boolean('flag', [defaultValue('yes')]),
+      // @ts-expect-error a Repeater default is a list of rows
+      repeater('rows', [text('x')], [defaultValue('x')]),
+      // @ts-expect-error an object has no default
+      object('group', [text('x')], [defaultValue({ x: 'a' })]),
     ];
-    expect(wrong).toHaveLength(4);
+    expect(wrong).toHaveLength(6);
+  });
+
+  it('takes a Repeater default as rows', () => {
+    const built = form([repeater('rows', [text('x')], [defaultValue([{}, { x: 'a' }])])]);
+    expect(built.components[0]).toEqual({
+      type: 'repeater',
+      name: 'rows',
+      default: [{}, { x: 'a' }],
+      components: [{ type: 'text', name: 'x' }],
+    });
   });
 
   it('rejects an empty Condition group or list', () => {

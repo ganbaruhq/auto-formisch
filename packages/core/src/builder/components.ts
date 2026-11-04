@@ -101,7 +101,7 @@ export function object<
 export function repeater<
   const N extends string,
   const C extends readonly Component[],
-  const P extends Pipe<'repeater'> = [],
+  const P extends Pipe<'repeater', readonly Readonly<Record<string, unknown>>[]> = [],
 >(
   name: N,
   components: C,

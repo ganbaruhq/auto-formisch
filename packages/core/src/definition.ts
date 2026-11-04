@@ -174,6 +174,12 @@ export interface ObjectField extends FieldBase {
 export interface RepeaterField extends FieldBase {
   readonly type: 'repeater';
   readonly rules?: readonly RuleNode[];
+  /**
+   * The rows a new form starts with: non-empty, each with keys of the
+   * template's Fields only, and through the Repeater's Rules. A key a row
+   * leaves out takes its Field's `default`. It stays out of the schema.
+   */
+  readonly default?: readonly Readonly<Record<string, unknown>>[];
   /** The template of one row. */
   readonly components: readonly Component[];
 }

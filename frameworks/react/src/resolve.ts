@@ -8,6 +8,7 @@ import type {
 } from '@auto-formisch/core';
 import { AutoFormError } from './AutoFormError';
 import type { FieldOverride, Overrides, WidgetEntry } from './contracts';
+import { HIDDEN_WIDGET } from './submission';
 
 /** A Field or Content node, after `overrides`, and the Widget map entry that presents it. */
 export interface ResolvedWidget<N extends FieldNode | ContentNode = FieldNode | ContentNode> {
@@ -82,7 +83,11 @@ export function resolveWidgets(
     if (entry === undefined) {
       const of = path === undefined ? 'a Content Component' : `the Field at "${path}"`;
       errors.push({ message: `No Widget "${name}" for ${of}`, path: at });
-    } else if (entry.appliesTo !== undefined && !entry.appliesTo.includes(node.type)) {
+    } else if (
+      (entry.appliesTo !== undefined && !entry.appliesTo.includes(node.type)) ||
+      // Its errors go to the general region, which only a value Field's do.
+      (name === HIDDEN_WIDGET && !isValueField(node))
+    ) {
       const to =
         path === undefined ? 'a Content Component' : `the "${node.type}" Field at "${path}"`;
       errors.push({ message: `Widget "${name}" does not apply to ${to}`, path: at });
@@ -99,6 +104,9 @@ export function resolveWidgets(
     return widget as ResolvedWidget<N>;
   };
 }
+
+const isValueField = (node: FieldNode | ContentNode): boolean =>
+  node.type !== 'object' && node.type !== 'repeater' && node.type !== 'content';
 
 /** Every Field and Content in Definition order, including Repeater templates. */
 function locate(

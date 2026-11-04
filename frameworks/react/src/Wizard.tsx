@@ -17,6 +17,7 @@ import {
   type ConditionState,
   type FormOutput,
   type PageLayout,
+  type PathKey,
 } from '@auto-formisch/core';
 import { Components } from './Components';
 import { useRenderContext } from './context';
@@ -231,6 +232,21 @@ export function useWizardController({
 }
 
 export const WizardProvider = WizardContext;
+
+/**
+ * Whether the errors of the Field at a data path show: always outside a
+ * Wizard; in one, once the Page holding the Field was attempted. For errors
+ * shown away from their Field, such as the `hidden` Widget's.
+ */
+export function useShowsErrorsAt(): (path: readonly PathKey[]) => boolean {
+  const controller = useContext(WizardContext);
+  if (controller === null) return () => true;
+  const { compiled, attempted } = controller;
+  return (path) => {
+    const page = pageOf(compiled, path);
+    return page === undefined || attempted.has(page);
+  };
+}
 
 /**
  * The `wizard` object of the `actions` slot and the `page` Layout, or `null`

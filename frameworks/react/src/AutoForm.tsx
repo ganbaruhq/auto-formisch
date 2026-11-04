@@ -8,8 +8,8 @@ import {
   type ComponentType,
   type ReactNode,
 } from 'react';
-import { Form, submit, useField } from '@formisch/react';
-import type { CompiledForm, ConditionState, FormOutput } from '@auto-formisch/core';
+import { Form, getErrors, submit, useField } from '@formisch/react';
+import type { CompiledForm, Component, ConditionState, FormOutput } from '@auto-formisch/core';
 import { Components } from './Components';
 import { RenderContext, useRenderContext } from './context';
 import { FieldWrapper } from './FieldWrapper';
@@ -24,23 +24,36 @@ import type {
   WidgetEntry,
   WidgetMap,
 } from './contracts';
-import { resolveWidgets } from './resolve';
+import { resolveWidgets, type WidgetResolver } from './resolve';
 import {
   firstErrorTarget,
   FocusTargetContext,
+  isHiddenWidget,
   keyOf,
   placeErrors,
+  presentedHidden,
+  shownFields,
   type FocusElements,
   type FocusTarget,
   type SubmitResult,
 } from './submission';
-import { useAutoForm, type AutoFormStore } from './useAutoForm';
+import { AutoFormError } from './AutoFormError';
+import { useAutoForm, useSameForm, type AutoFormStore } from './useAutoForm';
 import { DataScopeContext } from './useFormValue';
-import { CurrentPage, useWizard, useWizardController, WizardProvider } from './Wizard';
+import {
+  CurrentPage,
+  useShowsErrorsAt,
+  useWizard,
+  useWizardController,
+  WizardProvider,
+} from './Wizard';
 import { defaultWidgets } from './widgets';
 
 export interface AutoFormProps<TOutput extends FormOutput = FormOutput> {
-  /** The result of `compile`. Change the form by changing the React `key`. */
+  /**
+   * The result of `compile` or `lock`. Change the form by changing the React
+   * `key`; a new `form` without a remount throws, so memoize one you derive.
+   */
   readonly form: CompiledForm<TOutput>;
   /**
    * Called with the validated output, the full state of active Fields. It may
@@ -54,6 +67,14 @@ export interface AutoFormProps<TOutput extends FormOutput = FormOutput> {
    * Formisch itself. Without it, `<AutoForm>` creates its own.
    */
   readonly store?: AutoFormStore<TOutput>;
+  /**
+   * An existing record to edit, read only at mount: change the React `key` to
+   * switch record. It replaces every `default`; for a partial prefill pass
+   * `{ ...form.defaults, ...prefill }`. Keys without a Field are dropped, and
+   * a value of the wrong type for its Field starts empty, with a
+   * `console.warn`. With `store`, pass it to `useAutoForm` instead.
+   */
+  readonly initialInput?: object;
   /** Set on the `form` element, so buttons outside it can use `form="id"`. */
   readonly id?: string;
   /** Widgets by name, merged over the defaults. Looked up by `widget ?? type`. */
@@ -90,12 +111,21 @@ const defaultLabels: Labels = {
  * Pages already attempted.
  */
 export function AutoForm<TOutput extends FormOutput = FormOutput>(props: AutoFormProps<TOutput>) {
-  const { store, ...rest } = props as AutoFormProps;
-  return store === undefined ? <WithOwnStore {...rest} /> : <Rendered {...rest} store={store} />;
+  const { store, initialInput, ...rest } = props as AutoFormProps;
+  if (store === undefined) return <WithOwnStore {...rest} initialInput={initialInput} />;
+  if (initialInput !== undefined) {
+    throw new AutoFormError([
+      {
+        message: 'Pass "initialInput" to useAutoForm, not with "store"',
+        path: ['initialInput'],
+      },
+    ]);
+  }
+  return <Rendered {...rest} store={store} />;
 }
 
-function WithOwnStore(props: Omit<AutoFormProps, 'store'>) {
-  return <Rendered {...props} store={useAutoForm(props.form)} />;
+function WithOwnStore({ initialInput, ...props }: Omit<AutoFormProps, 'store'>) {
+  return <Rendered {...props} store={useAutoForm(props.form, { initialInput })} />;
 }
 
 function Rendered({
@@ -109,7 +139,8 @@ function Rendered({
   overrides,
   labels,
   actions = DefaultActions,
-}: AutoFormProps & { readonly store: AutoFormStore }) {
+}: Omit<AutoFormProps, 'initialInput'> & { readonly store: AutoFormStore }) {
+  useSameForm(compiled);
   const idPrefix = useId();
   const focusElements = useRef<FocusElements>(new Map()).current;
   const rootScope = useMemo(
@@ -122,6 +153,7 @@ function Rendered({
   );
   const base = useMemo(
     () => ({
+      form: compiled,
       store,
       widgetOf: resolveWidgets(compiled.definition, widgetMap(widgets), overrides),
       layouts: { ...defaultLayouts, ...definedOnly(layouts) },
@@ -132,6 +164,7 @@ function Rendered({
     }),
     [compiled, store, idPrefix, focusElements, widgets, layouts, fieldWrapper, overrides, labels],
   );
+  const hasHidden = useMemo(() => hasHiddenWidget(compiled, base.widgetOf), [compiled, base]);
   const conditions = useConditions(compiled, store);
   const context = useMemo(() => ({ ...base, conditions }), [base, conditions]);
   // A Wizard opens the Page of the first error before focusing it.
@@ -139,6 +172,7 @@ function Rendered({
   const { attempt, handle, focusTarget, focusFirstError } = useSubmission(
     compiled,
     store,
+    base.widgetOf,
     onSubmit,
     focusElements,
     openFirstError,
@@ -152,7 +186,6 @@ function Rendered({
     focusFirstError,
   });
   openFirstError.current = wizard?.openFirstError ?? null;
-  const generalErrors = [...(store.errors ?? []), ...(wizard?.generalErrors ?? [])];
 
   return (
     <RenderContext value={context}>
@@ -172,9 +205,13 @@ function Rendered({
               )}
             </DataScopeContext>
             <div role="alert">
-              {generalErrors.map((error, index) => (
+              {store.errors?.map((error, index) => (
                 <div key={index}>{error}</div>
               ))}
+              {wizard?.generalErrors.map((error, index) => (
+                <div key={`wizard#${index}`}>{error}</div>
+              ))}
+              {hasHidden && <HiddenWidgetErrors />}
             </div>
             <Actions
               render={actions}
@@ -208,6 +245,7 @@ interface Attempt {
 function useSubmission(
   compiled: CompiledForm,
   store: AutoFormStore,
+  widgetOf: WidgetResolver,
   onSubmit: AutoFormProps['onSubmit'],
   focusElements: FocusElements,
   /** Replaces focusing the first error, such as a Wizard's opening its Page first. */
@@ -223,7 +261,7 @@ function useSubmission(
     pending.current = null;
     if (attempt.reached && !attempt.rejected) return;
     if (onFailed.current !== null) onFailed.current();
-    else setFocusTarget(firstErrorTarget(compiled, store, focusElements));
+    else setFocusTarget(firstErrorTarget(compiled, store, widgetOf, focusElements));
   });
 
   useEffect(() => {
@@ -231,8 +269,8 @@ function useSubmission(
   }, [focusTarget, focusElements]);
 
   const focusFirstError = useCallback(
-    () => setFocusTarget(firstErrorTarget(compiled, store, focusElements)),
-    [compiled, store, focusElements],
+    () => setFocusTarget(firstErrorTarget(compiled, store, widgetOf, focusElements)),
+    [compiled, store, widgetOf, focusElements],
   );
 
   return {
@@ -247,7 +285,7 @@ function useSubmission(
       const result = await onSubmit(output);
       const errors = typeof result === 'object' && result !== null ? result.errors : undefined;
       if (errors !== undefined && errors.length > 0) {
-        placeErrors(compiled, store, errors);
+        placeErrors(compiled, store, widgetOf, errors);
         if (attempt !== null) attempt.rejected = true;
       }
     },
@@ -268,6 +306,44 @@ function useConditions(compiled: CompiledForm, store: AutoFormStore): ConditionS
   const { conditions } = compiled;
   const input = conditions.readsValues ? root.input : undefined;
   return useMemo(() => conditions.evaluate(input), [conditions, input]);
+}
+
+/** Whether any value Field of the form, in any row template, uses the `hidden` Widget. */
+function hasHiddenWidget(compiled: CompiledForm, widgetOf: WidgetResolver): boolean {
+  const any = (components: readonly Component[]): boolean =>
+    components.some((node) => {
+      if (node.type === 'content') return false;
+      if (node.type === 'object' || node.type === 'repeater') return any(node.components);
+      if ('components' in node) return any(node.components);
+      return isHiddenWidget(widgetOf(node).node);
+    });
+  return any(compiled.definition.pages ?? compiled.definition.components);
+}
+
+/**
+ * The errors of the shown Fields that the `hidden` Widget presents, which
+ * have no Field Wrapper to show them, in Definition order.
+ */
+function HiddenWidgetErrors() {
+  const { form, store, widgetOf, conditions } = useRenderContext();
+  // A Formisch hook makes this component re-render when what it reads below
+  // changes: the rows of the form, and the errors of those Fields.
+  const root = useField(store, { path: [] as never });
+  // On a Wizard, only the errors of attempted Pages show.
+  const showsErrorsAt = useShowsErrorsAt();
+  const fields = shownFields(
+    form.definition.pages ?? form.definition.components,
+    conditions,
+    root.input,
+    presentedHidden(widgetOf),
+  );
+  return fields.flatMap(({ path, hidden }) =>
+    hidden && showsErrorsAt(path)
+      ? (getErrors(store, { path } as never) ?? []).map((error, index) => (
+          <div key={`${keyOf(path)}#${index}`}>{error}</div>
+        ))
+      : [],
+  );
 }
 
 /**
