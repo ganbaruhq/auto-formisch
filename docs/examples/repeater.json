@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "components": [
+    { "type": "choice", "name": "country", "label": "Country", "choices": ["VN", "US"] },
+    {
+      "type": "repeater",
+      "name": "addresses",
+      "label": "Addresses",
+      "default": [{}],
+      "rules": [
+        { "type": "min_items", "requirement": 1, "message": "Add at least one address" },
+        { "type": "max_items", "requirement": 3 }
+      ],
+      "components": [
+        { "type": "text", "name": "street", "label": "Street", "required": true },
+        {
+          "type": "text",
+          "name": "ward",
+          "label": "Ward",
+          "visible": { "field": "../country", "operator": "eq", "value": "VN" }
+        },
+        { "type": "boolean", "name": "billing", "label": "Use for invoices" },
+        {
+          "type": "text",
+          "name": "vatNumber",
+          "label": "VAT number",
+          "required": true,
+          "visible": { "field": "billing", "operator": "eq", "value": true }
+        }
+      ]
+    }
+  ]
+}

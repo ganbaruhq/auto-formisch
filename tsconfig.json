@@ -11,5 +11,5 @@
     "noEmit": true,
     "esModuleInterop": true
   },
-  "include": ["packages", "frameworks", "apps", "vite.config.ts"]
+  "include": ["packages", "frameworks", "apps", "docs", "vite.config.ts"]
 }

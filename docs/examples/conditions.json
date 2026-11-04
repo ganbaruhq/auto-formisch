@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "components": [
+    {
+      "type": "choice",
+      "name": "kind",
+      "label": "I am",
+      "choices": ["person", "company"],
+      "required": true
+    },
+    { "type": "choice", "name": "country", "label": "Country", "choices": ["VN", "US"] },
+    {
+      "type": "text",
+      "name": "taxId",
+      "label": "Tax ID",
+      "required": true,
+      "visible": {
+        "all": [
+          { "field": "kind", "operator": "eq", "value": "company" },
+          { "field": "country", "operator": "eq", "value": "VN" }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "name": "email",
+      "label": "Email",
+      "required": { "field": "phone", "operator": "empty" }
+    },
+    {
+      "type": "text",
+      "name": "phone",
+      "label": "Phone",
+      "required": { "field": "email", "operator": "empty" }
+    }
+  ]
+}
