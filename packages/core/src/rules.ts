@@ -105,6 +105,9 @@ export const builtinRules: ReadonlyMap<string, RuleSpec> = new Map(
   ),
 );
 
-/** The actions of loaded `rules`, in order. */
-export const ruleActions = (rules: readonly RuleNode[] = []): RuleAction[] =>
-  rules.map((rule) => builtinRules.get(rule.type)!.action(rule.requirement, rule.message));
+/** The actions of loaded `rules`, in order, from the Rules the load knew. */
+export const ruleActions = (
+  rules: readonly RuleNode[] = [],
+  specs: ReadonlyMap<string, RuleSpec> = builtinRules,
+): RuleAction[] =>
+  rules.map((rule) => specs.get(rule.type)!.action(rule.requirement, rule.message));

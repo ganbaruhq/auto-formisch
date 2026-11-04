@@ -4,6 +4,7 @@ import type {
   ChoiceField,
   ChoiceValue,
   ContentNode,
+  CustomField,
   DateField,
   MultiChoiceField,
   NumberField,
@@ -19,9 +20,10 @@ import type {
  * Props the Renderer gives a value Field's Widget. A Widget draws only the
  * control; the Field Wrapper draws label, description and errors. A Widget
  * calls `onChange` with `undefined` when its value is empty, and converts
- * values itself.
+ * values itself. A custom Field Type's Widget takes
+ * `WidgetProps<InferFieldValue<typeof type>, InferFieldNode<typeof type>>`.
  */
-export interface WidgetProps<V = unknown, N extends ValueField = ValueField> {
+export interface WidgetProps<V = unknown, N extends ValueField | CustomField = ValueField> {
   readonly value: V | undefined;
   readonly onChange: (value: V | undefined) => void;
   /** Spread onto the focusable control. Formisch's `autoFocus` is never passed. */
@@ -46,7 +48,7 @@ export interface InputProps {
 }
 
 /** Props of the frame around every value Field's Widget. */
-export interface FieldWrapperProps<N extends ValueField = ValueField> {
+export interface FieldWrapperProps<N extends ValueField | CustomField = ValueField> {
   readonly node: N;
   readonly label: string;
   readonly description: string | undefined;

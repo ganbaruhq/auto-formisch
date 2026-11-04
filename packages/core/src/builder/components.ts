@@ -4,6 +4,7 @@ import type {
   ChoiceField,
   Component,
   ContentNode,
+  CustomField,
   DateField,
   MultiChoiceField,
   NumberField,
@@ -16,8 +17,12 @@ import type {
 } from '../definition';
 import { DEFINITION_VERSION } from '../definition';
 import { loadDefinition } from '../load';
+import { registryOf, type LoadOptions } from '../registry';
 import type { GroupInfo, LayoutInfo, ShapeOf, Typed, TypedDefinition, ValueInfo } from './infer';
 import { apply, type AnyPipe, type HasEffect, type Pipe } from './pipe';
+
+/** A Component a Builder function takes as a child, including a custom Field Type's Field. */
+type Child = Component | CustomField;
 
 /*
  * Component functions. Each returns the Component's JSON: a Field takes its
@@ -84,7 +89,7 @@ export function multiChoice<
 /** Nested data: the values of `components` under `name`, always present, as `{}` at least. */
 export function object<
   const N extends string,
-  const C extends readonly Component[],
+  const C extends readonly Child[],
   const P extends Pipe<'object'> = [],
 >(
   name: N,
@@ -97,7 +102,7 @@ export function object<
 /** A list of rows, each built from the template `components`; always present, as `[]` at least. */
 export function repeater<
   const N extends string,
-  const C extends readonly Component[],
+  const C extends readonly Child[],
   const P extends Pipe<'repeater'> = [],
 >(
   name: N,
@@ -107,32 +112,32 @@ export function repeater<
   return apply({ type: 'repeater', name }, pipe, { components });
 }
 
-type Layout<TNode, C extends readonly Component[], P extends AnyPipe> = TNode &
+type Layout<TNode, C extends readonly Child[], P extends AnyPipe> = TNode &
   Typed<LayoutInfo<C, HasEffect<P, 'inactive'>>>;
 
 /** A group of Components, optionally labelled. Adds no data path. */
-export function section<const C extends readonly Component[], const P extends Pipe<'section'> = []>(
+export function section<const C extends readonly Child[], const P extends Pipe<'section'> = []>(
   components: C,
   pipe?: P,
 ): Layout<SectionLayout, C, P>;
-export function section<const C extends readonly Component[], const P extends Pipe<'section'> = []>(
+export function section<const C extends readonly Child[], const P extends Pipe<'section'> = []>(
   label: string,
   components: C,
   pipe?: P,
 ): Layout<SectionLayout, C, P>;
 export function section(
-  ...args: [Component[], Pipe<'section'>?] | [string, Component[], Pipe<'section'>?]
+  ...args: [Child[], Pipe<'section'>?] | [string, Child[], Pipe<'section'>?]
 ): SectionLayout {
   if (typeof args[0] === 'string') {
-    const [label, components, pipe] = args as [string, Component[], Pipe<'section'>?];
+    const [label, components, pipe] = args as [string, Child[], Pipe<'section'>?];
     return apply({ type: 'section', label }, pipe, { components });
   }
-  const [components, pipe] = args as [Component[], Pipe<'section'>?];
+  const [components, pipe] = args as [Child[], Pipe<'section'>?];
   return apply({ type: 'section' }, pipe, { components });
 }
 
 /** A `section` with no label that lays out `components` in `count` grid columns. */
-export function grid<const C extends readonly Component[], const P extends Pipe<'section'> = []>(
+export function grid<const C extends readonly Child[], const P extends Pipe<'section'> = []>(
   count: number,
   components: C,
   pipe?: P,
@@ -149,7 +154,7 @@ export function tabs<const C extends readonly TabLayout[], const P extends Pipe<
 }
 
 /** One Tab, directly inside `tabs`. Adds no data path. */
-export function tab<const C extends readonly Component[], const P extends Pipe<'tab'> = []>(
+export function tab<const C extends readonly Child[], const P extends Pipe<'tab'> = []>(
   label: string,
   components: C,
   pipe?: P,
@@ -167,11 +172,16 @@ export function content(text: string, pipe?: Pipe<'content'>): ContentNode {
  * returns the Definition as plain, frozen data. `compile` infers its output
  * type from it.
  *
+ * `options` lists the custom Field Types and Rules the Components use; pass
+ * the same to `compile`.
+ *
  * @throws {DefinitionError} with every error as `{message, path}`, such as a
  * Condition that reads a Field that does not exist.
+ * @throws {TypeError} for invalid `options`, such as a name registered twice.
  */
-export function form<const C extends readonly Component[]>(
+export function form<const C extends readonly Child[]>(
   components: C,
+  options?: LoadOptions,
 ): TypedDefinition<ShapeOf<C>> {
-  return loadDefinition({ version: DEFINITION_VERSION, components });
+  return loadDefinition({ version: DEFINITION_VERSION, components }, registryOf(options));
 }

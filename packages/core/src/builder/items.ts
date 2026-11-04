@@ -1,5 +1,12 @@
 import type { Condition, RuleNode } from '../definition';
-import { set, type ComponentType, type FieldType, type PipeItem, type ValueType } from './pipe';
+import {
+  set,
+  type ComponentType,
+  type CustomType,
+  type FieldType,
+  type PipeItem,
+  type ValueType,
+} from './pipe';
 
 /*
  * Pipe items for metadata, settings and Conditions. Like Valibot's `title` and
@@ -11,7 +18,7 @@ export const label = (text: string): PipeItem<FieldType | 'section'> => set({ la
 export const description = (text: string): PipeItem<FieldType | 'section' | 'tab'> =>
   set({ description: text });
 
-export const placeholder = (text: string): PipeItem<'text' | 'number' | 'choice'> =>
+export const placeholder = (text: string): PipeItem<'text' | 'number' | 'choice' | CustomType> =>
   set({ placeholder: text });
 
 /** The Widget that presents this Field or Content, instead of the one named by its `type`. */

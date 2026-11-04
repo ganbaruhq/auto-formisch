@@ -1,20 +1,23 @@
 import * as v from 'valibot';
-import { checkConditions } from './condition-check';
+import { checkConditions, conditionTypes, type ConditionType } from './condition-check';
 import {
   DEFINITION_VERSION,
   MAX_CONDITION_DEPTH,
   type Component,
   type Condition,
   type ConditionOperator,
+  type FieldNode,
   type FormDefinition,
   type RuleNode,
   type ValueField,
 } from './definition';
 import { builtinComponents, gridSize, type ComponentSpec } from './components';
 import { DefinitionError, toFormErrors, type FormError, type PathKey } from './errors';
-import { builtinFieldTypes, fieldKeys, type FieldTypeSpec } from './field-types';
+import { checkSchema, collapsed, copyJson, type CustomFieldTypeSpec } from './extensions';
+import { fieldKeys, type FieldTypeSpec } from './field-types';
 import { isEmpty } from './empty';
-import { builtinRules, ruleActions } from './rules';
+import { builtins, isCustom, type Registry } from './registry';
+import { ruleActions } from './rules';
 import { REFERENCE, REFERENCE_SYNTAX } from './tree';
 
 type Path = readonly PathKey[];
@@ -65,17 +68,35 @@ const OPERATORS: ReadonlySet<string> = new Set<ConditionOperator>([
  * copy holds only keys the loader checked, in the author's order, so a round
  * trip through JSON is byte-identical and nothing unchecked reaches `compile`.
  */
-export function loadDefinition(input: unknown): FormDefinition {
-  const loader = new Loader();
+export function loadDefinition(input: unknown, registry: Registry = builtins): FormDefinition {
+  return load(input, registry).definition;
+}
+
+/** A loaded Definition, and the value schema of each of its value Fields. */
+export interface Loaded {
+  readonly definition: FormDefinition;
+  /** Built once per node on load; a custom Field Type's already collapsed. */
+  readonly valueSchemas: ReadonlyMap<Component, v.GenericSchema>;
+}
+
+/** `loadDefinition`, keeping the value schemas it built for `compile`. */
+export function load(input: unknown, registry: Registry): Loaded {
+  const loader = new Loader(registry);
   const definition = loader.root(input);
   if (loader.errors.length > 0) throw new DefinitionError(loader.errors);
-  return deepFreeze(definition as unknown as FormDefinition);
+  return {
+    definition: deepFreeze(definition as unknown as FormDefinition),
+    valueSchemas: loader.valueSchemas,
+  };
 }
 
 class Loader {
   readonly errors: FormError[] = [];
   /** The Definition path of every loaded Component, for errors found after reading. */
   private readonly paths = new Map<Component, Path>();
+  readonly valueSchemas = new Map<Component, v.GenericSchema>();
+
+  constructor(private readonly registry: Registry) {}
 
   root(input: unknown): Node | undefined {
     const node = this.object(input, []);
@@ -94,7 +115,13 @@ class Loader {
       if (key === '$schema') return this.value(v.string(), value, ['$schema']);
       if (key !== 'components') return value;
       const components = this.components(value, ['components'], new Set(), ROOT);
-      this.errors.push(...checkConditions(components, (component) => this.paths.get(component)!));
+      this.errors.push(
+        ...checkConditions(
+          components,
+          (component) => this.paths.get(component)!,
+          (field) => this.conditionTypeOf(field),
+        ),
+      );
       return components;
     });
   }
@@ -116,7 +143,7 @@ class Loader {
     if (node === undefined) return undefined;
     if (!has(node, 'type')) return this.fail([...path, 'type'], 'Missing key "type"');
     const type = typeof node.type === 'string' ? node.type : undefined;
-    const field = type === undefined ? undefined : builtinFieldTypes.get(type);
+    const field = type === undefined ? undefined : this.registry.fieldTypes.get(type);
     const other = type === undefined ? undefined : builtinComponents.get(type);
     if (field === undefined && other === undefined) {
       return this.fail([...path, 'type'], `Unknown type ${JSON.stringify(node.type)}`);
@@ -149,15 +176,19 @@ class Loader {
     const allowed = new Set([
       'type',
       'name',
-      'rules',
+      // A custom Field Type's constraints go in its schema and options.
+      ...(isCustom(spec) ? [] : ['rules']),
       'colSpan',
       'default',
       ...CONDITION_KEYS,
       ...Object.keys(schemas),
     ]);
     this.unknownKeys(node, allowed, path);
+    let keysLoaded = true;
     for (const key of ['name', ...(spec.requiredKeys ?? [])]) {
-      if (!has(node, key)) this.fail([...path, key], `Missing key "${key}"`);
+      if (has(node, key)) continue;
+      this.fail([...path, key], `Missing key "${key}"`);
+      if (key !== 'name') keysLoaded = false;
     }
     let rulesLoaded = true;
     const field = this.copy(node, allowed, (key, value) => {
@@ -172,27 +203,91 @@ class Loader {
       // Checked once the keys it depends on, `choices` and `rules`, are read.
       if (key === 'type' || key === 'default') return value;
       if (CONDITION_KEYS.includes(key)) return this.setting(key, value, [...path, key]);
-      return this.value(schemas[key], value, [...path, key]);
+      const errors = this.errors.length;
+      const loaded = this.value(schemas[key], value, [...path, key]);
+      if (this.errors.length > errors && isCustom(spec) && spec.custom.options.includes(key)) {
+        keysLoaded = false;
+      }
+      return loaded;
     });
+    // Built once, and only from keys that loaded: `choices`, or a custom type's options.
+    const schema = isCustom(spec)
+      ? keysLoaded
+        ? this.customSchema(field, spec, path)
+        : undefined
+      : (spec.requiredKeys ?? []).every((key) => field[key] !== undefined)
+        ? spec.value(field as unknown as FieldNode)
+        : undefined;
+    if (schema !== undefined) this.valueSchemas.set(field as unknown as Component, schema);
     if (has(field, 'default')) {
-      field.default = this.default(field, spec, rulesLoaded, [...path, 'default']);
+      field.default = this.default(field, schema, rulesLoaded, [...path, 'default']);
     }
     return field as unknown as Component;
   }
 
   /**
-   * A value Field's `default`: never empty, of the Field's type, and through
-   * its Rules. Each check runs only once the keys it depends on have loaded.
+   * Builds a custom Field Type's schema for one node. A schema that throws is
+   * an error at the node; one that isn't a sync Valibot schema is a bug in the
+   * registration, which throws at once.
    */
-  private default(field: Node, spec: FieldTypeSpec, rulesLoaded: boolean, path: Path): unknown {
+  private customSchema(
+    field: Node,
+    spec: CustomFieldTypeSpec,
+    path: Path,
+  ): v.GenericSchema | undefined {
+    let schema: unknown;
+    try {
+      schema = spec.custom.build(field as never);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      return this.fail(path, `Field Type "${spec.type}" could not build its schema: ${reason}`);
+    }
+    checkSchema(schema, `The schema of Field Type "${spec.type}"`);
+    return collapsed(schema as v.GenericSchema);
+  }
+
+  /**
+   * A value Field's `default`: never empty, of the Field's type, and through
+   * its Rules. Each check runs only once what it depends on has loaded.
+   */
+  private default(
+    field: Node,
+    schema: v.GenericSchema | undefined,
+    rulesLoaded: boolean,
+    path: Path,
+  ): unknown {
     const input = field.default;
     if (isEmpty(input)) return this.fail(path, 'A default cannot be empty');
-    if ((spec.requiredKeys ?? []).some((key) => field[key] === undefined)) return undefined;
+    if (schema === undefined) return undefined;
     const node = field as unknown as ValueField;
-    const rules = rulesLoaded ? ruleActions(node.rules) : [];
-    const value = this.value(v.pipe(v.unknown(), spec.value(node), ...rules), input, path);
+    const rules = rulesLoaded ? ruleActions(node.rules, this.registry.rules) : [];
+    const value = this.value(v.pipe(v.unknown(), schema, ...rules), input, path);
     // A copy, so that freezing the Definition never freezes the caller's input.
-    return Array.isArray(value) ? [...value] : value;
+    return copyJson(value);
+  }
+
+  /** The operators a Condition may use on `field`, and the schema of its `value`. */
+  private conditionTypeOf(field: FieldNode): ConditionType | undefined {
+    const spec = this.registry.fieldTypes.get(field.type);
+    if (spec === undefined || !isCustom(spec)) return conditionTypes.get(field.type);
+    const { conditionAs } = spec.custom;
+    const row = conditionAs === undefined ? undefined : conditionTypes.get(conditionAs);
+    const schema = this.valueSchemas.get(field);
+    return {
+      operators: row?.operators ?? PRESENCE,
+      // Unchecked when the schema could not be built: that is already an error.
+      value:
+        schema === undefined
+          ? undefined
+          : (_, operator) =>
+              operator === 'contains'
+                ? CONTAINED
+                : v.pipe(
+                    v.unknown(),
+                    v.check((value) => !isEmpty(value), 'Use "empty" to test for no value'),
+                    schema,
+                  ),
+    };
   }
 
   /**
@@ -341,7 +436,7 @@ class Loader {
     if (node === undefined) return undefined;
     this.unknownKeys(node, RULE_KEYS, path);
     if (!has(node, 'type')) return this.fail([...path, 'type'], 'Missing key "type"');
-    const spec = typeof node.type === 'string' ? builtinRules.get(node.type) : undefined;
+    const spec = typeof node.type === 'string' ? this.registry.rules.get(node.type) : undefined;
     if (spec === undefined) {
       return this.fail([...path, 'type'], `Unknown Rule ${JSON.stringify(node.type)}`);
     }
@@ -408,6 +503,14 @@ class Loader {
 }
 
 const has = (node: Node, key: string): boolean => Object.hasOwn(node, key);
+
+const PRESENCE: readonly ConditionOperator[] = ['empty', 'not_empty'];
+
+/** What `contains` compares with an item of a custom Field Type's list: only `===`. */
+const CONTAINED = v.union(
+  [v.string(), v.pipe(v.number(), v.finite()), v.boolean()],
+  'Expected a string, number or boolean',
+);
 
 function deepFreeze<T>(value: T): T {
   if (typeof value === 'object' && value !== null) {
