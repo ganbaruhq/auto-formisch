@@ -537,6 +537,31 @@ describe('Form Definition with every value Field Type: round trip', () => {
   });
 });
 
+describe('value Field Types inside Layouts', () => {
+  const laidOut = {
+    version: 1,
+    components: [
+      {
+        type: 'section',
+        columns: 2,
+        components: [
+          ...everyType.components.slice(0, 3).map((field) => ({ ...field, colSpan: 1 })),
+          {
+            type: 'tabs',
+            components: [{ type: 'tab', label: 'More', components: everyType.components.slice(3) }],
+          },
+        ],
+      },
+    ],
+  };
+
+  it('validate exactly as they do at the root', () => {
+    for (const input of inputs) {
+      expect(validate(laidOut, input)).toEqual(validate(everyType, input));
+    }
+  });
+});
+
 describe('Form Definition with value Field Types: rejected on load', () => {
   it('checks the name of every Field Type', () => {
     for (const component of everyType.components) {
