@@ -253,15 +253,16 @@ const VALUE_TYPES: readonly string[] = [
  * path, beside its `required` error. It takes no `rules`: constraints go in
  * the schema and options.
  *
- * Known limit: an async check is caught only where Valibot marks it async,
- * such as `v.pipe(v.string(), v.checkAsync(...))`, anywhere a schema nests
- * another. An async function given to a sync API such as `v.check` or
- * `v.custom`, or a schema inside `v.lazy`, can't be detected: its Promise
- * counts as valid.
+ * The schema must be checkable all the way down when it is registered (or
+ * built for a node, on load): an async schema or action, an `async`
+ * function given to a sync check such as `v.check` or `v.custom`, and
+ * `v.lazy` anywhere in it all throw. Known limit: a plain function that
+ * returns a Promise can't be told from a sync check until it runs, and
+ * Valibot then takes its Promise as a pass.
  *
  * @throws {TypeError} at once for an invalid or built-in name, an option key
- * that is invalid or a built-in key, an async schema, or an unknown
- * `conditionAs`.
+ * that is invalid or a built-in key, an async schema or check, `v.lazy`, or
+ * an unknown `conditionAs`.
  */
 export function defineFieldType<
   const TType extends string,
@@ -439,13 +440,27 @@ function checkName(name: unknown, what: string): void {
 const isBuiltinName = (name: string): boolean =>
   builtinFieldTypes.has(name) || builtinComponents.has(name) || builtinRules.has(name);
 
-/** Throws unless `schema` is a sync Valibot schema. */
+/**
+ * Throws unless `schema` is a sync Valibot schema that the loader can check
+ * all the way down: no `v.lazy`, whose schema is only known while
+ * validating, and no async function in a sync check, whose Promise Valibot
+ * would take as a pass.
+ */
 export function checkSchema(schema: unknown, what: string): void {
   if (!isValibot(schema) || (schema as { kind: string }).kind !== 'schema') {
     throw new TypeError(`${what} is not a Valibot schema`);
   }
-  if (isAsync(schema)) throw new TypeError(`${what} is async; only sync schemas are supported`);
+  const problem = unsupported(schema);
+  if (problem !== undefined) throw new TypeError(`${what} ${PROBLEMS[problem]}`);
 }
+
+type Problem = 'async' | 'lazy' | 'asyncCheck';
+
+const PROBLEMS: Readonly<Record<Problem, string>> = {
+  async: 'is async; only sync schemas are supported',
+  lazy: 'uses v.lazy, which is not supported',
+  asyncCheck: 'checks with an async function; only sync checks are supported',
+};
 
 /** The keys under which a Valibot schema or action holds other schemas or actions. */
 const NESTED = ['pipe', 'wrapped', 'item', 'items', 'options', 'entries', 'key', 'value', 'rest'];
@@ -457,22 +472,30 @@ const isValibot = (value: unknown): value is Record<string, unknown> =>
   typeof (value as { '~run'?: unknown })['~run'] === 'function';
 
 /**
- * Whether Valibot marks the schema, or anything nested in it, async. Valibot
- * does not mark a sync pipe that holds an async action, so the walk looks in.
+ * What the loader cannot support in the schema, or anything nested in it.
+ * Valibot does not mark a sync pipe that holds an async action, so the walk
+ * looks in; a check's own function counts too (`v.check`, `v.custom`,
+ * `v.checkItems` and the like keep it as `requirement` or `check`).
  */
-function isAsync(schema: unknown, seen = new Set<unknown>()): boolean {
-  if (!isValibot(schema) || seen.has(schema)) return false;
+function unsupported(schema: unknown, seen = new Set<unknown>()): Problem | undefined {
+  if (!isValibot(schema) || seen.has(schema)) return undefined;
   seen.add(schema);
-  if (schema.async === true) return true;
-  return NESTED.some((key) => {
+  if (schema.async === true) return 'async';
+  if (schema.type === 'lazy') return 'lazy';
+  if (isAsyncFunction(schema.requirement) || isAsyncFunction(schema.check)) return 'asyncCheck';
+  for (const key of NESTED) {
     const nested = schema[key];
     const children = Array.isArray(nested)
       ? nested
       : key === 'entries' && typeof nested === 'object' && nested !== null
         ? Object.values(nested)
         : [nested];
-    return children.some((child) => isAsync(child, seen));
-  });
+    for (const child of children) {
+      const problem = unsupported(child, seen);
+      if (problem !== undefined) return problem;
+    }
+  }
+  return undefined;
 }
 
 const isAsyncFunction = (fn: unknown): boolean =>

@@ -651,6 +651,49 @@ describe('registration', () => {
     ).toThrow(TypeError);
   });
 
+  it('rejects v.lazy anywhere in a schema, option or requirement, which it cannot check', () => {
+    const lazySchemas = [
+      v.lazy(() => v.string()),
+      v.object({ a: v.lazy(() => v.string()) }),
+      v.array(v.optional(v.lazy(() => v.number()))),
+    ] as never[];
+    for (const schema of lazySchemas) {
+      expect(() => defineFieldType({ type: 'lazy_one', schema })).toThrow(
+        new TypeError('The schema of Field Type "lazy_one" uses v.lazy, which is not supported'),
+      );
+      expect(() =>
+        defineFieldType({ type: 'lazy_one', options: { x: schema }, schema: v.string() }),
+      ).toThrow(/v\.lazy/);
+      expect(() =>
+        defineRule({
+          type: 'lazy_one',
+          appliesTo: ['text'],
+          requirement: schema,
+          check: () => true,
+        }),
+      ).toThrow(/v\.lazy/);
+    }
+    const built = defineFieldType({ type: 'lazy_one', schema: () => v.lazy(() => v.string()) });
+    expect(() => compile(root({ type: 'lazy_one', name: 'a' }), { fieldTypes: [built] })).toThrow(
+      /v\.lazy/,
+    );
+  });
+
+  it('rejects an async function in a sync check of a schema, whose Promise would pass', () => {
+    const asyncChecks = [
+      v.pipe(v.string(), v.check((async () => true) as never)),
+      v.object({ a: v.custom((async () => true) as never) }),
+      v.pipe(v.array(v.string()), v.checkItems((async () => true) as never)),
+    ] as never[];
+    for (const schema of asyncChecks) {
+      expect(() => defineFieldType({ type: 'slow', schema })).toThrow(
+        new TypeError(
+          'The schema of Field Type "slow" checks with an async function; only sync checks are supported',
+        ),
+      );
+    }
+  });
+
   it('rejects an async schema built from a node when the Definition loads', () => {
     const slow = defineFieldType({
       type: 'slow',

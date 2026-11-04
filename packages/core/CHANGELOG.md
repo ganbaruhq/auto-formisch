@@ -22,3 +22,4 @@
 - A Field's Rules run in Definition order and stop at the first that fails, so a custom Rule after a failed `max_length` never sees the overlong value.
 - A list submitted where an object belongs (an `object`, a Repeater row or the root input), even `[]`, is an error at that path instead of reading as `{}`.
 - A Repeater `default` row may give a nested Repeater an empty list (`inner: []`); the nested Repeater's Rules still check it.
+- Registering a custom Field Type or Rule also rejects `v.lazy` anywhere in a schema, option or requirement, and an `async` function in a sync check such as `v.check` or `v.custom`, with a `TypeError`.
