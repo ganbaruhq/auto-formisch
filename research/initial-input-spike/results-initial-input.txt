@@ -1,0 +1,281 @@
+
+ RUN  v3.2.4 /Users/quang/Library/Application Support/orca/chat-scratch/68557c45aa0d4bda6ecf274fda14971b/initial-input-spike/research/condition-compile-spike
+
+
+=== Q1
+store root children ["rows","name","meta"]
+store row children ["street"]
+store meta children ["note"]
+getInput {"rows":[{"street":"x"},{"street":"y"}],"name":"n","meta":{"note":"k"}}
+onSubmit output {"out":{"rows":[{"street":"x"},{"street":"y"}],"name":"n","meta":{"note":"k"}},"errors":[],"rootErrors":null}
+direct validate {"value":{"rows":[{"street":"x"},{"street":"y"}],"name":"n","meta":{"note":"k"}}}
+getInput at path rows.0.id "THROW No field store found at path [\"rows\",0,\"id\"]"
+after move getInput {"rows":[{"street":"y"},{"street":"x"}],"name":"n","meta":{"note":"k"}}
+after swap getInput {"rows":[{"street":"x"},{"street":"y"}],"name":"n","meta":{"note":"k"}}
+control getInput {"rows":[{"id":7,"street":"x"},{"id":8,"street":"y"},{"id":9,"street":"z"}]}
+control after move 0->2 {"rows":[{"id":8,"street":"y"},{"id":9,"street":"z"},{"id":7,"street":"x"}]}
+control dirty after move {"dirty":true,"dirtyInput":{"rows":[{"id":8,"street":"y"},{"id":9,"street":"z"},{"id":7,"street":"x"}]}}
+control submit after move {"out":{"rows":[{"id":8,"street":"y"},{"id":9,"street":"z"},{"id":7,"street":"x"}]},"errors":[],"rootErrors":null}
+control after swap 0,1 {"rows":[{"id":9,"street":"z"},{"id":8,"street":"y"},{"id":7,"street":"x"}]}
+control after move back 2->0 {"input":{"rows":[{"id":7,"street":"x"},{"id":9,"street":"z"},{"id":8,"street":"y"}]},"dirty":true}
+control submit {"out":{"rows":[{"id":7,"street":"x"},{"id":9,"street":"z"},{"id":8,"street":"y"}]},"errors":[],"rootErrors":null}
+loose store getInput {"a":1,"rows":[{"b":1}]}
+loose submit {"out":{"a":1,"rows":[{"b":1}]},"errors":[],"rootErrors":null}
+loose direct {"value":{"a":1,"rows":[{"b":1,"y":2}],"x":2}}
+
+=== Q2
+rows items count {"top":3,"n0":2,"n1":0,"n2":1}
+getInput {"name":"n","tags":[],"meta":{"note":"<undefined>"},"addresses":[{"street":"s0","phones":[{"num":"p00"},{"num":"p01"}]},{"street":"s1","phones":[]},{"street":"s2","phones":[{"num":"p20"}]}]}
+dirty false
+submit {"out":{"name":"n","meta":{},"addresses":[{"street":"s0","phones":[{"num":"p00"},{"num":"p01"}]},{"street":"s1","phones":[]},{"street":"s2","phones":[{"num":"p20"}]}]},"errors":[],"rootErrors":null}
+after reset to 1 row {"input":{"name":"<undefined>","tags":"<undefined>","meta":"<undefined>","addresses":[{"street":"a","phones":[{"num":"q"}]}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+after reset to 4 rows {"input":{"name":"<undefined>","tags":"<undefined>","meta":"<undefined>","addresses":[{"street":"g0","phones":[]},{"street":"g1","phones":[{"num":"g10"}]},{"street":"g2","phones":[{"num":"g20"},{"num":"g21"}]},{"street":"g3","phones":[{"num":"g30"},{"num":"g31"},{"num":"g32"}]}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+submit after grow {"out":{"meta":{},"addresses":[{"street":"g0","phones":[]},{"street":"g1","phones":[{"num":"g10"}]},{"street":"g2","phones":[{"num":"g20"},{"num":"g21"}]},{"street":"g3","phones":[{"num":"g30"},{"num":"g31"},{"num":"g32"}]}]},"errors":[],"rootErrors":null}
+plain reset after re-seed {"name":"<undefined>","tags":"<undefined>","meta":"<undefined>","addresses":[{"street":"g0","phones":[]},{"street":"g1","phones":[{"num":"g10"}]},{"street":"g2","phones":[{"num":"g20"},{"num":"g21"}]},{"street":"g3","phones":[{"num":"g30"},{"num":"g31"},{"num":"g32"}]}]}
+reset to 0 rows {"input":{"name":"<undefined>","tags":"<undefined>","meta":"<undefined>","addresses":[]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+insert into 0 rows (stale child reused) {"input":{"name":"<undefined>","tags":"<undefined>","meta":"<undefined>","addresses":[{"street":"<undefined>","phones":[]}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"addresses":[{"street":"<undefined>","phones":[]}]},"dirtyPaths":[],"touched":true,"edited":true,"submitted":false,"errors":[]}
+setInput grow over stale children {"input":{"name":"<undefined>","tags":"<undefined>","meta":"<undefined>","addresses":[{"street":"g0","phones":"<undefined>"},{"street":"new","phones":"<undefined>"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"addresses":[{"street":"g0","phones":"<undefined>"},{"street":"new","phones":"<undefined>"}]},"dirtyPaths":[],"touched":true,"edited":true,"submitted":false,"errors":[]}
+DOM mount {"s":["s0","s1","s2"],"n":["p00","p01","p20"]}
+DOM after reset to 1 {"s":["a"],"n":["q"]}
+DOM after reset to 2 {"s":["b","c"],"n":["r","t"]}
+
+=== Q3
+[leaf number for text] store getInput {"name":42,"tags":[],"meta":{"note":"<undefined>"},"addresses":[]}
+[leaf number for text] dirty false
+[leaf number for text] submit {"out":"<handler not called>","errors":[{"path":["name"],"errors":["Invalid type: Expected string but received 42"]}],"rootErrors":null}
+[leaf number for text] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected string but received 42","path":["name"]}]}
+[repeater number] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[]}
+[repeater number] dirty false
+[repeater number] submit {"out":{"meta":{},"addresses":[]},"errors":[],"rootErrors":null}
+[repeater number] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected Array but received 5","path":["addresses"]}]}
+[repeater object] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[]}
+[repeater object] dirty false
+[repeater object] submit {"out":{"meta":{},"addresses":[]},"errors":[],"rootErrors":null}
+[repeater object] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected Array but received Object","path":["addresses"]}]}
+[repeater object with length] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[{"street":"<undefined>","phones":[]},{"street":"<undefined>","phones":[]}]}
+[repeater object with length] dirty false
+[repeater object with length] submit {"out":{"meta":{},"addresses":[{"phones":[]},{"phones":[]}]},"errors":[],"rootErrors":null}
+[repeater object with length] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected Array but received Object","path":["addresses"]}]}
+[repeater string] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[{"street":"<undefined>","phones":[]},{"street":"<undefined>","phones":[]},{"street":"<undefined>","phones":[]}]}
+[repeater string] dirty false
+[repeater string] submit {"out":{"meta":{},"addresses":[{"phones":[]},{"phones":[]},{"phones":[]}]},"errors":[],"rootErrors":null}
+[repeater string] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected Array but received \"abc\"","path":["addresses"]}]}
+[repeater true] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[]}
+[repeater true] dirty false
+[repeater true] submit {"out":{"meta":{},"addresses":[]},"errors":[],"rootErrors":null}
+[repeater true] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected Array but received true","path":["addresses"]}]}
+[repeater null] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[]}
+[repeater null] dirty false
+[repeater null] submit {"out":{"meta":{},"addresses":[]},"errors":[],"rootErrors":null}
+[repeater null] direct validate of same raw value {"value":{"meta":{},"addresses":[]}}
+[repeater row is number] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[{"street":"<undefined>","phones":[]},{"street":"ok","phones":[]}]}
+[repeater row is number] dirty false
+[repeater row is number] submit {"out":{"meta":{},"addresses":[{"phones":[]},{"street":"ok","phones":[]}]},"errors":[],"rootErrors":null}
+[repeater row is number] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected Object but received 5","path":["addresses",0]}]}
+[repeater row is array] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[{"street":"<undefined>","phones":[]}]}
+[repeater row is array] dirty false
+[repeater row is array] submit {"out":{"meta":{},"addresses":[{"phones":[]}]},"errors":[],"rootErrors":null}
+[repeater row is array] direct validate of same raw value {"value":{"meta":{},"addresses":[{"phones":[]}]}}
+[multi number] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[]}
+[multi number] dirty false
+[multi number] submit {"out":{"meta":{},"addresses":[]},"errors":[],"rootErrors":null}
+[multi number] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected Array but received 5","path":["tags"]}]}
+[multi string] store getInput {"name":"<undefined>","tags":["a","b","c"],"meta":{"note":"<undefined>"},"addresses":[]}
+[multi string] dirty false
+[multi string] submit {"out":{"tags":["a","b","c"],"meta":{},"addresses":[]},"errors":[],"rootErrors":null}
+[multi string] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected Array but received \"abc\"","path":["tags"]}]}
+[multi object] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[]}
+[multi object] dirty false
+[multi object] submit {"out":{"meta":{},"addresses":[]},"errors":[],"rootErrors":null}
+[multi object] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected Array but received Object","path":["tags"]}]}
+[multi with number elements] store getInput {"name":"<undefined>","tags":[1,2],"meta":{"note":"<undefined>"},"addresses":[]}
+[multi with number elements] dirty false
+[multi with number elements] submit {"out":"<handler not called>","errors":[{"path":["tags",0],"errors":["Invalid type: Expected string but received 1"]},{"path":["tags",1],"errors":["Invalid type: Expected string but received 2"]}],"rootErrors":null}
+[multi with number elements] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected string but received 1","path":["tags",0]},{"message":"Invalid type: Expected string but received 2","path":["tags",1]}]}
+[object given number] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[]}
+[object given number] dirty false
+[object given number] submit {"out":{"meta":{},"addresses":[]},"errors":[],"rootErrors":null}
+[object given number] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected Object but received 5","path":["meta"]}]}
+[object given array] store getInput {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"addresses":[]}
+[object given array] dirty false
+[object given array] submit {"out":{"meta":{},"addresses":[]},"errors":[],"rootErrors":null}
+[object given array] direct validate of same raw value {"value":{"meta":{},"addresses":[]}}
+[leaf object for text] store getInput {"name":{"x":1},"tags":[],"meta":{"note":"<undefined>"},"addresses":[]}
+[leaf object for text] dirty false
+[leaf object for text] submit {"out":"<handler not called>","errors":[{"path":["name"],"errors":["Invalid type: Expected string but received Object"]}],"rootErrors":null}
+[leaf object for text] direct validate of same raw value {"issues":[{"message":"Invalid type: Expected string but received Object","path":["name"]}]}
+[reset repeater number] {"input":{"name":"<undefined>","tags":"<undefined>","meta":"<undefined>","addresses":[]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+[reset repeater string] {"input":{"name":"<undefined>","tags":"<undefined>","meta":"<undefined>","addresses":[{"street":"<undefined>","phones":"<undefined>"},{"street":"<undefined>","phones":"<undefined>"},{"street":"<undefined>","phones":"<undefined>"}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+[reset multi string] {"input":{"name":"<undefined>","tags":["a","b","c"],"meta":"<undefined>","addresses":"<undefined>"},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+[reset leaf number] {"input":{"name":42,"tags":"<undefined>","meta":"<undefined>","addresses":"<undefined>"},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+[setInput repeater number] {"input":{"name":"<undefined>","tags":["t"],"meta":{"note":"<undefined>"},"addresses":[{"street":"a","phones":[]},{"street":"b","phones":[]}]},"dirty":false}
+[setInput repeater string] {"input":{"name":"<undefined>","tags":["t"],"meta":{"note":"<undefined>"},"addresses":[{"street":"<undefined>","phones":"<undefined>"},{"street":"<undefined>","phones":"<undefined>"},{"street":"<undefined>","phones":"<undefined>"}]},"dirty":true}
+[setInput multi number] {"input":{"name":"<undefined>","tags":["t"],"meta":{"note":"<undefined>"},"addresses":[{"street":"a","phones":[]},{"street":"b","phones":[]}]},"dirty":false}
+[setInput multi string] {"input":{"name":"<undefined>","tags":["x","y"],"meta":{"note":"<undefined>"},"addresses":[{"street":"a","phones":[]},{"street":"b","phones":[]}]},"dirty":true}
+[setInput object number] {"input":{"name":"<undefined>","tags":["t"],"meta":{"note":"<undefined>"},"addresses":[{"street":"a","phones":[]},{"street":"b","phones":[]}]},"dirty":false}
+
+=== Q4 leaf (value kind)
+store kind "value"
+after init {"isDirtyForm":false,"formProp":false,"isDirtyField":false,"fieldProp":false,"edited":false,"dirtyInput":"<undefined>","dirtyPaths":[],"sameRefAsInit":true}
+setInput deep-equal new object {"isDirtyForm":true,"formProp":true,"isDirtyField":true,"fieldProp":true,"edited":true,"dirtyInput":{"geo":{"lat":1,"nested":{"a":[1]}}},"dirtyPaths":[],"sameRefAsInit":false}
+field.onChange same ref as initial {"isDirtyForm":false,"formProp":false,"isDirtyField":false,"fieldProp":false,"edited":true,"dirtyInput":"<undefined>","dirtyPaths":[],"sameRefAsInit":true}
+field.onChange deep-equal new object {"isDirtyForm":true,"formProp":true,"isDirtyField":true,"fieldProp":true,"edited":true,"dirtyInput":{"geo":{"lat":1,"nested":{"a":[1]}}},"dirtyPaths":[],"sameRefAsInit":false}
+real edit {"isDirtyForm":true,"formProp":true,"isDirtyField":true,"fieldProp":true,"edited":true,"dirtyInput":{"geo":{"lat":2}},"dirtyPaths":[],"sameRefAsInit":false}
+restore deep-equal {"isDirtyForm":true,"formProp":true,"isDirtyField":true,"fieldProp":true,"edited":true,"dirtyInput":{"geo":{"lat":1,"nested":{"a":[1]}}},"dirtyPaths":[],"sameRefAsInit":false}
+reset(form) {"isDirtyForm":false,"formProp":false,"isDirtyField":false,"fieldProp":false,"edited":false,"dirtyInput":"<undefined>","dirtyPaths":[],"sameRefAsInit":true}
+array value leaf, deep-equal new {"dirty":true,"kind":"value"}
+mutated the ref read from store {"caller":999,"dirty":false}
+reset after mutation {"lat":999,"nested":{"a":[1]}}
+no initial: dirty false
+baseline undefined, onChange("") dirty false
+baseline undefined, onChange(NaN) dirty false
+baseline undefined, onChange(null) dirty true
+baseline undefined, onChange([]) dirty true
+baseline undefined, onChange({}) dirty true
+baseline undefined, onChange(0) dirty true
+baseline undefined, onChange(undefined) dirty false
+baseline "x", onChange("") dirty true
+baseline "x", onChange(undefined) dirty true
+
+=== Q4 multi_choice (array kind)
+store kind "array"
+after init {"isDirtyForm":false,"formProp":false,"isDirtyField":false,"fieldProp":false,"input":["a","b"],"dirtyInput":"<undefined>","dirtyPaths":[]}
+getInput ref === init false
+setInput deep-equal new array {"isDirtyForm":false,"formProp":false,"isDirtyField":false,"fieldProp":false,"input":["a","b"],"dirtyInput":"<undefined>","dirtyPaths":[]}
+reorder via onChange {"isDirtyForm":true,"formProp":true,"isDirtyField":true,"fieldProp":true,"input":["b","a"],"dirtyInput":{"tags":["b","a"]},"dirtyPaths":[]}
+restore order {"isDirtyForm":false,"formProp":false,"isDirtyField":false,"fieldProp":false,"input":["a","b"],"dirtyInput":"<undefined>","dirtyPaths":[]}
+shrink {"isDirtyForm":true,"formProp":true,"isDirtyField":true,"fieldProp":true,"input":["a"],"dirtyInput":{"tags":["a"]},"dirtyPaths":[]}
+restore after shrink {"isDirtyForm":false,"formProp":false,"isDirtyField":false,"fieldProp":false,"input":["a","b"],"dirtyInput":"<undefined>","dirtyPaths":[]}
+grow {"isDirtyForm":true,"formProp":true,"isDirtyField":true,"fieldProp":true,"input":["a","b","c"],"dirtyInput":{"tags":["a","b","c"]},"dirtyPaths":[]}
+restore after grow {"isDirtyForm":false,"formProp":false,"isDirtyField":false,"fieldProp":false,"input":["a","b"],"dirtyInput":"<undefined>","dirtyPaths":[]}
+reset(form) {"isDirtyForm":false,"formProp":false,"isDirtyField":false,"fieldProp":false,"input":["a","b"],"dirtyInput":"<undefined>","dirtyPaths":[]}
+swap {"isDirtyForm":true,"formProp":true,"isDirtyField":true,"fieldProp":true,"input":["b","a"],"dirtyInput":{"tags":["b","a"]},"dirtyPaths":[]}
+swap back {"isDirtyForm":false,"formProp":false,"isDirtyField":false,"fieldProp":false,"input":["a","b"],"dirtyInput":"<undefined>","dirtyPaths":[]}
+after swaps then setInput reorder {"isDirtyForm":true,"formProp":true,"isDirtyField":true,"fieldProp":true,"input":["b","a"],"dirtyInput":{"tags":["b","a"]},"dirtyPaths":[]}
+remove then insert same value {"isDirtyForm":true,"formProp":true,"isDirtyField":true,"fieldProp":true,"input":["a","b"],"dirtyInput":{"tags":["a","b"]},"dirtyPaths":[]}
+object elements, deep-equal new {"dirty":true,"kind":"value"}
+no initial, store {"input":{"tags":[]},"dirty":false}
+no initial, set [a] true
+no initial, back to [] false
+no initial, onChange(undefined) {"input":{"tags":"<undefined>"},"dirty":true,"st":"<undefined>"}
+v.optional(array), no initial {"input":{"tags":"<undefined>"},"dirty":false}
+v.optional(array), set [] {"input":{"tags":[]},"dirty":true}
+v.optional(array), back to undefined {"input":{"tags":"<undefined>"},"dirty":false}
+
+=== Q5
+before reset {"input":{"name":"x","other":"o","rows":[{"street":"edit"},{"street":"s1"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"name":"x","rows":[{"street":"edit"},{"street":"s1"}]},"dirtyPaths":[],"touched":true,"edited":true,"submitted":true,"errors":[{"path":["name"],"errors":["min3"]},{"path":["other"],"errors":["manual"]}]}
+[no flags, no initialInput] {"input":{"name":"orig","other":"o","rows":[{"street":"s0"},{"street":"s1"}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+   rows counts {"items":2,"start":2,"initial":2}
+[initialInput] {"input":{"name":"seed","other":"p","rows":[{"street":"n0"},{"street":"n1"}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+   rows counts {"items":2,"start":2,"initial":2}
+[initialInput+keepInput] {"input":{"name":"x","other":"o","rows":[{"street":"edit"},{"street":"s1"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"name":"x","other":"o","rows":[{"street":"edit"},{"street":"s1"}]},"dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+   rows counts {"items":2,"start":2,"initial":2}
+[initialInput+keepTouched] {"input":{"name":"seed","other":"p","rows":[{"street":"n0"},{"street":"n1"}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":true,"edited":false,"submitted":false,"errors":[]}
+   rows counts {"items":2,"start":2,"initial":2}
+[initialInput+keepEdited] {"input":{"name":"seed","other":"p","rows":[{"street":"n0"},{"street":"n1"}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":true,"submitted":false,"errors":[]}
+   rows counts {"items":2,"start":2,"initial":2}
+[initialInput+keepErrors] {"input":{"name":"seed","other":"p","rows":[{"street":"n0"},{"street":"n1"}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[{"path":["name"],"errors":["min3"]},{"path":["other"],"errors":["manual"]}]}
+   rows counts {"items":2,"start":2,"initial":2}
+[initialInput+keepSubmitted] {"input":{"name":"seed","other":"p","rows":[{"street":"n0"},{"street":"n1"}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":true,"errors":[]}
+   rows counts {"items":2,"start":2,"initial":2}
+[all keep] {"input":{"name":"x","other":"o","rows":[{"street":"edit"},{"street":"s1"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"name":"x","other":"o","rows":[{"street":"edit"},{"street":"s1"}]},"dirtyPaths":[],"touched":true,"edited":true,"submitted":true,"errors":[{"path":["name"],"errors":["min3"]},{"path":["other"],"errors":["manual"]}]}
+   rows counts {"items":2,"start":2,"initial":2}
+[keepInput only (no initialInput)] {"input":{"name":"x","other":"o","rows":[{"street":"edit"},{"street":"s1"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"name":"x","rows":[{"street":"edit"},{"street":"s1"}]},"dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+   rows counts {"items":2,"start":2,"initial":2}
+[keepInput, longer rows] {"input":{"name":"x","other":"o","rows":[{"street":"edit"},{"street":"s1"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"name":"x","other":"o","rows":[{"street":"edit"},{"street":"s1"}]},"dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+   rows counts {"items":2,"start":3,"initial":3}
+[keepInput, shorter rows] {"input":{"name":"x","other":"o","rows":[{"street":"edit"},{"street":"s1"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"name":"x","other":"o","rows":[{"street":"edit"},{"street":"s1"}]},"dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+   rows counts {"items":2,"start":1,"initial":1}
+[initialInput partial] {"input":{"name":"seed","other":"<undefined>","rows":"<undefined>"},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+   rows counts {"items":0,"start":0,"initial":0}
+[initialInput: undefined] {"input":"<undefined>","isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+   rows counts {"items":0,"start":0,"initial":0}
+edit to OLD baseline {"dirty":true,"dirtyInput":{"name":"orig"}}
+edit to NEW baseline {"dirty":false,"dirtyInput":"<undefined>"}
+edit row 1 {"dirty":true,"dirtyInput":{"rows":[{"street":"n0"},{"street":"zz"}]},"paths":[]}
+restore row 1 {"dirty":false,"dirtyInput":"<undefined>"}
+move rows {"dirty":true,"dirtyInput":{"rows":[{"street":"n1"},{"street":"n0"}]}}
+move back {"dirty":false,"dirtyInput":"<undefined>"}
+insert after re-seed {"dirty":true,"dirtyInput":{"rows":[{"street":"n0"},{"street":"n1"},{"street":"added"}]}}
+remove inserted {"dirty":false,"dirtyInput":"<undefined>","input":{"name":"seed","other":"p","rows":[{"street":"n0"},{"street":"n1"}]}}
+moved, keepInput, no initialInput {"input":{"name":"orig","other":"o","rows":[{"street":"s1"},{"street":"s0"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"rows":[{"street":"s1"},{"street":"s0"}]},"dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+  then plain reset {"name":"orig","other":"o","rows":[{"street":"s0"},{"street":"s1"}]}
+unedited, re-seed, keepInput (same row count) {"input":{"name":"orig","other":"o","rows":[{"street":"s0"},{"street":"s1"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"name":"orig","other":"o","rows":[{"street":"s0"},{"street":"s1"}]},"dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+  then plain reset {"input":{"name":"seed","other":"p","rows":[{"street":"n0"},{"street":"n1"}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+re-seed longer keepInput {"input":{"name":"orig","other":"o","rows":[{"street":"s0"},{"street":"s1"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"name":"orig","other":"o","rows":[{"street":"s0"},{"street":"s1"}]},"dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+  then setInput to exactly new baseline {"input":{"name":"orig","other":"o","rows":[{"street":"n0"},{"street":"n1"},{"street":"n2"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"name":"orig","other":"o"},"dirtyPaths":[],"touched":true,"edited":true,"submitted":false,"errors":[]}
+  then plain reset {"input":{"name":"seed","other":"p","rows":[{"street":"n0"},{"street":"n1"},{"street":"n2"}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+re-seed shorter keepInput {"input":{"name":"orig","other":"o","rows":[{"street":"s0"},{"street":"s1"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"name":"orig","other":"o","rows":[{"street":"s0"},{"street":"s1"}]},"dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+  then plain reset {"input":{"name":"seed","other":"p","rows":[{"street":"n0"}]},"isDirty":false,"formIsDirty":false,"dirtyInput":"<undefined>","dirtyPaths":[],"touched":false,"edited":false,"submitted":false,"errors":[]}
+shrink reset, setInput regrow with value of the discarded row {"input":{"name":"seed","other":"p","rows":[{"street":"n0"},{"street":"s1"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"rows":[{"street":"n0"},{"street":"s1"}]},"dirtyPaths":[],"touched":true,"edited":true,"submitted":false,"errors":[],"leafDirty":false,"leafStart":"s1"}
+  then back to baseline {"dirty":false,"dirtyInput":"<undefined>"}
+field reset: name re-seeded, other untouched {"input":{"name":"fresh","other":"y","rows":[{"street":"s0"},{"street":"s1"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"other":"y"},"dirtyPaths":[],"touched":true,"edited":true,"submitted":false,"errors":[]}
+field reset rows {"input":{"name":"fresh","other":"y","rows":[{"street":"only"}]},"isDirty":true,"formIsDirty":true,"dirtyInput":{"other":"y"},"dirtyPaths":[],"touched":true,"edited":true,"submitted":false,"errors":[]}
+
+=== Q6
+[plain v.object, optional(string,VN)] {"initial":"VN","initialDirty":false,"direct_absent":{"value":{"c":"VN"}},"submitUntouched":{"c":"VN"},"afterClearStore":"<undefined>","afterClearDirty":true,"afterClearDirtyInput":{"c":"<undefined>"},"submitAfterClearUndefined":{"c":"VN"},"direct_undefined":{"value":{"c":"VN"}},"submitAfterEmptyString":{"c":""},"afterPlainReset":"VN","afterResetInitialEmpty":"<undefined>","afterResetInitialEmptyDirty":false,"submitAfterResetInitialEmpty":{"c":"VN"}}
+[pipe: default on skeleton+typed, identity prep] {"initial":"VN","initialDirty":false,"direct_absent":{"value":{"c":"VN"}},"submitUntouched":{"c":"VN"},"afterClearStore":"<undefined>","afterClearDirty":true,"afterClearDirtyInput":{"c":"<undefined>"},"submitAfterClearUndefined":{"c":"VN"},"direct_undefined":{"value":{"c":"VN"}},"submitAfterEmptyString":{"c":""},"afterPlainReset":"VN","afterResetInitialEmpty":"<undefined>","afterResetInitialEmptyDirty":false,"submitAfterResetInitialEmpty":{"c":"VN"}}
+[pipe: default on skeleton only, identity prep] {"initial":"VN","initialDirty":false,"direct_absent":{"value":{"c":"VN"}},"submitUntouched":{"c":"VN"},"afterClearStore":"<undefined>","afterClearDirty":true,"afterClearDirtyInput":{"c":"<undefined>"},"submitAfterClearUndefined":{"c":"VN"},"direct_undefined":{"value":{"c":"VN"}},"submitAfterEmptyString":{"c":""},"afterPlainReset":"VN","afterResetInitialEmpty":"<undefined>","afterResetInitialEmptyDirty":false,"submitAfterResetInitialEmpty":{"c":"VN"}}
+[pipe: default on typed only, identity prep] {"initial":"<undefined>","initialDirty":false,"direct_absent":{"value":{"c":"VN"}},"submitUntouched":{"c":"VN"},"afterClearStore":"<undefined>","afterClearDirty":false,"afterClearDirtyInput":"<undefined>","submitAfterClearUndefined":{"c":"VN"},"direct_undefined":{"value":{"c":"VN"}},"submitAfterEmptyString":{"c":""},"afterPlainReset":"<undefined>","afterResetInitialEmpty":"<undefined>","afterResetInitialEmptyDirty":false,"submitAfterResetInitialEmpty":{"c":"VN"}}
+[pipe: default on typed only, prep drops empty] {"initial":"<undefined>","initialDirty":false,"direct_absent":{"value":{"c":"VN"}},"submitUntouched":{"c":"VN"},"afterClearStore":"<undefined>","afterClearDirty":false,"afterClearDirtyInput":"<undefined>","submitAfterClearUndefined":{"c":"VN"},"direct_undefined":{"value":{"c":"VN"}},"submitAfterEmptyString":{"c":"VN"},"afterPlainReset":"<undefined>","afterResetInitialEmpty":"<undefined>","afterResetInitialEmptyDirty":false,"submitAfterResetInitialEmpty":{"c":"VN"}}
+[pipe: default on skeleton only, prep drops empty] {"initial":"VN","initialDirty":false,"direct_absent":{"value":{"c":"VN"}},"submitUntouched":{"c":"VN"},"afterClearStore":"<undefined>","afterClearDirty":true,"afterClearDirtyInput":{"c":"<undefined>"},"submitAfterClearUndefined":{"c":"VN"},"direct_undefined":{"value":{"c":"VN"}},"submitAfterEmptyString":{},"afterPlainReset":"VN","afterResetInitialEmpty":"<undefined>","afterResetInitialEmptyDirty":false,"submitAfterResetInitialEmpty":{"c":"VN"}}
+initialInput {c:undefined} {"c":"VN"}
+initialInput {c:"US"} {"c":"US"}
+initialInput {c:""}  {"c":""}
+first insert (new child store) {"rows":[{"c":"VN","n":"<undefined>"}]}
+insert after remove (reused child store) {"rows":[{"c":"<undefined>","n":"<undefined>"}]}
+  submit of that row {"out":{"rows":[{"c":"VN","n":"<undefined>"}]},"errors":[],"rootErrors":null}
+
+=== Q7
+stable: same form object across rerender true
+stable: submit {"out":{"name":"n","type":"company"},"errors":[],"rootErrors":null}
+per-render: same form object, input preserved {"same":true,"input":{"name":"edited","type":"<undefined>"}}
+per-render: rerendered with prepB, submit uses {"out":{"name":"edited","type":"company"},"errors":[],"rootErrors":null}
+rerender with new initialInput {"name":"one","type":"<undefined>"}
+new schema adds key, reading path {"thrown":"No field store found at path [\"extra\"]","keys":["name","type"]}
+useField for a key only in the later schema "No field store found at path [\"extra\"]"
+shared parts identity {"skeletonSame":true,"typedSame":true,"rootDiffer":true,"rootType":"object"}
+useForm submit, forged initialInput {"a":{"out":{"name":"n","type":"company"},"errors":[],"rootErrors":null},"b":{"out":{"name":"n","type":"person"},"errors":[],"rootErrors":null},"aJunk":{"out":{"name":"n","type":"company"},"errors":[],"rootErrors":null}}
+store still holds forged {"a":{"name":"n","type":"person"},"aJunk":{"name":"n","type":"hacker"}}
+direct validate {"a":{"value":{"name":"n","type":"company"}},"b":{"value":{"name":"n","type":"person"}},"aJunk":{"value":{"name":"n","type":"company"}},"aAbsent":{"value":{"name":"n","type":"company"}}}
+setInput forged then submit A {"out":{"name":"n","type":"company"},"errors":[],"rootErrors":null}
+interleaved [{"value":{"type":"company"}},{"value":{"type":"person"}},{"value":{"type":"company"}},{"name":"n","type":"person"},{"name":"n","type":"company"},{"value":{"type":"person"}}]
+type absent from skeleton, forged: store/submit/direct {"store":{"name":"n"},"submit":{"out":{"name":"n","type":"company"},"errors":[],"rootErrors":null},"direct":{"value":{"name":"n","type":"company"}}}
+two forms mounted together [{"name":"A","type":"company"},{"name":"B","type":"person"}]
+key a: submit {"name":"typed","type":"company"}
+key b: new form, DOM value, dirty {"newForm":true,"dom":"two","dirty":false}
+key b: submit {"name":"two","type":"person"}
+key c (different shape): DOM, input {"dom":"o","input":{"other":"o","rows":[{"s":"r"}]}}
+key c: submit {"other":"o","rows":[{"s":"r"}]}
+old form still readable, submit after unmount {"input":{"name":"typed","type":"<undefined>"},"sub":{"name":"typed","type":"company"}}
+console.error during remounts []
+
+=== Follow-ups
+strict schema, mount omitting keys: input {"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"rows":[{"s":"a","sub":[]}]}
+strict schema, mount omitting keys: submit {"out":{"name":"<undefined>","tags":[],"meta":{"note":"<undefined>"},"rows":[{"s":"a","sub":[]}]},"errors":[],"rootErrors":null}
+strict schema, reset with same value: input {"name":"<undefined>","tags":"<undefined>","meta":"<undefined>","rows":[{"s":"a","sub":"<undefined>"}]}
+strict schema, reset with same value: submit {"out":"<handler not called>","errors":[{"path":["tags"],"errors":["Invalid type: Expected Array but received undefined"]},{"path":["meta"],"errors":["Invalid type: Expected Object but received undefined"]},{"path":["rows",0,"sub"],"errors":["Invalid type: Expected Array but received undefined"]}],"rootErrors":null}
+compiled, reset omitting tags/meta {"name":"n","tags":"<undefined>","meta":"<undefined>","addresses":"<undefined>"}
+  edit meta.note {"input":{"name":"n","tags":"<undefined>","meta":{"note":"x"},"addresses":"<undefined>"},"dirty":true,"dirtyInput":{"meta":{"note":"x"}}}
+  restore meta.note to undefined {"input":{"name":"n","tags":"<undefined>","meta":{"note":"<undefined>"},"addresses":"<undefined>"},"dirty":true,"dirtyInput":{"meta":{}}}
+  set tags [] {"input":{"name":"n","tags":[],"meta":{"note":"<undefined>"},"addresses":"<undefined>"},"dirty":true,"dirtyInput":{"tags":[],"meta":{}}}
+control: full-shape reset, edit then restore meta.note {"input":{"name":"n","tags":[],"meta":{"note":"<undefined>"},"addresses":[]},"dirty":false}
+control: mount omitting meta, edit then restore meta.note {"input":{"name":"n","tags":[],"meta":{"note":"<undefined>"},"addresses":[]},"dirty":false}
+after initialInput undefined: getInput "<undefined>"
+  submit {"out":"<handler not called>","errors":[{"path":[],"errors":["Invalid type: Expected Object but received undefined"]}],"rootErrors":["Invalid type: Expected Object but received undefined"]}
+  direct validate of undefined {"issues":[{"message":"Invalid type: Expected Object but received undefined","path":"<undefined>"}]}
+  setInput leaf afterwards
+after initialInput {}: getInput {"name":"<undefined>","tags":"<undefined>","meta":"<undefined>","addresses":"<undefined>"}
+after {} config (no key): getInput {"name":"n","tags":[],"meta":{"note":"<undefined>"},"addresses":[]}
+DOM number leaf + string multi {"value":"42","tags":"[\"a\",\"b\",\"c\"]"}
+after typing {"store":{"name":"43","tags":["a","b","c"],"meta":{"note":"<undefined>"},"addresses":[]},"type":"string"}
+DOM object leaf "[object Object]"
+console.error []
+StrictMode submit {"s":{"out":{"a":"x"},"errors":[],"rootErrors":null},"prepRuns":1}
+ ✓ test/initial-input.test.tsx (24 tests) 71ms
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Start at  00:15:28
+   Duration  705ms (transform 50ms, setup 0ms, collect 108ms, tests 71ms, environment 274ms, prepare 68ms)
+
