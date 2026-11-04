@@ -13,9 +13,10 @@ import {
  * `description`, they sit in the pipe beside the Rules.
  */
 
-export const label = (text: string): PipeItem<FieldType | 'section'> => set({ label: text });
+export const label = (text: string): PipeItem<FieldType | 'section' | 'page'> =>
+  set({ label: text });
 
-export const description = (text: string): PipeItem<FieldType | 'section' | 'tab'> =>
+export const description = (text: string): PipeItem<FieldType | 'section' | 'tab' | 'page'> =>
   set({ description: text });
 
 export const placeholder = (text: string): PipeItem<'text' | 'number' | 'choice' | CustomType> =>
@@ -25,10 +26,11 @@ export const placeholder = (text: string): PipeItem<'text' | 'number' | 'choice'
 export const widget = (name: string): PipeItem<FieldType | 'content'> => set({ widget: name });
 
 /** Lays out the direct children in this many grid columns. */
-export const columns = (count: number): PipeItem<'section' | 'tab'> => set({ columns: count });
+export const columns = (count: number): PipeItem<'section' | 'tab' | 'page'> =>
+  set({ columns: count });
 
 /** Grid columns this Component spans, inside a Layout that sets `columns`. */
-export const colSpan = (count: number): PipeItem<Exclude<ComponentType, 'tab'>> =>
+export const colSpan = (count: number): PipeItem<Exclude<ComponentType, 'tab' | 'page'>> =>
   set({ colSpan: count });
 
 /** Shown, and so active, only while `condition` holds. */
@@ -65,8 +67,11 @@ export function required(
 /**
  * The value a new form starts with, as the JSON key `default`. It only seeds
  * the form: a value the user clears stays empty, and the server never fills it.
+ * On a Repeater it is the rows to start with, such as `[{}]` for one; a key a
+ * row leaves out takes its Field's default.
  */
-export const defaultValue = <const V>(value: V): PipeItem<ValueType, V> => set({ default: value });
+export const defaultValue = <const V>(value: V): PipeItem<ValueType | 'repeater', V> =>
+  set({ default: value });
 
 /*
  * Rules. Each applies only to the Field Types its JSON Rule does, so a Rule on

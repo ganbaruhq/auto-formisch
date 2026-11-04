@@ -31,6 +31,7 @@ import {
   notEmpty,
   number,
   object,
+  page,
   placeholder,
   repeater,
   required,
@@ -41,6 +42,7 @@ import {
   url,
   visible,
   widget,
+  wizard,
   type CompiledForm,
   type InferOutput,
 } from './index';
@@ -106,6 +108,22 @@ describe('output inference', () => {
     }>();
   });
 
+  it('infers a Wizard: Pages flatten into one output, a hidden Page makes its Fields optional', () => {
+    const steps = wizard([
+      page('Contact', [text('name', [required()]), choice('kind', ['person', 'company'])]),
+      page([text('taxId', [required()])], [visible(eq('kind', 'company')), label('Company')]),
+      page([repeater('rows', [text('street', [required()])])], [columns(2), description('d')]),
+    ]);
+    type Steps = {
+      name: string;
+      kind?: 'person' | 'company';
+      taxId?: string;
+      rows: { street: string }[];
+    };
+    expectTypeOf<InferOutput<typeof steps>>().toEqualTypeOf<Steps>();
+    expectTypeOf(compile(steps)).toEqualTypeOf<CompiledForm<Steps>>();
+  });
+
   it('types number choices and a JSON Definition', () => {
     const sizes = form([choice('size', [1, 2, 3], [required()]), multiChoice('extra', [10, 20])]);
     expectTypeOf<InferOutput<typeof sizes>>().toEqualTypeOf<{
@@ -165,8 +183,15 @@ describe('pipe items are typed by the Field they sit on', () => {
       section([text('x')], [required()]),
       // @ts-expect-error Content is never disabled
       content('Note', [disabled()]),
+      // @ts-expect-error a Page is never in a grid
+      page([text('x')], [colSpan(1)]),
+      // @ts-expect-error a Page is never disabled
+      page([text('x')], [disabled()]),
     ];
-    expect(wrong).toHaveLength(11);
+    expect(wrong).toHaveLength(13);
+    // @ts-expect-error a Wizard holds Pages only
+    const notPages = () => wizard([text('x')]);
+    expect(notPages).toBeTypeOf('function');
   });
 
   it('rejects a default of the wrong value', () => {
@@ -179,8 +204,22 @@ describe('pipe items are typed by the Field they sit on', () => {
       multiChoice('tags', ['a', 'b'], [defaultValue(['c'])]),
       // @ts-expect-error a boolean default is a boolean
       boolean('flag', [defaultValue('yes')]),
+      // @ts-expect-error a Repeater default is a list of rows
+      repeater('rows', [text('x')], [defaultValue('x')]),
+      // @ts-expect-error an object has no default
+      object('group', [text('x')], [defaultValue({ x: 'a' })]),
     ];
-    expect(wrong).toHaveLength(4);
+    expect(wrong).toHaveLength(6);
+  });
+
+  it('takes a Repeater default as rows', () => {
+    const built = form([repeater('rows', [text('x')], [defaultValue([{}, { x: 'a' }])])]);
+    expect(built.components[0]).toEqual({
+      type: 'repeater',
+      name: 'rows',
+      default: [{}, { x: 'a' }],
+      components: [{ type: 'text', name: 'x' }],
+    });
   });
 
   it('rejects an empty Condition group or list', () => {

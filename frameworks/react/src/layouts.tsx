@@ -1,6 +1,6 @@
 import { useId, useRef, type KeyboardEvent } from 'react';
 import type { SectionLayout, TabLayout } from '@auto-formisch/core';
-import type { LayoutMap, LayoutProps, TabsLayoutProps } from './contracts';
+import type { LayoutMap, LayoutProps, PageLayoutProps, TabsLayoutProps } from './contracts';
 
 /**
  * The default `section`: a `fieldset` named by its `legend` when it has a label
@@ -96,5 +96,20 @@ export function Tabs({ tabs, activeKey, onActiveChange }: TabsLayoutProps) {
   );
 }
 
+/**
+ * The default `page`: its label as a heading, its description, then its
+ * Components. No stepper and no "Step x of y", which would need translating;
+ * build them in a custom `page` Layout from `wizard.pages`.
+ */
+export function Page({ node, children }: PageLayoutProps) {
+  return (
+    <>
+      {node.label !== undefined && <h2>{node.label}</h2>}
+      {node.description !== undefined && <p>{node.description}</p>}
+      {children}
+    </>
+  );
+}
+
 /** The default Layouts: native HTML, no stylesheet. */
-export const defaultLayouts: LayoutMap = { section: Section, tabs: Tabs, tab: Tab };
+export const defaultLayouts: LayoutMap = { section: Section, tabs: Tabs, tab: Tab, page: Page };

@@ -269,3 +269,42 @@ describe('Accessibility of the default Renderer', () => {
     expect(locked.hasAttribute('aria-disabled')).toBe(false);
   });
 });
+
+describe('Accessibility of a Wizard', () => {
+  const wizard = compile({
+    version: 1,
+    pages: [
+      { type: 'page', label: 'Widgets', description: 'Every default Widget.', components: fields },
+      { type: 'page', label: 'End', components: [{ type: 'text', name: 'end', label: 'End' }] },
+    ],
+  });
+
+  it('passes axe-core on a Page, after a blocked "Next" and on the next Page', async () => {
+    const { container } = render(<AutoForm form={wizard} onSubmit={() => {}} />);
+    const user = userEvent.setup();
+    const page = screen.getByRole('group', { name: 'Widgets' });
+    expect(page.tabIndex).toBe(-1);
+    expect(await axeViolations(container)).toEqual([]);
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(document.activeElement).toBe(control('Text')));
+    expectStructuralRules(container);
+    expect(await axeViolations(container)).toEqual([]);
+  });
+
+  it('passes axe-core on a later Page, with its "Back" button', async () => {
+    const short = compile({
+      version: 1,
+      pages: [
+        { type: 'page', label: 'Start', components: [{ type: 'text', name: 'a', label: 'A' }] },
+        { type: 'page', components: [{ type: 'text', name: 'b', label: 'B', required: true }] },
+      ],
+    });
+    const { container } = render(<AutoForm form={short} onSubmit={() => {}} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    // A Page without a label is an unnamed group, which axe accepts.
+    await waitFor(() => expect(document.activeElement?.getAttribute('role')).toBe('group'));
+    expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
+    expect(await axeViolations(container)).toEqual([]);
+  });
+});

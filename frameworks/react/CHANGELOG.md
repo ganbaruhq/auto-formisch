@@ -16,4 +16,9 @@
 - `useAutoForm(form)` returns the Formisch store, which `<AutoForm store>` accepts; `useFormValue(path)` reads another Field from a Widget, through the resolver Conditions use, and reads an Inactive Field as empty.
 - Exports the Widget, Layout and Field Wrapper contracts (`WidgetProps`, `RepeaterProps`, `ObjectProps`, `ContentProps`, `LayoutProps`, `TabsLayoutProps`, `FieldWrapperProps`, `WidgetMap` and others).
 - `onSubmit` is typed by the output of a form built with the Fluent Builder.
+- Defaults seed a new form, Repeater `default` rows included, and a Repeater's Add builds its row from the defaults of its Fields.
+- `initialInput`, on `<AutoForm>` and `useAutoForm(form, { initialInput })`, starts the form from an existing record, read only at mount. It replaces every default, and is normalized first; a dropped value gets a `console.warn`. Combining it with `store` throws.
+- A `form` that changes without a remount throws an `AutoFormError`, from `<AutoForm>` and `useAutoForm`.
+- The `hidden` Widget keeps a value of any value Field with no UI and no Field Wrapper; its errors show in the general error region.
+- Wizards: only the open Page is mounted, inside a focusable `role="group"` named by its label, which takes focus on a Page change. Going forward validates the whole form and stops at the first Page on the way with errors; going back never validates. Only attempted Pages show errors. A failed submit opens the first Page with an error and focuses it, and a native submit before the last Page runs "Next". A Wizard store validates on input. `actions` and the new `page` Layout get `wizard { pages, isFirst, isLast, next, back, goTo }`; `labels` gains `next` and `back`. New contract types `Wizard`, `WizardPage` and `PageLayoutProps`.
 - A custom Field Type renders with the Widget supplied under its name in `widgets`; `WidgetProps` and `FieldWrapperProps` take its node (`InferFieldNode<typeof type>`).

@@ -258,7 +258,7 @@ describe('object and repeater: round trip', () => {
   });
 
   it('freezes nested Components', () => {
-    const contacts = compile(definition).definition.components[1] as RepeaterField;
+    const contacts = compile(definition).definition.components![1] as RepeaterField;
     expect(Object.isFrozen(contacts)).toBe(true);
     expect(Object.isFrozen(contacts.components)).toBe(true);
     expect(Object.isFrozen(contacts.components[1])).toBe(true);

@@ -8,11 +8,13 @@ export {
   multiChoice,
   number,
   object,
+  page,
   repeater,
   section,
   tab,
   tabs,
   text,
+  wizard,
 } from './components';
 export {
   all,

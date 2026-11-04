@@ -437,11 +437,7 @@ function checkName(name: unknown, what: string): void {
 
 /** Built-in Field Types, Layouts, Content and Rules share one set of names. */
 const isBuiltinName = (name: string): boolean =>
-  builtinFieldTypes.has(name) ||
-  builtinComponents.has(name) ||
-  builtinRules.has(name) ||
-  // The Wizard's Layout.
-  name === 'page';
+  builtinFieldTypes.has(name) || builtinComponents.has(name) || builtinRules.has(name);
 
 /** Throws unless `schema` is a sync Valibot schema. */
 export function checkSchema(schema: unknown, what: string): void {

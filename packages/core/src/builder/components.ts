@@ -9,11 +9,14 @@ import type {
   MultiChoiceField,
   NumberField,
   ObjectField,
+  PageLayout,
   RepeaterField,
+  SinglePageDefinition,
   SectionLayout,
   TabLayout,
   TabsLayout,
   TextField,
+  WizardDefinition,
 } from '../definition';
 import { DEFINITION_VERSION } from '../definition';
 import { loadDefinition } from '../load';
@@ -103,7 +106,7 @@ export function object<
 export function repeater<
   const N extends string,
   const C extends readonly Child[],
-  const P extends Pipe<'repeater'> = [],
+  const P extends Pipe<'repeater', readonly Readonly<Record<string, unknown>>[]> = [],
 >(
   name: N,
   components: C,
@@ -162,6 +165,30 @@ export function tab<const C extends readonly Child[], const P extends Pipe<'tab'
   return apply({ type: 'tab', label }, pipe, { components });
 }
 
+/**
+ * One Page of a Wizard, optionally labelled; only `wizard()` holds Pages. Adds
+ * no data path.
+ */
+export function page<const C extends readonly Child[], const P extends Pipe<'page'> = []>(
+  components: C,
+  pipe?: P,
+): Layout<PageLayout, C, P>;
+export function page<const C extends readonly Child[], const P extends Pipe<'page'> = []>(
+  label: string,
+  components: C,
+  pipe?: P,
+): Layout<PageLayout, C, P>;
+export function page(
+  ...args: [Child[], Pipe<'page'>?] | [string, Child[], Pipe<'page'>?]
+): PageLayout {
+  if (typeof args[0] === 'string') {
+    const [label, components, pipe] = args as [string, Child[], Pipe<'page'>?];
+    return apply({ type: 'page', label }, pipe, { components });
+  }
+  const [components, pipe] = args as [Child[], Pipe<'page'>?];
+  return apply({ type: 'page' }, pipe, { components });
+}
+
 /** Fixed plain text, never read as HTML or Markdown. */
 export function content(text: string, pipe?: Pipe<'content'>): ContentNode {
   return apply({ type: 'content', text }, pipe);
@@ -182,6 +209,26 @@ export function content(text: string, pipe?: Pipe<'content'>): ContentNode {
 export function form<const C extends readonly Child[]>(
   components: C,
   options?: LoadOptions,
-): TypedDefinition<ShapeOf<C>> {
-  return loadDefinition({ version: DEFINITION_VERSION, components }, registryOf(options));
+): TypedDefinition<ShapeOf<C>, SinglePageDefinition> {
+  return loadDefinition(
+    { version: DEFINITION_VERSION, components },
+    registryOf(options),
+  ) as SinglePageDefinition;
+}
+
+/**
+ * Like `form()`, for a Wizard: a form made of `pages`, shown one at a time and
+ * validated as one whole form. Its Pages share one data scope.
+ *
+ * @throws {DefinitionError} with every error as `{message, path}`.
+ * @throws {TypeError} for invalid `options`, such as a name registered twice.
+ */
+export function wizard<const P extends readonly PageLayout[]>(
+  pages: P,
+  options?: LoadOptions,
+): TypedDefinition<ShapeOf<P>, WizardDefinition> {
+  return loadDefinition(
+    { version: DEFINITION_VERSION, pages },
+    registryOf(options),
+  ) as WizardDefinition;
 }

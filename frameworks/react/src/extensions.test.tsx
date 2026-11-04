@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import { Component, type ReactNode, type Ref } from 'react';
 import * as v from 'valibot';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
@@ -176,6 +176,92 @@ describe('AutoForm: custom Rule', () => {
     await user.type(screen.getByLabelText('Code'), 'VN1');
     await submit();
     expect(await submitted()).toEqual({ code: 'VN1' });
+  });
+});
+
+describe('AutoForm: a custom Rule that throws in a Wizard step', () => {
+  /** Throws once armed, so typing the value before is no problem. */
+  const armed = { value: false };
+  const buggy = defineRule({
+    type: 'buggy',
+    appliesTo: ['text'],
+    check: () => {
+      if (armed.value) throw new Error('bug in the check');
+      return true;
+    },
+  });
+  const steps = compile(
+    {
+      version: 1,
+      pages: [
+        {
+          type: 'page',
+          label: 'One',
+          components: [{ type: 'text', name: 'code', label: 'Code', rules: [{ type: 'buggy' }] }],
+        },
+        { type: 'page', label: 'Two', components: [{ type: 'text', name: 'other' }] },
+      ],
+    },
+    { rules: [buggy] },
+  );
+
+  afterEach(() => {
+    armed.value = false;
+  });
+
+  class Boundary extends Component<{ children: ReactNode }, { error?: Error }> {
+    state: { error?: Error } = {};
+    static getDerivedStateFromError(error: Error) {
+      return { error };
+    }
+    render() {
+      return this.state.error ? <p>Crashed: {this.state.error.message}</p> : this.props.children;
+    }
+  }
+
+  it('reaches an error boundary from the Next button, and never moves on', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const onSubmit = vi.fn();
+    render(
+      <Boundary>
+        <AutoForm form={steps} onSubmit={onSubmit} />
+      </Boundary>,
+    );
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Code'), 'x');
+    armed.value = true;
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(screen.getByText('Crashed: bug in the check')).toBeTruthy());
+    expect(onSubmit).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('rejects wizard.next() and goTo() with the error, keeping the Page and no general error', async () => {
+    const settled: Promise<unknown>[] = [];
+    // Caught at once, so the rejection is never unhandled.
+    const record = (step: Promise<boolean>) => settled.push(step.catch((error: unknown) => error));
+    const actions: AutoFormProps['actions'] = ({ wizard }) => (
+      <>
+        <button type="button" onClick={() => record(wizard!.next())}>
+          Mine next
+        </button>
+        <button type="button" onClick={() => record(wizard!.goTo(1))}>
+          Mine to two
+        </button>
+      </>
+    );
+    const { user } = setup(steps, { actions });
+    await user.type(screen.getByLabelText('Code'), 'x');
+    armed.value = true;
+    await user.click(screen.getByRole('button', { name: 'Mine next' }));
+    await user.click(screen.getByRole('button', { name: 'Mine to two' }));
+    const errors = await Promise.all(settled);
+    expect(errors.map((error) => (error as Error).message)).toEqual([
+      'bug in the check',
+      'bug in the check',
+    ]);
+    expect(screen.getByRole('group', { name: 'One' })).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toBe('');
   });
 });
 

@@ -17,7 +17,25 @@ export interface FieldTypeSpec {
   readonly requiredKeys?: readonly string[];
   /** The typed value schema. It never sees an empty or Inactive value. */
   readonly value: (node: FieldNode) => v.GenericSchema;
+  /**
+   * The JavaScript type of a value, which its Widget can rely on. A starting
+   * value of another type is dropped; one of this type is kept even when
+   * `value` would reject it, so that submitting reports it. Without one,
+   * every starting value is kept.
+   */
+  readonly shape?: ValueShape;
 }
+
+/** A Field Type's JavaScript value type, and how to name it in a warning. */
+export interface ValueShape {
+  readonly is: (value: unknown) => boolean;
+  /** Such as `a string`. */
+  readonly expected: string;
+}
+
+const isString = (value: unknown) => typeof value === 'string';
+const isChoiceValue = (value: unknown) =>
+  typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value));
 
 /**
  * Keys every value Field takes beside `type`, `name`, `rules` and the
@@ -35,18 +53,24 @@ const text: FieldTypeSpec = {
   type: 'text',
   keys: { placeholder: v.string() },
   value: () => v.string(),
+  shape: { is: isString, expected: 'a string' },
 };
 
 const number: FieldTypeSpec = {
   type: 'number',
   keys: { placeholder: v.string() },
   value: () => v.pipe(v.number(), v.finite()),
+  shape: {
+    is: (value) => typeof value === 'number' && Number.isFinite(value),
+    expected: 'a number',
+  },
 };
 
 const boolean: FieldTypeSpec = {
   type: 'boolean',
   keys: {},
   value: () => v.boolean(),
+  shape: { is: (value) => typeof value === 'boolean', expected: 'a boolean' },
 };
 
 const choice: FieldTypeSpec = {
@@ -54,6 +78,7 @@ const choice: FieldTypeSpec = {
   keys: { choices: choicesSchema, placeholder: v.string() },
   requiredKeys: ['choices'],
   value: (node) => v.picklist((node as ChoiceField).choices.map(choiceValue)),
+  shape: { is: isChoiceValue, expected: 'a string or a number' },
 };
 
 const multiChoice: FieldTypeSpec = {
@@ -79,12 +104,17 @@ const multiChoice: FieldTypeSpec = {
       }),
     );
   },
+  shape: {
+    is: (value) => Array.isArray(value) && value.every(isChoiceValue),
+    expected: 'a list of strings or numbers',
+  },
 };
 
 const date: FieldTypeSpec = {
   type: 'date',
   keys: {},
   value: () => dateSchema,
+  shape: { is: isString, expected: 'a string' },
 };
 
 export const builtinFieldTypes: ReadonlyMap<string, FieldTypeSpec> = new Map(

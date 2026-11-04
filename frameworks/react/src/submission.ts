@@ -9,6 +9,7 @@ import type {
   RepeaterField,
   ValueField,
 } from '@auto-formisch/core';
+import type { WidgetResolver } from './resolve';
 import type { AutoFormStore } from './useAutoForm';
 
 type Path = readonly PathKey[];
@@ -34,14 +35,37 @@ export const keyOf = (path: Path): string => JSON.stringify(path);
 interface Shown {
   readonly path: Path;
   readonly node: ValueField | RepeaterField;
+  /**
+   * Presented by the `hidden` Widget, so it has no Field Wrapper and its
+   * errors show in the general error region instead.
+   */
+  readonly hidden: boolean;
 }
+
+/** Whether a value Field is presented by the `hidden` Widget, after `overrides`. */
+export const presentedHidden =
+  (widgetOf: WidgetResolver) =>
+  (node: ValueField): boolean =>
+    isHiddenWidget(widgetOf(node).node);
+
+/** The node, after `overrides`, names the `hidden` Widget. */
+export const isHiddenWidget = (node: ValueField): boolean => node.widget === HIDDEN_WIDGET;
+
+/** The Widget that keeps a value with no UI and no Field Wrapper. */
+export const HIDDEN_WIDGET = 'hidden';
 
 /**
  * The Fields that show errors, in Definition order, with each Repeater's rows
  * in their current order. Hidden Components are left out, Fields in inactive
- * Tabs are not: a submit opens their Tab.
+ * Tabs are not: a submit opens their Tab. Fields presented by the `hidden`
+ * Widget are marked.
  */
-function shownFields(components: readonly Component[], state: ConditionState, input: unknown) {
+export function shownFields(
+  components: readonly Component[],
+  state: ConditionState,
+  input: unknown,
+  isHidden: (node: ValueField) => boolean,
+) {
   const shown: Shown[] = [];
   const walk = (list: readonly Component[], scope: Path) => {
     for (const node of list) {
@@ -54,7 +78,7 @@ function shownFields(components: readonly Component[], state: ConditionState, in
           break;
         case 'repeater': {
           const path = [...scope, node.name];
-          shown.push({ path, node });
+          shown.push({ path, node, hidden: false });
           const rows = valueAt(input, path);
           if (Array.isArray(rows))
             rows.forEach((_, index) => walk(node.components, [...path, index]));
@@ -63,7 +87,7 @@ function shownFields(components: readonly Component[], state: ConditionState, in
         default:
           // Any other Component with `components` is a Layout, which adds no path.
           if ('components' in node) walk(node.components, scope);
-          else shown.push({ path: [...scope, node.name], node });
+          else shown.push({ path: [...scope, node.name], node, hidden: isHidden(node) });
       }
     }
   };
@@ -80,23 +104,36 @@ const valueAt = (input: unknown, path: Path): unknown =>
     input,
   );
 
-const currentFields = (compiled: CompiledForm, store: AutoFormStore) => {
+/** The shown Fields that have a Field Wrapper, for the store's current input. */
+const currentFields = (compiled: CompiledForm, store: AutoFormStore, widgetOf: WidgetResolver) => {
   const input = getInput(store);
-  return shownFields(compiled.definition.components, compiled.conditions.evaluate(input), input);
+  const state = compiled.conditions.evaluate(input);
+  const { definition } = compiled;
+  // A Wizard's Pages are Layouts: a Field on another Page counts as shown.
+  return shownFields(
+    definition.pages ?? definition.components,
+    state,
+    input,
+    presentedHidden(widgetOf),
+  ).filter((field) => !field.hidden);
 };
 
 /**
  * Puts errors returned by `onSubmit` on the shown Field their path names.
- * Every other error, such as one for a hidden Field, a Layout, a row that
- * doesn't exist or no path at all, goes to the form's general error region:
- * Formisch would swallow it, and a hidden Field can't show it.
+ * Every other error, such as one for a hidden Field, a Field presented by
+ * the `hidden` Widget, a Layout, a row that doesn't exist or no path at all,
+ * goes to the form's general error region: Formisch would swallow it, and a
+ * Field with no Field Wrapper can't show it.
  */
 export function placeErrors(
   compiled: CompiledForm,
   store: AutoFormStore,
+  widgetOf: WidgetResolver,
   errors: readonly FormError[],
 ): void {
-  const fields = new Map(currentFields(compiled, store).map((field) => [keyOf(field.path), field]));
+  const fields = new Map(
+    currentFields(compiled, store, widgetOf).map((field) => [keyOf(field.path), field]),
+  );
   const byField = new Map<string, { path: Path; messages: string[] }>();
   const general: string[] = [];
   for (const error of errors) {
@@ -124,9 +161,10 @@ export function placeErrors(
 export function firstErrorTarget(
   compiled: CompiledForm,
   store: AutoFormStore,
+  widgetOf: WidgetResolver,
   elements: FocusElements,
 ): FocusTarget | null {
-  for (const { path } of currentFields(compiled, store)) {
+  for (const { path } of currentFields(compiled, store, widgetOf)) {
     if ((getErrors(store, { path } as never) ?? []).length === 0) continue;
     const element = elements.get(keyOf(path));
     if (element !== undefined && element.isConnected && !element.matches(':disabled')) {

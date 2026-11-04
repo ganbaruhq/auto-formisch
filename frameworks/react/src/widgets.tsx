@@ -450,6 +450,12 @@ export function RepeaterList({
 }
 
 /** The default Widget map. Keys are a Field's or Content's `widget ?? type`. */
+/**
+ * The `hidden` Widget: keeps a value, such as a row's `id`, with no UI. The
+ * Renderer draws no Field Wrapper for it. The client can still change it.
+ */
+export const HiddenValue = (_props: WidgetProps) => null;
+
 export const defaultWidgets: Readonly<Record<string, WidgetEntry>> = {
   text: { component: TextInput, appliesTo: ['text'] },
   textarea: { component: Textarea, appliesTo: ['text'] },
@@ -467,4 +473,6 @@ export const defaultWidgets: Readonly<Record<string, WidgetEntry>> = {
   object: { component: ObjectFieldset, appliesTo: ['object'] },
   repeater: { component: RepeaterList, appliesTo: ['repeater'] },
   content: { component: ContentText, appliesTo: ['content'] },
+  // Any value Field, custom types included; the Renderer rejects the others.
+  hidden: { component: HiddenValue },
 };

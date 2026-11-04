@@ -27,6 +27,7 @@ import { useRenderContext } from './context';
 import { Field } from './Field';
 import { FocusTargetContext, keyOf, leadsInto, namesIn } from './submission';
 import { DataScopeContext } from './useFormValue';
+import { ShowErrorsContext } from './Wizard';
 
 type Scope = readonly PathKey[];
 
@@ -88,6 +89,9 @@ function ComponentNode({ node, scope }: { readonly node: Component; readonly sco
     case 'tab':
       // The loader only accepts a `tab` directly inside `tabs`, which renders it.
       throw new Error('A "tab" renders only inside "tabs"');
+    case 'page':
+      // The loader only accepts a `page` in the root `pages`, which the Wizard renders.
+      throw new Error('A "page" renders only in a Wizard');
     case 'content':
       return <Content node={node} />;
     case 'object':
@@ -107,6 +111,7 @@ function ComponentNode({ node, scope }: { readonly node: Component; readonly sco
  */
 function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scope }) {
   const { store, layouts, conditions } = useRenderContext();
+  const showErrors = useContext(ShowErrorsContext);
   const [activeKey, setActiveKey] = useState('0');
   // A Formisch hook makes this component re-render when the errors it reads
   // below change; the scope's store always exists.
@@ -136,11 +141,13 @@ function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scop
                 <Components components={tab.components} scope={scope} columns={tab.columns} />
               </TabLayout>
             ),
-            errorCount: [...names[index]].reduce(
-              (count, name) =>
-                count + getDeepErrorEntries(store, { path: [...scope, name] } as never).length,
-              0,
-            ),
+            errorCount: !showErrors
+              ? 0
+              : [...names[index]].reduce(
+                  (count, name) =>
+                    count + getDeepErrorEntries(store, { path: [...scope, name] } as never).length,
+                  0,
+                ),
           },
         ]
       : [],
@@ -187,7 +194,7 @@ function ObjectGroup({ node: declared, scope }: NestedProps<ObjectField>) {
  * removing and reordering rows do nothing, whatever the Widget shows.
  */
 function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
-  const { store, widgetOf, conditions, focusElements } = useRenderContext();
+  const { form, store, widgetOf, conditions, focusElements } = useRenderContext();
   const { node, entry } = widgetOf(declared);
   const Widget = entry.component as ComponentType<RepeaterProps>;
   const parent = useContext(DataScopeContext);
@@ -207,6 +214,7 @@ function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
     },
     [focusElements, key],
   );
+  const showErrors = useContext(ShowErrorsContext);
   const disabled = conditions.isDisabled(declared, scope);
   const unlessDisabled = (change: () => void) => () => {
     if (!disabled) change();
@@ -226,10 +234,13 @@ function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
   return (
     <Widget
       rows={rows}
-      add={unlessDisabled(() => insert(store, { path: arrayPath }))}
+      // Always explicit values: Formisch may reuse the stores of a removed row.
+      add={unlessDisabled(() =>
+        insert(store, { path: arrayPath, initialInput: form.newRow(declared) as never }),
+      )}
       canAdd={!disabled && (max === undefined || rows.length < max)}
       disabled={disabled}
-      errors={array.errors ?? []}
+      errors={(showErrors && array.errors) || []}
       focusRef={focusRef}
       node={node}
     />

@@ -1,6 +1,14 @@
-import type { Component, ContentNode, FieldNode, FormError, PathKey } from '@auto-formisch/core';
+import type {
+  Component,
+  ContentNode,
+  FieldNode,
+  FormDefinition,
+  FormError,
+  PathKey,
+} from '@auto-formisch/core';
 import { AutoFormError } from './AutoFormError';
 import type { FieldOverride, Overrides, WidgetEntry } from './contracts';
+import { HIDDEN_WIDGET } from './submission';
 
 /** A Field or Content node, after `overrides`, and the Widget map entry that presents it. */
 export interface ResolvedWidget<N extends FieldNode | ContentNode = FieldNode | ContentNode> {
@@ -34,12 +42,15 @@ const OVERRIDE_KEYS: readonly string[] = [
  * Widget name and Widget whose `appliesTo` leaves out the node's type.
  */
 export function resolveWidgets(
-  components: readonly Component[],
+  definition: FormDefinition,
   widgets: Readonly<Record<string, WidgetEntry>>,
   overrides: Overrides = {},
 ): WidgetResolver {
   const errors: FormError[] = [];
-  const located = locate(components, ['components'], []);
+  const located =
+    definition.pages !== undefined
+      ? locate(definition.pages, ['pages'], [])
+      : locate(definition.components, ['components'], []);
   const paths = new Set(located.flatMap(({ path }) => (path === undefined ? [] : [path])));
 
   for (const [path, override] of Object.entries(overrides)) {
@@ -72,7 +83,11 @@ export function resolveWidgets(
     if (entry === undefined) {
       const of = path === undefined ? 'a Content Component' : `the Field at "${path}"`;
       errors.push({ message: `No Widget "${name}" for ${of}`, path: at });
-    } else if (entry.appliesTo !== undefined && !entry.appliesTo.includes(node.type)) {
+    } else if (
+      (entry.appliesTo !== undefined && !entry.appliesTo.includes(node.type)) ||
+      // Its errors go to the general region, which only a value Field's do.
+      (name === HIDDEN_WIDGET && !isValueField(node))
+    ) {
       const to =
         path === undefined ? 'a Content Component' : `the "${node.type}" Field at "${path}"`;
       errors.push({ message: `Widget "${name}" does not apply to ${to}`, path: at });
@@ -90,6 +105,9 @@ export function resolveWidgets(
   };
 }
 
+const isValueField = (node: FieldNode | ContentNode): boolean =>
+  node.type !== 'object' && node.type !== 'repeater' && node.type !== 'content';
+
 /** Every Field and Content in Definition order, including Repeater templates. */
 function locate(
   components: readonly Component[],
@@ -102,6 +120,7 @@ function locate(
       case 'section':
       case 'tabs':
       case 'tab':
+      case 'page':
         return locate(node.components, [...location, 'components'], scope);
       case 'content':
         return [{ node, location }];

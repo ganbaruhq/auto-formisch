@@ -15,8 +15,8 @@ export type ValueType = ValueTypeName | CustomType;
 /** Every Field Type. */
 export type FieldType = ValueType | 'object' | 'repeater';
 
-/** Every Component `type` the Fluent Builder makes. */
-export type ComponentType = FieldType | 'section' | 'tabs' | 'tab' | 'content';
+/** Every built-in Component `type` the Fluent Builder makes. */
+export type ComponentType = FieldType | 'section' | 'tabs' | 'tab' | 'page' | 'content';
 
 /** What a pipe item does to the inferred output of the Component it sits on. */
 export type PipeEffect =
