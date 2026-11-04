@@ -14,15 +14,6 @@ import { extensions } from './examples/extensions';
 //   a Form Definition, or a list of Components, that `compile` accepts.
 // - `<!-- check: invalid -->`: a Form Definition that `compile` rejects.
 
-declare global {
-  interface ImportMeta {
-    glob(
-      pattern: string | readonly string[],
-      options: { query: '?raw'; import: 'default'; eager: true },
-    ): Record<string, string>;
-  }
-}
-
 const pages = import.meta.glob(
   ['../README.md', './*.md', '../packages/*/README.md', '../frameworks/*/README.md'],
   { query: '?raw', import: 'default', eager: true },

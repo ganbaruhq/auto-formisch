@@ -1,14 +1,5 @@
 import { expect, it } from 'vite-plus/test';
 
-declare global {
-  interface ImportMeta {
-    glob(
-      pattern: string,
-      options: { query: '?raw'; import: 'default'; eager: true },
-    ): Record<string, string>;
-  }
-}
-
 // Formisch marks `useField`, `useFieldArray` and `useForm` `@__NO_SIDE_EFFECTS__`,
 // so a production bundler drops a call whose result is unused. A component that
 // calls one only to subscribe to what it reads then stops re-rendering in

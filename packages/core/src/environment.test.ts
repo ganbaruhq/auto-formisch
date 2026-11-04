@@ -1,15 +1,6 @@
 import { expect, it } from 'vite-plus/test';
 import pkg from '../package.json';
 
-declare global {
-  interface ImportMeta {
-    glob(
-      pattern: string,
-      options: { query: '?raw'; import: 'default'; eager: true },
-    ): Record<string, string>;
-  }
-}
-
 it('runs with no DOM', () => {
   expect(typeof document).toBe('undefined');
   expect(typeof window).toBe('undefined');
