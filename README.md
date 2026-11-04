@@ -62,6 +62,24 @@ A Form Definition is plain JSON. Store it, send it to a Worker, or write it by h
 
 `compile` checks the Definition and throws a `DefinitionError` whose `errors` lists every problem as `{message, path}`: an unknown key (such as `requried`), an unknown `type` or Rule, or a `version` other than `1`. It never evaluates code from a Definition.
 
+### Editor support: `$schema`
+
+`@auto-formisch/core` ships a JSON Schema (draft-07) for each format version, at `schema/v<version>.json` in the package. Point a Definition's optional `$schema` at it to get autocomplete, hover help and errors in an editor:
+
+```json
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@auto-formisch/core/schema/v1.json",
+  "version": 1,
+  "components": []
+}
+```
+
+The URL is the schema's `$id` and stays the same across package versions: a package keeps shipping `schema/v1.json` after later format versions are added. Offline, use the installed copy, such as `./node_modules/@auto-formisch/core/schema/v1.json` (with pnpm, only when `@auto-formisch/core` is a direct dependency). `compile` accepts `$schema` as any string and ignores it.
+
+The loader is the one judge of a Definition. The schema describes every built-in `type`, Rule, Condition and `default`, and catches most mistakes, but some only the loader can see: duplicate names across the tree, `colSpan` wider than its parent's `columns`, Condition references, operators and values that depend on the Field read, cycles, a `default` that fails its own Rules or `choices`, and impossible dates such as `2023-02-29`.
+
+Custom Field Types and Rules: the schema describes only the built-ins and takes any other `type` or Rule name loosely, so `"type": "txet"` is not flagged in the editor and only `compile` rejects it. An unknown `type` must still look like a custom Field: a lower-case `type` (`^[a-z][a-z0-9_]*$`), a `name`, no `rules`, and the shared Field keys (`label`, `widget`, `visible`, `required`, ...) typed as on built-ins; its own options can be anything. An unknown Rule must still be `{type, requirement?, message?}` on a built-in value Field, never on a `repeater`, with any `requirement`. So a Definition using a registered `defineFieldType` or `defineRule` passes the schema, and the schema checks its shared keys but not its options, its `default`, its Rule's `requirement` or `appliesTo`: `compile(definition, { fieldTypes, rules })` checks those. Registering doesn't change the published schema; a generated schema for an application's own registrations could be added later without changing this one.
+
 ### In code: the Fluent Builder
 
 Write the same Definition with Valibot-style functions and pipes. Rules, metadata (`label`, `description`, `placeholder`, `widget`, `columns`, `colSpan`, `defaultValue`) and Conditions (`visible`, `required`, `disabled`) all go in the pipe:
@@ -189,6 +207,53 @@ await store(result.value);
 ```
 
 `compiled['~standard']` is a Standard Schema whose issues are `{message, path}` with a plain key path; the client and the server get the same result. `compiled.schema` is the underlying Valibot pipe, for `v.safeParse` with a per-request config. Read its errors only as `{message, path}`.
+
+### Custom Field Types and Rules
+
+Register values and constraints the built-ins don't cover with `defineFieldType` and `defineRule`, and pass them explicitly to `compile` and `form`; there is no global registry. Neither holds anything of React, so a server loads them with only the core package and Valibot. Their Widgets go to `<AutoForm widgets>`.
+
+```tsx
+import * as v from 'valibot';
+import { compile, defineFieldType, defineRule, form, required, text } from '@auto-formisch/core';
+
+const rating = defineFieldType({
+  type: 'rating',
+  options: { max: v.number() },
+  schema: (node) => v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(node.max)),
+  conditionAs: 'number',
+});
+
+const startsWith = defineRule({
+  type: 'starts_with',
+  appliesTo: ['text'],
+  requirement: v.string(),
+  check: (value, requirement) => value.startsWith(requirement),
+  message: 'Wrong prefix',
+});
+
+const extensions = { fieldTypes: [rating], rules: [startsWith] };
+const definition = form(
+  [rating('score', { max: 5 }, [required()]), text('code', [startsWith('VN')])],
+  extensions,
+);
+const compiled = compile(definition, extensions); // { score: number; code?: string }
+
+<AutoForm form={compiled} widgets={{ rating: Stars }} onSubmit={save} />;
+```
+
+```jsonc
+{ "type": "rating", "name": "score", "max": 5 }
+{ "type": "text", "name": "code", "rules": [{ "type": "starts_with", "requirement": "VN" }] }
+```
+
+- A custom Field Type is a Field holding one JSON value (string, number, boolean, list or object; no `Date` or `File`). It takes `label`, `description`, `placeholder`, `widget`, `colSpan`, `visible`, `disabled`, `required`, `requiredMessage`, `default` and its own `options`, flat and strict on the node; it takes no `rules`. An option whose schema rejects `undefined` must be present, and option values must be JSON. `schema` may be a function of the node, built once per node on load; if it throws, loading reports an error at the node.
+- The schema only validates: what it outputs is ignored, so `v.trim()` has no effect, and a schema that changes its value's type or holds no JSON value fails to compile. It never sees an empty or Inactive value; empty means what it does for every Field. All its errors show on the Field's own path, after `required`.
+- `conditionAs` picks a row of the Condition operator table (`text`, `number`, `date`, `boolean` or `multi_choice`) and must fit the value; without it, Conditions can only use `empty` and `not_empty`. A Condition's `value` is checked with the type's schema on load (for `contains`, it is a string, number or boolean).
+- A custom Rule keeps the shape `{type, requirement?, message?}`; `requirement` is checked with its schema on load, and the Definition's `message` replaces the default. `appliesTo` lists built-in value Field Types, and a Rule's Builder item only fits those (`number('n', [startsWith('VN')])` fails to compile). `check` runs sync, only on a non-empty value of the Field's type. It is the official way to validate a pattern: a regex there that is open to ReDoS is the application's risk, on every server that validates the form.
+- Names match `^[a-z][a-z0-9_]*$`. A built-in name (Field Type, Layout or Rule), an invalid option key, an option that reuses a built-in key, an async schema, requirement or `check`, and a name passed twice throw a `TypeError` at once. A Definition that uses a type or Rule not passed to `compile` throws on load, so a Rule is never skipped. Adding a built-in later is a breaking change for a custom one of the same name.
+- Custom code that throws while validating is a bug: `~standard.validate` throws, and it is never a validation result; a `check` that returns anything but a boolean, such as a Promise, throws too. In `<AutoForm>`, Formisch catches it on submit and shows its message in the general error region, and the form never submits.
+- Known limit: an async check is caught only where Valibot marks it async, anywhere in a schema (`v.pipe(v.string(), v.checkAsync(...))` is caught). An async function given to a sync API such as `v.check` or `v.custom`, or a schema inside `v.lazy`, can't be detected, and its Promise counts as valid.
+- A custom type's Widget takes `WidgetProps<InferFieldValue<typeof rating>, InferFieldNode<typeof rating>>`. Custom Field Types and Rules have no version of their own: change their options or drop one, and a stored Definition that uses it throws on load until the application migrates it.
 
 ### Validation messages
 

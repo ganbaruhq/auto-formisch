@@ -7,17 +7,18 @@ import {
   type FieldNode,
   type FormDefinition,
   type RepeaterField,
+  type RuleNode,
   type ValueField,
 } from './definition';
 import { toFormErrors } from './errors';
-import { builtinFieldTypes } from './field-types';
 import { fieldsIn } from './fields';
 import { defaultsOf, newRowOf, normalize, type NormalizedInput } from './initial';
-import { loadDefinition } from './load';
+import { load } from './load';
 import { getRequiredMessage, type RequiredMessage } from './messages';
 import { withLocks, type Locks } from './locks';
 import { MISSING, prep } from './prep';
-import { ruleActions } from './rules';
+import { registryOf, type LoadOptions, type Registry } from './registry';
+import { ruleActions, type RuleAction } from './rules';
 import type { StandardSchemaV1 } from './standard';
 
 /** The submitted value of a form compiled from JSON. */
@@ -78,17 +79,25 @@ export interface CompiledForm<TOutput extends FormOutput = FormOutput> extends S
  * gives a server the same result as the form.
  *
  * A Definition built by `form()` gives its inferred output type; JSON gives
- * `FormOutput`.
+ * `FormOutput`. `options` lists the custom Field Types and Rules it may use;
+ * any other unknown `type` is a load error.
  *
  * @throws {DefinitionError} with every load error as `{message, path}`.
+ * @throws {TypeError} for invalid `options`, such as a name registered twice.
  */
 export function compile<TOutput extends FormOutput>(
   input: TypedDefinition<TOutput>,
+  options?: LoadOptions,
 ): CompiledForm<TOutput>;
-export function compile(input: unknown): CompiledForm;
-export function compile(input: unknown): CompiledForm {
-  const definition = loadDefinition(input);
-  return compiledForm(definition, conditionsOf(rootComponents(definition)), new Map());
+export function compile(input: unknown, options?: LoadOptions): CompiledForm;
+export function compile(input: unknown, options?: LoadOptions): CompiledForm {
+  const registry = registryOf(options);
+  const { definition, valueSchemas } = load(input, registry);
+  return compiledForm(definition, conditionsOf(rootComponents(definition)), {
+    registry,
+    valueSchemas,
+    locks: new Map(),
+  });
 }
 
 /** What `lock` needs from a form that `compile` made. Not public. */
@@ -105,18 +114,27 @@ const internals = new WeakMap<object, CompiledInternals>();
 export const internalsOf = (form: unknown): CompiledInternals | undefined =>
   typeof form === 'object' && form !== null ? internals.get(form) : undefined;
 
-const valueSchema = (field: ValueField): v.GenericSchema =>
-  builtinFieldTypes.get(field.type)!.value(field);
+/**
+ * What the typed stage needs: the Rules the load knew, each value Field's
+ * value schema (built once on load, a custom Field Type's included), and the
+ * Locked Fields.
+ */
+interface Typing {
+  readonly registry: Registry;
+  readonly valueSchemas: ReadonlyMap<Component, v.GenericSchema>;
+  readonly locks: Locks;
+}
 
 /**
- * One compiled form. `base` evaluates the input as given; with `locks`, the
- * Locked values replace the input's before anything reads it (ADR 0003).
+ * One compiled form. `base` evaluates the input as given; with `typing.locks`,
+ * the Locked values replace the input's before anything reads it (ADR 0003).
  */
 function compiledForm(
   definition: FormDefinition,
   base: FormConditions,
-  locks: Locks,
+  typing: Typing,
 ): CompiledForm {
+  const { locks, valueSchemas } = typing;
   const conditions: FormConditions =
     locks.size === 0
       ? base
@@ -125,7 +143,7 @@ function compiledForm(
           evaluate: (input) => base.evaluate(withLocks(input, locks)),
         };
   const components = rootComponents(definition);
-  const schema = buildSchema(definition, base, locks);
+  const schema = buildSchema(definition, base, typing);
   const lockedPaths = new Set([...locks.values()].map(({ path }) => path.join('.')));
   const compiled: CompiledForm = {
     definition,
@@ -155,8 +173,9 @@ function compiledForm(
     },
   };
   internals.set(compiled, {
-    relock: (next) => compiledForm(definition, base, next),
-    valueSchema,
+    relock: (next) => compiledForm(definition, base, { ...typing, locks: next }),
+    // Built on load for every value Field of a Definition that loaded.
+    valueSchema: (field) => valueSchemas.get(field)!,
   });
   return compiled;
 }
@@ -169,16 +188,17 @@ function compiledForm(
 function buildSchema(
   definition: FormDefinition,
   conditions: FormConditions,
-  locks: Locks,
+  typing: Typing,
 ): v.GenericSchema<Record<string, unknown>, FormOutput> {
   const components = rootComponents(definition);
+  const { locks } = typing;
   return v.pipe(
     skeletonOf(components),
     v.transform((input) => {
       const locked = withLocks(input, locks);
       return prep(components, conditions.evaluate(locked), locked, [], locks);
     }),
-    typedObjectOf(components, locks),
+    typedObjectOf(components, typing),
   );
 }
 
@@ -209,41 +229,42 @@ function skeletonLeaf(field: FieldNode): v.GenericSchema {
 const tolerant = (schema: v.GenericSchema): v.GenericSchema =>
   v.fallback(schema, (dataset?: { readonly value: unknown }) => dataset?.value);
 
-function typedObjectOf(components: readonly Component[], locks: Locks) {
+function typedObjectOf(components: readonly Component[], typing: Typing) {
   return v.object(
-    Object.fromEntries(fieldsIn(components).map((field) => [field.name, typedLeaf(field, locks)])),
+    Object.fromEntries(fieldsIn(components).map((field) => [field.name, typedLeaf(field, typing)])),
   );
 }
 
 /**
  * A value Field: the required check, then the Field Type's value schema, then
  * its Rules. An `object` or Repeater: its own typed objects, then its Rules.
- * A Locked Field skips all of it: `lock` checked its type, and the
- * application answers for its value.
+ * A custom Field Type is a value Field with no Rules. A Locked Field skips all
+ * of it: `lock` checked its type, and the application answers for its value.
  */
-function typedLeaf(field: FieldNode, locks: Locks): v.GenericSchema {
+function typedLeaf(field: FieldNode, typing: Typing): v.GenericSchema {
+  const rules = (list: readonly RuleNode[] | undefined): RuleAction[] =>
+    ruleActions(list, typing.registry.rules);
   switch (field.type) {
     // `undefined` only when Inactive (`INACTIVE`): nothing inside it runs.
     case 'object':
       return v.pipe(
-        v.optional(typedObjectOf(field.components, locks)),
+        v.optional(typedObjectOf(field.components, typing)),
         v.transform((value) => value ?? {}),
       );
     case 'repeater':
       return v.pipe(
-        v.optional(
-          v.pipe(v.array(typedObjectOf(field.components, locks)), ...ruleActions(field.rules)),
-        ),
+        v.optional(v.pipe(v.array(typedObjectOf(field.components, typing)), ...rules(field.rules))),
         v.transform((rows) => rows ?? []),
       );
     default:
-      if (locks.has(field)) return v.optional(v.unknown());
+      if (typing.locks.has(field)) return v.optional(v.unknown());
       return v.optional(
         v.pipe(
           v.unknown(),
           v.check((value) => value !== MISSING, requiredMessage(field)),
-          valueSchema(field),
-          ...ruleActions(field.rules),
+          // Built on load for every value Field of a Definition that loaded.
+          typing.valueSchemas.get(field)!,
+          ...rules(field.rules),
         ),
       );
   }

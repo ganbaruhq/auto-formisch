@@ -16,10 +16,13 @@ import { resolve, treeOf, type FormTree } from './tree';
 
 type Path = readonly PathKey[];
 
-/** The operators a Condition may use on a Field `type`, and the schema of its `value`. */
-interface ConditionType {
+/**
+ * The operators a Condition may use on a Field `type`, and the schema of its
+ * `value` (of one item for `in` and `not_in`). No `value`: none is checked.
+ */
+export interface ConditionType {
   readonly operators: readonly ConditionOperator[];
-  readonly value?: (field: FieldNode) => v.GenericSchema;
+  readonly value?: (field: FieldNode, operator: ConditionOperator) => v.GenericSchema;
 }
 
 const presence: readonly ConditionOperator[] = ['empty', 'not_empty'];
@@ -32,8 +35,11 @@ const choices = (field: FieldNode) =>
     (issue) => `Expected one of the choices of the Field, not ${issue.received}`,
   );
 
-/** The operator table of AF-7. An `object` has no operators. */
-const conditionTypes: ReadonlyMap<string, ConditionType> = new Map([
+/**
+ * The operator table of AF-7 for the built-in types. An `object` has no
+ * operators. A custom Field Type uses the operators of its `conditionAs` row.
+ */
+export const conditionTypes: ReadonlyMap<string, ConditionType> = new Map([
   [
     'text',
     {
@@ -71,6 +77,8 @@ const SETTINGS = [
 export function checkConditions(
   components: readonly Component[],
   pathOf: (component: Component) => Path,
+  typeOf: (field: FieldNode) => ConditionType | undefined = (field) =>
+    conditionTypes.get(field.type),
 ): FormError[] {
   const tree = treeOf(components);
   const errors: FormError[] = [];
@@ -88,7 +96,7 @@ export function checkConditions(
           errors.push({ message: reference.error, path: [...path, 'field'] });
           continue;
         }
-        errors.push(...checkLeaf(leaf, reference.target, path));
+        errors.push(...checkLeaf(leaf, reference.target, typeOf(reference.target), path));
         if (decidesInactive) depends.push(reference.target);
       }
     }
@@ -112,8 +120,12 @@ function* leavesOf(condition: Condition, path: Path): Generator<[ConditionLeaf, 
   }
 }
 
-function checkLeaf(leaf: ConditionLeaf, target: FieldNode, path: Path): FormError[] {
-  const type = conditionTypes.get(target.type);
+function checkLeaf(
+  leaf: ConditionLeaf,
+  target: FieldNode,
+  type: ConditionType | undefined,
+  path: Path,
+): FormError[] {
   if (type === undefined || !type.operators.includes(leaf.operator)) {
     return [
       {
@@ -129,7 +141,8 @@ function checkLeaf(leaf: ConditionLeaf, target: FieldNode, path: Path): FormErro
       : [];
   }
   if (!hasValue) return [{ message: 'Missing key "value"', path: [...path, 'value'] }];
-  const item = type.value!(target);
+  if (type.value === undefined) return [];
+  const item = type.value(target, leaf.operator);
   const schema =
     leaf.operator === 'in' || leaf.operator === 'not_in'
       ? v.pipe(v.array(item, 'Expected a list'), v.minLength(1, 'Expected at least one value'))

@@ -100,8 +100,9 @@ export function normalize(components: readonly Component[], record: unknown): No
           }
           break;
         default: {
-          const { shape } = builtinFieldTypes.get(field.type)!;
-          // A type with no shape keeps every value but an empty one.
+          const shape = builtinFieldTypes.get(field.type)?.shape;
+          // A type with no shape, such as a custom Field Type, keeps every
+          // value but an empty one.
           if (shape?.is(given) ?? !isEmpty(given)) out[field.name] = copy(given);
           else if (shape !== undefined && !isEmpty(given)) drop(at, shape.expected, given);
         }

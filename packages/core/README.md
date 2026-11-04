@@ -10,4 +10,14 @@ const result = form['~standard'].validate(requestBody);
 // { value } or { issues: [{ message, path }] }
 ```
 
+A JSON Schema for format version 1 ships at `schema/v1.json`; reference it from a Definition for editor autocomplete:
+
+```json
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@auto-formisch/core/schema/v1.json",
+  "version": 1,
+  "components": []
+}
+```
+
 See the [repository README](../../README.md).

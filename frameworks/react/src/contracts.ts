@@ -4,6 +4,7 @@ import type {
   ChoiceField,
   ChoiceValue,
   ContentNode,
+  CustomField,
   DateField,
   MultiChoiceField,
   NumberField,
@@ -20,9 +21,10 @@ import type {
  * Props the Renderer gives a value Field's Widget. A Widget draws only the
  * control; the Field Wrapper draws label, description and errors. A Widget
  * calls `onChange` with `undefined` when its value is empty, and converts
- * values itself.
+ * values itself. A custom Field Type's Widget takes
+ * `WidgetProps<InferFieldValue<typeof type>, InferFieldNode<typeof type>>`.
  */
-export interface WidgetProps<V = unknown, N extends ValueField = ValueField> {
+export interface WidgetProps<V = unknown, N extends ValueField | CustomField = ValueField> {
   readonly value: V | undefined;
   readonly onChange: (value: V | undefined) => void;
   /** Spread onto the focusable control. Formisch's `autoFocus` is never passed. */
@@ -47,7 +49,7 @@ export interface InputProps {
 }
 
 /** Props of the frame around every value Field's Widget. */
-export interface FieldWrapperProps<N extends ValueField = ValueField> {
+export interface FieldWrapperProps<N extends ValueField | CustomField = ValueField> {
   readonly node: N;
   readonly label: string;
   readonly description: string | undefined;
@@ -153,7 +155,8 @@ export interface WizardPage {
  * Navigation of a Wizard, for the `actions` slot and the `page` Layout.
  * Going forward validates the Pages on the way and stops at the first one with
  * errors; going back never validates. While a step or a submit is pending,
- * every command is ignored.
+ * every command is ignored. Custom code that throws while validating is a
+ * bug: `next` and `goTo` reject with its error.
  */
 export interface Wizard {
   /** The shown Pages only, in order. Use the position here for "Step 2 of 3". */

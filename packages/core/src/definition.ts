@@ -187,6 +187,23 @@ export interface RepeaterField extends FieldBase {
 /** Any Field this package knows. */
 export type FieldNode = ValueField | ObjectField | RepeaterField;
 
+/**
+ * A Field of a custom Field Type registered with `defineFieldType`: one JSON
+ * value, the type's own options as flat keys, and no `rules`.
+ *
+ * It is not a member of `Component`, whose members are told apart by `type`.
+ * A Definition compiled with custom Field Types holds these wherever a value
+ * Field may sit; code that switches on `type` reaches them in its default
+ * branch, as a value Field.
+ */
+export type CustomField<TType extends string = string, TOptions extends object = {}> = Omit<
+  ValueFieldBase,
+  'rules' | 'type'
+> & {
+  readonly type: TType;
+  readonly placeholder?: string;
+} & TOptions;
+
 /** A group of Components, optionally labelled and laid out in a grid. Adds no data path. */
 export interface SectionLayout {
   readonly type: 'section';
