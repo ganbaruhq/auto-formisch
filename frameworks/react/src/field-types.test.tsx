@@ -92,6 +92,19 @@ describe('AutoForm: number Field with text the browser cannot parse', () => {
     });
   }
 
+  it('catches text such as "-" typed into an empty box, whose value stays ""', async () => {
+    const { submit, onSubmit } = setup(one('number'));
+    Object.defineProperty(input(), 'validity', { configurable: true, value: { badInput: true } });
+    fireEvent.input(input(), { target: { value: '' } });
+    await submit();
+    await waitFor(() => expect(errors()).toEqual(['Enter a number']));
+    // Deleting it again empties the Field.
+    Object.defineProperty(input(), 'validity', { configurable: true, value: { badInput: false } });
+    fireEvent.input(input(), { target: { value: '' } });
+    await submit();
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({}));
+  });
+
   it('takes its message from labels', async () => {
     const { user, submit } = setup(one('number'), { labels: { invalidNumber: 'Nhập một số' } });
     await typeUnparsable(user);

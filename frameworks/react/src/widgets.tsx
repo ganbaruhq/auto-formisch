@@ -95,6 +95,9 @@ export function NumberInput({
   readOnly,
   node,
 }: WidgetProps<number, NumberField>) {
+  // Text such as "1e" or "-" reads as "": it is not empty, but no number.
+  const emit = ({ value: text, validity }: HTMLInputElement) =>
+    onChange(text !== '' ? Number(text) : validity.badInput ? Number.NaN : undefined);
   return (
     <input
       {...inputProps}
@@ -104,12 +107,10 @@ export function NumberInput({
       placeholder={node.placeholder}
       disabled={disabled}
       readOnly={readOnly}
-      onChange={(event) => {
-        const { value: text, validity } = event.currentTarget;
-        // Text such as "1e" or "-" reads as "": it is not empty, but no number.
-        if (text === '') onChange(validity.badInput ? Number.NaN : undefined);
-        else onChange(Number(text));
-      }}
+      onChange={(event) => emit(event.currentTarget)}
+      // React skips onChange while the value stays "", as it does from "" to
+      // "-" and back: the native input event still tells them apart.
+      onInput={(event) => emit(event.currentTarget)}
     />
   );
 }
