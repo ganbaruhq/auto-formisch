@@ -2,7 +2,7 @@
 
 Render forms automatically on top of [Formisch](https://formisch.dev/) from a portable, versioned JSON Form Definition, and validate submissions on a server with exactly the same logic.
 
-This is early work towards v1. So far a Form Definition supports one Field Type, `text`.
+This is early work towards v1. So far a Form Definition supports the single-value Field Types `text`, `number`, `boolean`, `choice`, `multi_choice` and `date`.
 
 ## Workspace
 
@@ -91,9 +91,31 @@ await store(result.value);
 
 ### Supported so far
 
-- Fields: `text`, with `label`, `description`, `placeholder`, `widget`, `required` and `requiredMessage`. A Field is optional by default.
-- Rules: `email`, `min_length` and `max_length`, each `{type, requirement?, message?}`.
-- Empty means `undefined`, `null`, `''` or a whitespace-only string. An empty Field drops its key from the output and skips its Rules; a required one reports `Required` or its `requiredMessage`.
+- Fields: every Field takes `label`, `description`, `widget`, `required` and `requiredMessage`, and is optional by default.
+
+  | `type`         | Value                                     | Extra keys               | Default Widget                        |
+  | -------------- | ----------------------------------------- | ------------------------ | ------------------------------------- |
+  | `text`         | string                                    | `placeholder`            | `input[type=text]`                    |
+  | `number`       | finite number                             | `placeholder`            | `input[type=number]`                  |
+  | `boolean`      | `true` or `false`                         |                          | checkbox                              |
+  | `choice`       | one value of `choices`                    | `choices`, `placeholder` | `select` with an empty option         |
+  | `multi_choice` | distinct values of `choices`, as an array | `choices`                | one checkbox per choice in a fieldset |
+  | `date`         | `YYYY-MM-DD` calendar date                |                          | `input[type=date]`                    |
+
+  `choices` is required: a non-empty list of strings or finite numbers, or `{value, label?}`, with no empty, duplicate or mixed string and number values.
+
+- Rules, each `{type, requirement?, message?}`, are rejected on load on any other Field Type:
+
+  | Rule                       | Applies to       | `requirement`                                    |
+  | -------------------------- | ---------------- | ------------------------------------------------ |
+  | `email`, `url`             | `text`           | none                                             |
+  | `min_length`, `max_length` | `text`           | non-negative integer                             |
+  | `min_value`, `max_value`   | `number`, `date` | a number, or a `YYYY-MM-DD` date on a date Field |
+  | `integer`                  | `number`         | none                                             |
+  | `accepted`                 | `boolean`        | none                                             |
+  | `min_items`, `max_items`   | `multi_choice`   | non-negative integer                             |
+
+- Empty means `undefined`, `null`, `''`, a whitespace-only string or `[]`; `0` and `false` are values. An empty Field drops its key from the output and skips its Rules; a required one reports `Required` or its `requiredMessage`.
 - Output holds only the keys the Definition declares.
 
 ## References
