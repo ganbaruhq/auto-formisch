@@ -1,5 +1,5 @@
 import type { TextField } from '@auto-formisch/core';
-import type { WidgetEntry, WidgetProps } from './contracts';
+import type { ContentProps, WidgetEntry, WidgetProps } from './contracts';
 
 /** `input[type=text]`. Emits `undefined` when emptied. */
 export function TextInput({
@@ -23,7 +23,13 @@ export function TextInput({
   );
 }
 
-/** The default Widget map. Keys are a Field's `widget ?? type`. */
+/** Content's text in a paragraph. React escapes it, so markup shows as text. */
+export function ContentText({ node }: ContentProps) {
+  return <p>{node.text}</p>;
+}
+
+/** The default Widget map. Keys are a Field's or Content's `widget ?? type`. */
 export const defaultWidgets: Readonly<Record<string, WidgetEntry>> = {
   text: { component: TextInput, appliesTo: ['text'] },
+  content: { component: ContentText, appliesTo: ['content'] },
 };

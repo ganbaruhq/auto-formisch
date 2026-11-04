@@ -4,6 +4,7 @@ import type { CompiledForm, FormOutput } from '@auto-formisch/core';
 import { Components } from './Components';
 import { RenderContext } from './context';
 import { FieldWrapper } from './FieldWrapper';
+import { defaultLayouts } from './layouts';
 import { defaultWidgets } from './widgets';
 
 export interface AutoFormProps<TOutput extends FormOutput = FormOutput> {
@@ -28,7 +29,13 @@ export function AutoForm<TOutput extends FormOutput = FormOutput>({
   const store = useForm({ schema: compiled.schema, validate: 'submit', revalidate: 'input' });
   const idPrefix = useId();
   const context = useMemo(
-    () => ({ store, widgets: defaultWidgets, fieldWrapper: FieldWrapper, idPrefix }),
+    () => ({
+      store,
+      widgets: defaultWidgets,
+      layouts: defaultLayouts,
+      fieldWrapper: FieldWrapper,
+      idPrefix,
+    }),
     [store, idPrefix],
   );
 
