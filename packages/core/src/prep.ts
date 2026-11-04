@@ -3,6 +3,7 @@ import type { Component } from './definition';
 import { isEmpty } from './empty';
 import type { PathKey } from './errors';
 import { fieldsIn, isRecord } from './fields';
+import type { Locks } from './locks';
 
 /**
  * Marks a required Field whose value is empty. `typedObject` turns it into the
@@ -29,13 +30,15 @@ export const INACTIVE = undefined;
  * An active `object` always keeps its key, as `{}` at least, and a Repeater as
  * `[]`; each row is normalized like its own small form. A value of the wrong
  * shape is kept, so that `typedObject` reports it. Keys the Definition doesn't
- * declare are already gone.
+ * declare are already gone. A Locked Field in `locks` is never `MISSING`: it
+ * skips `required`.
  */
 export function prep(
   components: readonly Component[],
   state: ConditionState,
   input: unknown,
   scope: readonly PathKey[] = [],
+  locks?: Locks,
 ): Record<string, unknown> {
   const source = isRecord(input) ? input : {};
   const output: Record<string, unknown> = {};
@@ -48,7 +51,7 @@ export function prep(
         output[field.name] = !active
           ? INACTIVE
           : isEmpty(value) || isRecord(value)
-            ? prep(field.components, state, value, path)
+            ? prep(field.components, state, value, path, locks)
             : value;
         break;
       case 'repeater':
@@ -58,14 +61,16 @@ export function prep(
             ? []
             : Array.isArray(value)
               ? value.map((row, index) =>
-                  isRecord(row) ? prep(field.components, state, row, [...path, index]) : row,
+                  isRecord(row) ? prep(field.components, state, row, [...path, index], locks) : row,
                 )
               : value;
         break;
       default:
         if (!active) break;
         if (!isEmpty(value)) output[field.name] = value;
-        else if (state.isRequired(field, scope)) output[field.name] = MISSING;
+        else if (!locks?.has(field) && state.isRequired(field, scope)) {
+          output[field.name] = MISSING;
+        }
     }
   }
   return output;

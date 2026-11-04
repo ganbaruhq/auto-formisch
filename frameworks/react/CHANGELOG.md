@@ -20,3 +20,4 @@
 - `initialInput`, on `<AutoForm>` and `useAutoForm(form, { initialInput })`, starts the form from an existing record, read only at mount. It replaces every default, and is normalized first; a dropped value gets a `console.warn`. Combining it with `store` throws.
 - A `form` that changes without a remount throws an `AutoFormError`, from `<AutoForm>` and `useAutoForm`.
 - The `hidden` Widget keeps a value of any value Field with no UI and no Field Wrapper; its errors show in the general error region.
+- Locked Fields (from `lock`) render read-only: Widgets and the Field Wrapper get `readOnly: true`, the default text, number and date Widgets use native `readonly`, and select, radio, checkbox and multi-choice use native `disabled`. The Renderer passes a Locked Field's Widget the Locked value and ignores its `onChange`, and Conditions read the Locked value, not the store.

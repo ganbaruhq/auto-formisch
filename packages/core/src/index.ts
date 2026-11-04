@@ -33,5 +33,6 @@ export type {
 } from './definition';
 export { DefinitionError, type FormError, type PathKey } from './errors';
 export type { InputWarning, NormalizedInput } from './initial';
+export { lock, LockError } from './lock';
 export { deleteRequiredMessage, setRequiredMessage, type RequiredMessage } from './messages';
 export type { StandardSchemaV1 } from './standard';

@@ -2,7 +2,7 @@ import axe from 'axe-core';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AutoForm, compile, type AutoFormProps } from './index';
+import { AutoForm, compile, lock, type AutoFormProps } from './index';
 
 // The accessibility rules of the default Renderer (AF-9), checked on a form
 // that uses every default Widget and Layout, before and after a failed submit.
@@ -260,6 +260,22 @@ describe('Accessibility of the default Renderer', () => {
     expect(alert.textContent).toBe('');
     await submit();
     await waitFor(() => expect(alert.textContent).toBe('Try later'));
+  });
+
+  it('passes axe-core with every value Widget Locked', async () => {
+    const valueOf = { text: 'a@b.co', number: 1, boolean: true, choice: 'Two', date: '2024-01-01' };
+    const values = Object.fromEntries(
+      fields.map((field) => [
+        field.name,
+        field.type === 'multi_choice' ? ['One'] : valueOf[field.type],
+      ]),
+    );
+    const { container } = setup(() => {}, lock(form, values));
+    expect(await axeViolations(container)).toEqual([]);
+    expectStructuralRules(container);
+    // Native read-only where it exists, else native disabled.
+    expect((control('Text') as HTMLInputElement).readOnly).toBe(true);
+    expect((control('Select') as HTMLSelectElement).disabled).toBe(true);
   });
 
   it('disables a disabled Field natively', () => {
