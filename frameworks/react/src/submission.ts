@@ -40,6 +40,8 @@ interface Shown {
    * errors show in the general error region instead.
    */
   readonly hidden: boolean;
+  /** Disabled, itself or through an `object` or Repeater around it: Inactive. */
+  readonly disabled: boolean;
 }
 
 /** Whether a value Field is presented by the `hidden` Widget, after `overrides`. */
@@ -78,7 +80,7 @@ export function shownFields(
           break;
         case 'repeater': {
           const path = [...scope, node.name];
-          shown.push({ path, node, hidden: false });
+          shown.push({ path, node, hidden: false, disabled: state.isDisabled(node, scope) });
           const rows = valueAt(input, path);
           if (Array.isArray(rows))
             rows.forEach((_, index) => walk(node.components, [...path, index]));
@@ -87,7 +89,14 @@ export function shownFields(
         default:
           // Any other Component with `components` is a Layout, which adds no path.
           if ('components' in node) walk(node.components, scope);
-          else shown.push({ path: [...scope, node.name], node, hidden: isHidden(node) });
+          else {
+            shown.push({
+              path: [...scope, node.name],
+              node,
+              hidden: isHidden(node),
+              disabled: state.isDisabled(node, scope),
+            });
+          }
       }
     }
   };
@@ -104,7 +113,10 @@ const valueAt = (input: unknown, path: Path): unknown =>
     input,
   );
 
-/** The shown Fields that have a Field Wrapper, for the store's current input. */
+/**
+ * The shown, active Fields that have a Field Wrapper, for the store's current
+ * input: the ones that can show an error of their own (AF-10).
+ */
 const currentFields = (compiled: CompiledForm, store: AutoFormStore, widgetOf: WidgetResolver) => {
   const input = getInput(store);
   const state = compiled.conditions.evaluate(input);
@@ -115,13 +127,14 @@ const currentFields = (compiled: CompiledForm, store: AutoFormStore, widgetOf: W
     state,
     input,
     presentedHidden(widgetOf),
-  ).filter((field) => !field.hidden);
+  ).filter((field) => !field.hidden && !field.disabled);
 };
 
 /**
  * Puts errors returned by `onSubmit` on the shown Field their path names.
- * Every other error, such as one for a hidden Field, a Field presented by
- * the `hidden` Widget, a Layout, a row that doesn't exist or no path at all,
+ * Every other error, such as one for a hidden or disabled (Inactive) Field, a
+ * Field presented by the `hidden` Widget, a Layout, a row that doesn't exist
+ * or no path at all,
  * goes to the form's general error region: Formisch would swallow it, and a
  * Field with no Field Wrapper can't show it.
  */

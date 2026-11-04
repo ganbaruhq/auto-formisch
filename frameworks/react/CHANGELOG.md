@@ -25,3 +25,4 @@
 - A custom Field Type renders with the Widget supplied under its name in `widgets`; `WidgetProps` and `FieldWrapperProps` take its node (`InferFieldNode<typeof type>`).
 - Custom code that throws while validating is handled one way everywhere: a submit, revalidation on input and every Wizard move rethrow it during render for an error boundary, never as a validation message and with no rejected Promise; `wizard.next()` and `goTo()` resolve `false`.
 - A failed submit moves focus once, to the first Field with an error in Definition order, even when it sits in a closed Tab or on an earlier Wizard Page: Formisch's own submit no longer focuses a later Field first. Formisch's `focus(store, ...)` no longer finds the Fields' elements.
+- An error returned by `onSubmit` for a disabled Field, which is Inactive, shows in the general error region, like one for a hidden Field.

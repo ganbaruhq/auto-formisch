@@ -145,7 +145,9 @@ describe('AutoForm: a failed submit', () => {
     );
     await submit();
     await focused(() => input('Name'));
-    expect(descriptionOf(input('Code'))).toEqual(['Code expired']);
+    // Disabled is Inactive, so its error goes to the general region.
+    expect(descriptionOf(input('Code'))).toEqual([]);
+    expect(alertText()).toEqual(['Code expired']);
   });
 
   it('focuses the same way when the actions slot submits', async () => {
@@ -461,6 +463,26 @@ describe('AutoForm: errors returned by onSubmit', () => {
       ]),
     );
     expect(input('Email').hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  it('puts an error for a disabled Field, which is Inactive, in the general error region', async () => {
+    const withDisabled = root(text('email', 'Email'), text('code', 'Code', { disabled: true }), {
+      type: 'object',
+      name: 'address',
+      label: 'Address',
+      disabled: { field: 'email', operator: 'empty' },
+      components: [text('city', 'City')],
+    });
+    const { submit } = setup(withDisabled, () => ({
+      errors: [
+        { message: 'Code taken', path: ['code'] },
+        { message: 'Unknown city', path: ['address', 'city'] },
+      ],
+    }));
+    await submit();
+    await waitFor(() => expect(alertText()).toEqual(['Code taken', 'Unknown city']));
+    expect(input('Code').hasAttribute('aria-invalid')).toBe(false);
+    expect(input('City').hasAttribute('aria-invalid')).toBe(false);
   });
 
   it('accepts several errors for one Field, and a result without errors', async () => {

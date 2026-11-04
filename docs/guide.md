@@ -110,7 +110,7 @@ export function ContactForm() {
 
 `compile` checks the Definition and builds its validation once; call it outside render, or memoize it. `<AutoForm>` renders native HTML with no stylesheet. It validates when the user submits, then revalidates as they correct their input, and after a failed submit it focuses the first Field with an error. `onSubmit` runs only with valid output.
 
-`onSubmit` may return `{ errors }`, each `{ message, path }`: an error shows on the Field its `path` names when that Field is shown, and every other one in the general error region at the top of the form. These server errors disappear at the next input anywhere in the form, because Formisch then revalidates the whole form and replaces them.
+`onSubmit` may return `{ errors }`, each `{ message, path }`: an error shows on the Field its `path` names when that Field is shown and active, and every other one in the general error region at the top of the form, including one for a hidden or disabled Field, which is Inactive. These server errors disappear at the next input anywhere in the form, because Formisch then revalidates the whole form and replaces them.
 
 ### Validate on the server
 
