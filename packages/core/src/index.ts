@@ -32,5 +32,6 @@ export type {
   ValueFieldBase,
 } from './definition';
 export { DefinitionError, type FormError, type PathKey } from './errors';
+export type { InputWarning, NormalizedInput } from './initial';
 export { deleteRequiredMessage, setRequiredMessage, type RequiredMessage } from './messages';
 export type { StandardSchemaV1 } from './standard';

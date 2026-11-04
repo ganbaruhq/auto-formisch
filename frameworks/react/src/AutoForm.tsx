@@ -7,8 +7,8 @@ import {
   type ComponentType,
   type ReactNode,
 } from 'react';
-import { Form, submit, useField } from '@formisch/react';
-import type { CompiledForm, ConditionState, FormOutput } from '@auto-formisch/core';
+import { Form, getErrors, submit, useField } from '@formisch/react';
+import type { CompiledForm, Component, ConditionState, FormOutput } from '@auto-formisch/core';
 import { Components } from './Components';
 import { RenderContext, useRenderContext } from './context';
 import { FieldWrapper } from './FieldWrapper';
@@ -23,22 +23,29 @@ import type {
   WidgetEntry,
   WidgetMap,
 } from './contracts';
-import { resolveWidgets } from './resolve';
+import { resolveWidgets, type WidgetResolver } from './resolve';
 import {
   firstErrorTarget,
   FocusTargetContext,
+  isHiddenWidget,
   keyOf,
   placeErrors,
+  presentedHidden,
+  shownFields,
   type FocusElements,
   type FocusTarget,
   type SubmitResult,
 } from './submission';
-import { useAutoForm, type AutoFormStore } from './useAutoForm';
+import { AutoFormError } from './AutoFormError';
+import { useAutoForm, useSameForm, type AutoFormStore } from './useAutoForm';
 import { DataScopeContext } from './useFormValue';
 import { defaultWidgets } from './widgets';
 
 export interface AutoFormProps<TOutput extends FormOutput = FormOutput> {
-  /** The result of `compile`. Change the form by changing the React `key`. */
+  /**
+   * The result of `compile` or `lock`. Change the form by changing the React
+   * `key`; a new `form` without a remount throws, so memoize one you derive.
+   */
   readonly form: CompiledForm<TOutput>;
   /**
    * Called with the validated output, the full state of active Fields. It may
@@ -52,6 +59,14 @@ export interface AutoFormProps<TOutput extends FormOutput = FormOutput> {
    * Formisch itself. Without it, `<AutoForm>` creates its own.
    */
   readonly store?: AutoFormStore<TOutput>;
+  /**
+   * An existing record to edit, read only at mount: change the React `key` to
+   * switch record. It replaces every `default`; for a partial prefill pass
+   * `{ ...form.defaults, ...prefill }`. Keys without a Field are dropped, and
+   * a value of the wrong type for its Field starts empty, with a
+   * `console.warn`. With `store`, pass it to `useAutoForm` instead.
+   */
+  readonly initialInput?: object;
   /** Set on the `form` element, so buttons outside it can use `form="id"`. */
   readonly id?: string;
   /** Widgets by name, merged over the defaults. Looked up by `widget ?? type`. */
@@ -84,12 +99,21 @@ const defaultLabels: Labels = {
  * stylesheet. It validates on submit and revalidates on input.
  */
 export function AutoForm<TOutput extends FormOutput = FormOutput>(props: AutoFormProps<TOutput>) {
-  const { store, ...rest } = props as AutoFormProps;
-  return store === undefined ? <WithOwnStore {...rest} /> : <Rendered {...rest} store={store} />;
+  const { store, initialInput, ...rest } = props as AutoFormProps;
+  if (store === undefined) return <WithOwnStore {...rest} initialInput={initialInput} />;
+  if (initialInput !== undefined) {
+    throw new AutoFormError([
+      {
+        message: 'Pass "initialInput" to useAutoForm, not with "store"',
+        path: ['initialInput'],
+      },
+    ]);
+  }
+  return <Rendered {...rest} store={store} />;
 }
 
-function WithOwnStore(props: Omit<AutoFormProps, 'store'>) {
-  return <Rendered {...props} store={useAutoForm(props.form)} />;
+function WithOwnStore({ initialInput, ...props }: Omit<AutoFormProps, 'store'>) {
+  return <Rendered {...props} store={useAutoForm(props.form, { initialInput })} />;
 }
 
 function Rendered({
@@ -103,7 +127,8 @@ function Rendered({
   overrides,
   labels,
   actions = DefaultActions,
-}: AutoFormProps & { readonly store: AutoFormStore }) {
+}: Omit<AutoFormProps, 'initialInput'> & { readonly store: AutoFormStore }) {
+  useSameForm(compiled);
   const idPrefix = useId();
   const focusElements = useRef<FocusElements>(new Map()).current;
   const rootScope = useMemo(
@@ -112,6 +137,7 @@ function Rendered({
   );
   const base = useMemo(
     () => ({
+      form: compiled,
       store,
       widgetOf: resolveWidgets(compiled.definition.components, widgetMap(widgets), overrides),
       layouts: { ...defaultLayouts, ...definedOnly(layouts) },
@@ -122,9 +148,16 @@ function Rendered({
     }),
     [compiled, store, idPrefix, focusElements, widgets, layouts, fieldWrapper, overrides, labels],
   );
+  const hasHidden = useMemo(() => hasHiddenWidget(compiled, base.widgetOf), [compiled, base]);
   const conditions = useConditions(compiled, store);
   const context = useMemo(() => ({ ...base, conditions }), [base, conditions]);
-  const { attempt, handle, focusTarget } = useSubmission(compiled, store, onSubmit, focusElements);
+  const { attempt, handle, focusTarget } = useSubmission(
+    compiled,
+    store,
+    base.widgetOf,
+    onSubmit,
+    focusElements,
+  );
 
   return (
     <RenderContext value={context}>
@@ -137,6 +170,7 @@ function Rendered({
             {store.errors?.map((error, index) => (
               <div key={index}>{error}</div>
             ))}
+            {hasHidden && <HiddenWidgetErrors />}
           </div>
           <Actions
             render={actions}
@@ -170,6 +204,7 @@ interface Attempt {
 function useSubmission(
   compiled: CompiledForm,
   store: AutoFormStore,
+  widgetOf: WidgetResolver,
   onSubmit: AutoFormProps['onSubmit'],
   focusElements: FocusElements,
 ) {
@@ -182,7 +217,7 @@ function useSubmission(
     if (attempt === null || isSubmitting) return;
     pending.current = null;
     if (attempt.reached && !attempt.rejected) return;
-    setFocusTarget(firstErrorTarget(compiled, store, focusElements));
+    setFocusTarget(firstErrorTarget(compiled, store, widgetOf, focusElements));
   });
 
   useEffect(() => {
@@ -200,7 +235,7 @@ function useSubmission(
       const result = await onSubmit(output);
       const errors = typeof result === 'object' && result !== null ? result.errors : undefined;
       if (errors !== undefined && errors.length > 0) {
-        placeErrors(compiled, store, errors);
+        placeErrors(compiled, store, widgetOf, errors);
         if (attempt !== null) attempt.rejected = true;
       }
     },
@@ -221,6 +256,42 @@ function useConditions(compiled: CompiledForm, store: AutoFormStore): ConditionS
   const { conditions } = compiled;
   const input = conditions.readsValues ? root.input : undefined;
   return useMemo(() => conditions.evaluate(input), [conditions, input]);
+}
+
+/** Whether any value Field of the form, in any row template, uses the `hidden` Widget. */
+function hasHiddenWidget(compiled: CompiledForm, widgetOf: WidgetResolver): boolean {
+  const any = (components: readonly Component[]): boolean =>
+    components.some((node) => {
+      if (node.type === 'content') return false;
+      if (node.type === 'object' || node.type === 'repeater') return any(node.components);
+      if ('components' in node) return any(node.components);
+      return isHiddenWidget(widgetOf(node).node);
+    });
+  return any(compiled.definition.components);
+}
+
+/**
+ * The errors of the shown Fields that the `hidden` Widget presents, which
+ * have no Field Wrapper to show them, in Definition order.
+ */
+function HiddenWidgetErrors() {
+  const { form, store, widgetOf, conditions } = useRenderContext();
+  // A Formisch hook makes this component re-render when what it reads below
+  // changes: the rows of the form, and the errors of those Fields.
+  const root = useField(store, { path: [] as never });
+  const fields = shownFields(
+    form.definition.components,
+    conditions,
+    root.input,
+    presentedHidden(widgetOf),
+  );
+  return fields.flatMap(({ path, hidden }) =>
+    hidden
+      ? (getErrors(store, { path } as never) ?? []).map((error, index) => (
+          <div key={`${keyOf(path)}#${index}`}>{error}</div>
+        ))
+      : [],
+  );
 }
 
 /** Renders the `actions` slot as a component of its own, so it may use hooks. */

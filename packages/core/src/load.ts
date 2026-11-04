@@ -7,6 +7,7 @@ import {
   type Condition,
   type ConditionOperator,
   type FormDefinition,
+  type RepeaterField,
   type RuleNode,
   type ValueField,
 } from './definition';
@@ -14,6 +15,7 @@ import { builtinComponents, gridSize, type ComponentSpec } from './components';
 import { DefinitionError, toFormErrors, type FormError, type PathKey } from './errors';
 import { builtinFieldTypes, fieldKeys, type FieldTypeSpec } from './field-types';
 import { isEmpty } from './empty';
+import { fieldsIn } from './fields';
 import { builtinRules, ruleActions } from './rules';
 import { REFERENCE, REFERENCE_SYNTAX } from './tree';
 
@@ -76,6 +78,8 @@ class Loader {
   readonly errors: FormError[] = [];
   /** The Definition path of every loaded Component, for errors found after reading. */
   private readonly paths = new Map<Component, Path>();
+  /** Fields whose `rules` failed to load, so a `default` is not run through them. */
+  private readonly brokenRules = new WeakSet<object>();
 
   root(input: unknown): Node | undefined {
     const node = this.object(input, []);
@@ -174,25 +178,65 @@ class Loader {
       if (CONDITION_KEYS.includes(key)) return this.setting(key, value, [...path, key]);
       return this.value(schemas[key], value, [...path, key]);
     });
+    if (!rulesLoaded) this.brokenRules.add(field);
     if (has(field, 'default')) {
-      field.default = this.default(field, spec, rulesLoaded, [...path, 'default']);
+      const loaded = field as unknown as ValueField;
+      field.default = this.valueDefault(loaded, field.default, [...path, 'default']);
     }
     return field as unknown as Component;
   }
 
   /**
-   * A value Field's `default`: never empty, of the Field's type, and through
-   * its Rules. Each check runs only once the keys it depends on have loaded.
+   * The `default` of a value Field, or its value in a Repeater default row:
+   * never empty, of the Field's type, and through its Rules. Each check runs
+   * only once the keys it depends on have loaded.
    */
-  private default(field: Node, spec: FieldTypeSpec, rulesLoaded: boolean, path: Path): unknown {
-    const input = field.default;
+  private valueDefault(field: ValueField, input: unknown, path: Path): unknown {
     if (isEmpty(input)) return this.fail(path, 'A default cannot be empty');
-    if ((spec.requiredKeys ?? []).some((key) => field[key] === undefined)) return undefined;
-    const node = field as unknown as ValueField;
-    const rules = rulesLoaded ? ruleActions(node.rules) : [];
-    const value = this.value(v.pipe(v.unknown(), spec.value(node), ...rules), input, path);
+    const spec = builtinFieldTypes.get(field.type)!;
+    const node = field as unknown as Node;
+    if ((spec.requiredKeys ?? []).some((key) => node[key] === undefined)) return undefined;
+    const rules = this.brokenRules.has(field) ? [] : ruleActions(field.rules);
+    const value = this.value(v.pipe(v.unknown(), spec.value(field), ...rules), input, path);
     // A copy, so that freezing the Definition never freezes the caller's input.
     return Array.isArray(value) ? [...value] : value;
+  }
+
+  /**
+   * A Repeater `default`: a non-empty list of rows, each checked against the
+   * template, and the whole list through the Repeater's Rules, such as
+   * `min_items`. A row may leave out keys, which take their Field's default.
+   */
+  private repeaterDefault(field: RepeaterField, input: unknown, path: Path): Node[] | undefined {
+    const list = this.array(input, path);
+    if (list === undefined) return undefined;
+    if (list.length === 0) return this.fail(path, 'A default cannot be empty');
+    const rows = list.map((row, index) => this.rowDefault(field.components, row, [...path, index]));
+    if (!this.brokenRules.has(field) && field.rules !== undefined) {
+      this.value(v.pipe(v.array(v.unknown()), ...ruleActions(field.rules)), list, path);
+    }
+    return rows.filter((row) => row !== undefined);
+  }
+
+  /**
+   * One row of a Repeater default, or the value of an `object` in it: only
+   * keys of Fields in `components`, each a valid default for its Field.
+   */
+  private rowDefault(components: readonly Component[], input: unknown, path: Path) {
+    const row = this.object(input, path);
+    if (row === undefined) return undefined;
+    const fields = new Map(fieldsIn(components).map((field) => [field.name, field]));
+    const out: Node = {};
+    for (const key of Object.keys(row)) {
+      const field = fields.get(key);
+      const at = [...path, key];
+      // Field names are never `__proto__`, so `out[key]` is a plain key.
+      if (field === undefined) this.fail(at, `Unknown key ${JSON.stringify(key)}`);
+      else if (field.type === 'object') out[key] = this.rowDefault(field.components, row[key], at);
+      else if (field.type === 'repeater') out[key] = this.repeaterDefault(field, row[key], at);
+      else out[key] = this.valueDefault(field, row[key], at);
+    }
+    return out;
   }
 
   /**
@@ -210,6 +254,8 @@ class Loader {
     const allowed = new Set(['type', 'visible', ...Object.keys(spec.keys)]);
     if (spec.field !== undefined) allowed.add('name').add('disabled');
     if (spec.field === 'rules') allowed.add('rules');
+    // Only a Repeater has rows to start with; an `object` has no `default`.
+    if (spec.type === 'repeater') allowed.add('default');
     if (spec.children !== undefined) allowed.add('components');
     // A type with a fixed parent, like `tab` in `tabs`, never sits in a grid.
     if (spec.parent === undefined) allowed.add('colSpan');
@@ -230,10 +276,17 @@ class Loader {
       columns: hasColumns && v.is(gridSize, node.columns) ? node.columns : undefined,
       only: spec.children?.only,
     };
-    return this.copy(node, allowed, (key, value) => {
-      if (key === 'type') return value;
+    let rulesLoaded = true;
+    const result = this.copy(node, allowed, (key, value) => {
+      // Checked once the template and the Rules it depends on are read.
+      if (key === 'type' || key === 'default') return value;
       if (key === 'name') return this.name(value, [...path, key], scope);
-      if (key === 'rules') return this.rules(value, spec.type, [...path, key]);
+      if (key === 'rules') {
+        const errors = this.errors.length;
+        const rules = this.rules(value, spec.type, [...path, key]);
+        rulesLoaded = this.errors.length === errors;
+        return rules;
+      }
       if (key === 'colSpan') return this.colSpan(value, [...path, key], parent);
       if (key === 'visible' || key === 'disabled') return this.setting(key, value, [...path, key]);
       if (key !== 'components') return this.value(spec.keys[key], value, [...path, key]);
@@ -243,7 +296,13 @@ class Loader {
         this.fail([...path, key], `A "${spec.type}" needs at least one ${child}`);
       }
       return children;
-    }) as unknown as Component;
+    });
+    if (!rulesLoaded) this.brokenRules.add(result);
+    if (has(result, 'default') && Array.isArray(node.components)) {
+      const repeater = result as unknown as RepeaterField;
+      result.default = this.repeaterDefault(repeater, result.default, [...path, 'default']);
+    }
+    return result as unknown as Component;
   }
 
   /** `visible` is a Condition; `disabled` and `required` are a boolean or a Condition. */

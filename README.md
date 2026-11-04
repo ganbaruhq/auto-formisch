@@ -107,7 +107,27 @@ export function ContactForm() {
 }
 ```
 
-`AutoForm` validates on submit and revalidates on input. To show a different form, change its React `key`.
+`AutoForm` validates on submit and revalidates on input. To show a different form, change its React `key`; a new `form` without a remount throws, so memoize one you derive in render.
+
+### Defaults and editing a record
+
+A new form starts from the Definition's `default`s, which seed the form only: a value the user clears stays empty, and the server never fills one in. `compiled.defaults` is that starting input, a fresh copy on every read.
+
+To edit a record, pass it as `initialInput`, on `<AutoForm>` or on `useAutoForm(form, { initialInput })` (not both `store` and `initialInput`, which throws). It is read only at mount, so change the React `key` to switch record:
+
+```tsx
+const form = useMemo(() => compile(definition), []);
+<AutoForm key={record.id} form={form} initialInput={record} onSubmit={save} />;
+
+// A new form with some values known, such as from the URL:
+<AutoForm form={form} initialInput={{ ...form.defaults, ...prefill }} onSubmit={save} />;
+```
+
+- `initialInput` replaces every `default`: a key the record lacks starts empty, since the user may have cleared it. A Repeater row added later still starts from its Fields' defaults.
+- A record saved under an older Definition still opens. Every `object` and Repeater gets its full shape, keys without a Field are dropped, and a value of the wrong JavaScript type for its Field (a number in a `text`, a string for a Repeater) starts empty with a `console.warn`. A value of the right type is kept even outside `choices` or breaking a Rule, so that submitting reports it. A non-required Field with a wrongly typed value therefore loses it on the next save.
+- `onSubmit` gets the full state of the active Fields. The server should replace the keys the Definition manages, not merge them, or a user can never clear a value. A `disabled` Field is Inactive and so missing from the output: a server that replaces would erase its stored value. Keys outside the Definition, such as `createdAt`, are the application's to keep.
+- The `hidden` Widget (`"widget": "hidden"`) keeps a value with no UI and no Field Wrapper, such as a row's `id` so the server can match rows after a reorder. The Field stays active and in the output, and its errors show in the general error region. The client can still change the value, so the server must check it.
+- Formisch's `reset(store, { initialInput })` also works on the store from `useAutoForm`, but skips this normalization: a missing key makes an `object` or Repeater `undefined`. Read "unsaved changes" from the store's `isDirty`, knowing that an object value compares by reference, a row removed and added again stays dirty, and `getDirtyPaths` names a whole Repeater rather than the row Field that changed.
 
 ### Customizing the Renderer
 
@@ -178,7 +198,7 @@ Like Valibot, a message set for one language doesn't fall back to another; `dele
 
 ### Supported so far
 
-- Value Fields: every value Field takes `label`, `description`, `widget`, `required`, `requiredMessage` and `default`, and is optional by default. `default` must be non-empty, of the Field's type and pass its Rules, or loading fails; it stays out of the schema, so the server never fills it in. (The Renderer doesn't seed it into the form yet.)
+- Value Fields: every value Field takes `label`, `description`, `widget`, `required`, `requiredMessage` and `default`, and is optional by default. `default` must be non-empty, of the Field's type and pass its Rules, or loading fails; it stays out of the schema, so the server never fills it in. The Renderer seeds it into a new form.
 
   | `type`         | Value                                     | Extra keys               | Default Widget                        |
   | -------------- | ----------------------------------------- | ------------------------ | ------------------------------------- |
@@ -193,7 +213,7 @@ Like Valibot, a message set for one language doesn't fall back to another; `dele
 
   `choices` is required: a non-empty list of strings or finite numbers, or `{value, label?}`, with no empty, duplicate or mixed string and number values.
 
-- Nested Fields: `object` and `repeater` take `name`, `label`, `description`, `widget` and a non-empty `components`, but no `required`; they always keep their key in the output, as `{}` and `[]`. An `object` nests its Fields' values under its `name`. A `repeater` holds a list of rows, each an object made from its `components`; `min_items: 1` asks for at least one row. Each `object` and each row is its own data scope, so a `name` need only be unique within it, and errors carry plain key paths into rows, such as `['contacts', 1, 'name']`. Repeaters nest. The default Widgets are a `fieldset` for an `object`, and for a `repeater` a `fieldset` with one group per row (Move up, Move down, Remove) and an Add button that is disabled at `max_items`; values and errors stay with their row when it moves.
+- Nested Fields: `object` and `repeater` take `name`, `label`, `description`, `widget` and a non-empty `components`, but no `required`; they always keep their key in the output, as `{}` and `[]`. An `object` nests its Fields' values under its `name`. A `repeater` holds a list of rows, each an object made from its `components`; `min_items: 1` asks for at least one row. A `repeater` takes a `default` of rows to start with, such as `[{}]` for one: a non-empty list whose rows use only the template's names, whose values are valid defaults for their Fields, and which passes the Repeater's Rules. A key a row leaves out takes its Field's `default`; an `object` has no `default`. Each `object` and each row is its own data scope, so a `name` need only be unique within it, and errors carry plain key paths into rows, such as `['contacts', 1, 'name']`. Repeaters nest. The default Widgets are a `fieldset` for an `object`, and for a `repeater` a `fieldset` with one group per row (Move up, Move down, Remove) and an Add button that is disabled at `max_items`; values and errors stay with their row when it moves.
 
 - Rules, each `{type, requirement?, message?}`, are rejected on load on any other Field Type:
 

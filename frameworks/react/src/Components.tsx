@@ -187,7 +187,7 @@ function ObjectGroup({ node: declared, scope }: NestedProps<ObjectField>) {
  * removing and reordering rows do nothing, whatever the Widget shows.
  */
 function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
-  const { store, widgetOf, conditions, focusElements } = useRenderContext();
+  const { form, store, widgetOf, conditions, focusElements } = useRenderContext();
   const { node, entry } = widgetOf(declared);
   const Widget = entry.component as ComponentType<RepeaterProps>;
   const parent = useContext(DataScopeContext);
@@ -226,7 +226,10 @@ function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
   return (
     <Widget
       rows={rows}
-      add={unlessDisabled(() => insert(store, { path: arrayPath }))}
+      // Always explicit values: Formisch may reuse the stores of a removed row.
+      add={unlessDisabled(() =>
+        insert(store, { path: arrayPath, initialInput: form.newRow(declared) as never }),
+      )}
       canAdd={!disabled && (max === undefined || rows.length < max)}
       disabled={disabled}
       errors={array.errors ?? []}

@@ -58,8 +58,11 @@ export function required(
 /**
  * The value a new form starts with, as the JSON key `default`. It only seeds
  * the form: a value the user clears stays empty, and the server never fills it.
+ * On a Repeater it is the rows to start with, such as `[{}]` for one; a key a
+ * row leaves out takes its Field's default.
  */
-export const defaultValue = <const V>(value: V): PipeItem<ValueType, V> => set({ default: value });
+export const defaultValue = <const V>(value: V): PipeItem<ValueType | 'repeater', V> =>
+  set({ default: value });
 
 /*
  * Rules. Each applies only to the Field Types its JSON Rule does, so a Rule on
