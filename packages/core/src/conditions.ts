@@ -3,7 +3,7 @@ import { dateSchema } from './date';
 import type { Component, Condition, ConditionLeaf, FieldNode, ValueField } from './definition';
 import { isEmpty } from './empty';
 import type { PathKey } from './errors';
-import { isRecord } from './fields';
+import { fieldsIn, isRecord } from './fields';
 import {
   REFERENCE,
   REFERENCE_SYNTAX,
@@ -38,6 +38,13 @@ export interface ConditionState {
    * the way a Condition does: as empty while that Field is Inactive.
    */
   locate(reference: string, scope: Path): FieldLocation | { readonly error: string };
+  /**
+   * The value of the Field at `location` as a Condition reads it: `undefined`
+   * while it is Inactive, a Locked Field's Locked value, and an `object` or a
+   * Repeater's rows without their Inactive Fields. For a Renderer that shows
+   * one Field's value in another; a copy where it leaves Fields out.
+   */
+  valueOf(location: FieldLocation): unknown;
 }
 
 /** The Field a reference leads to. */
@@ -136,6 +143,30 @@ class Evaluation implements ConditionState {
       path: [...targetScope, target.name],
       active: this.isActive(target, targetScope),
     };
+  }
+
+  valueOf(location: FieldLocation): unknown {
+    if (!location.active) return undefined;
+    return this.present(location.field, location.path, at(this.input, location.path));
+  }
+
+  /** `value`, at `path`, without the Inactive Fields inside it. */
+  private present(field: FieldNode, path: Path, value: unknown): unknown {
+    if (field.type === 'object') return this.presentScope(field.components, path, value);
+    if (field.type === 'repeater' && Array.isArray(value)) {
+      return value.map((row, index) => this.presentScope(field.components, [...path, index], row));
+    }
+    return value;
+  }
+
+  private presentScope(components: readonly Component[], scope: Path, value: unknown): unknown {
+    if (!isRecord(value)) return value;
+    const out: Record<string, unknown> = {};
+    for (const child of fieldsIn(components)) {
+      if (!Object.hasOwn(value, child.name) || !this.isActive(child, scope)) continue;
+      out[child.name] = this.present(child, [...scope, child.name], value[child.name]);
+    }
+    return out;
   }
 
   private isActive(field: FieldNode, scope: Path): boolean {

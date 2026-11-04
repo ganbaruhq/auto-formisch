@@ -1,7 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
+import { setInput } from '@formisch/react';
 import userEvent from '@testing-library/user-event';
-import { AutoForm, compile, useFormValue, type WidgetProps } from './index';
+import {
+  AutoForm,
+  compile,
+  lock,
+  useAutoForm,
+  useFormValue,
+  type AutoFormStore,
+  type CompiledForm,
+  type WidgetProps,
+} from './index';
 
 afterEach(cleanup);
 
@@ -36,13 +46,11 @@ const echoOf = (label: string) =>
     .parentElement!.querySelector(`output[for="${screen.getByLabelText(label).id}"]`)!.textContent;
 
 function setup(...components: unknown[]) {
-  render(
-    <AutoForm
-      form={compile({ version: 1, components })}
-      onSubmit={() => {}}
-      widgets={{ echo: Echo }}
-    />,
-  );
+  return setupForm(compile({ version: 1, components }));
+}
+
+function setupForm(form: CompiledForm) {
+  render(<AutoForm form={form} onSubmit={() => {}} widgets={{ echo: Echo }} />);
   return userEvent.setup();
 }
 
@@ -124,6 +132,79 @@ describe('useFormValue', () => {
     await user.click(screen.getByLabelText('off'));
     expect(echoOf('hidden_echo')).toBe('nothing');
     expect(echoOf('inner_echo')).toBe('nothing');
+  });
+
+  it('reads an object or Repeater rows without their Inactive Fields, like a Condition', async () => {
+    const user = setup(
+      { type: 'boolean', name: 'off', label: 'off' },
+      {
+        type: 'object',
+        name: 'address',
+        components: [
+          text('city'),
+          {
+            type: 'text',
+            name: 'zip',
+            label: 'zip',
+            disabled: { field: '../off', operator: 'eq', value: true },
+          },
+        ],
+      },
+      {
+        type: 'repeater',
+        name: 'pets',
+        label: 'Pets',
+        components: [
+          text('kind'),
+          {
+            type: 'text',
+            name: 'age',
+            label: 'age',
+            visible: { field: 'kind', operator: 'eq', value: 'dog' },
+          },
+        ],
+      },
+      echo('address_echo', 'address'),
+      echo('pets_echo', 'pets'),
+    );
+    await user.type(screen.getByLabelText('city'), 'Hue');
+    await user.type(screen.getByLabelText('zip'), '53');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.type(screen.getByLabelText('kind'), 'dog');
+    await user.type(screen.getByLabelText('age'), '3');
+    expect(echoOf('address_echo')).toBe('{"city":"Hue","zip":"53"}');
+    expect(echoOf('pets_echo')).toBe('[{"kind":"dog","age":"3"}]');
+    await user.click(screen.getByLabelText('off'));
+    await user.clear(screen.getByLabelText('kind'));
+    await user.type(screen.getByLabelText('kind'), 'cat');
+    expect(echoOf('address_echo')).toBe('{"city":"Hue"}');
+    expect(echoOf('pets_echo')).toBe('[{"kind":"cat"}]');
+  });
+
+  it('reads a Locked Field as its Locked value, also inside an object', async () => {
+    const form = lock(
+      compile({
+        version: 1,
+        components: [
+          text('plan'),
+          { type: 'object', name: 'account', components: [text('owner')] },
+          echo('plan_echo', 'plan'),
+          echo('account_echo', 'account'),
+        ],
+      }),
+      { plan: 'pro', 'account.owner': 'Ada' },
+    );
+    let store: AutoFormStore | undefined;
+    function Host() {
+      store = useAutoForm(form);
+      return <AutoForm form={form} store={store} onSubmit={() => {}} widgets={{ echo: Echo }} />;
+    }
+    render(<Host />);
+    // The store holds a forged value; the Locked one still wins.
+    act(() => setInput(store!, { path: ['plan'], input: 'free' } as never));
+    act(() => setInput(store!, { path: ['account', 'owner'], input: 'Eve' } as never));
+    expect(echoOf('plan_echo')).toBe('"pro"');
+    expect(echoOf('account_echo')).toBe('{"owner":"Ada"}');
   });
 
   for (const [path, message] of [

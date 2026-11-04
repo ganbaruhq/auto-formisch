@@ -23,3 +23,4 @@
 - A list submitted where an object belongs (an `object`, a Repeater row or the root input), even `[]`, is an error at that path instead of reading as `{}`.
 - A Repeater `default` row may give a nested Repeater an empty list (`inner: []`); the nested Repeater's Rules still check it.
 - Registering a custom Field Type or Rule also rejects `v.lazy` anywhere in a schema, option or requirement, and an `async` function in a sync check such as `v.check` or `v.custom`, with a `TypeError`.
+- `ConditionState.valueOf(location)` reads a Field's value as Conditions do: `undefined` while Inactive, a Locked value, and an `object` or Repeater rows without their Inactive Fields.

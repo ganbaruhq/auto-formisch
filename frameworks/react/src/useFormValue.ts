@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { useField } from '@formisch/react';
 import type { Component, PathKey } from '@auto-formisch/core';
-import { useCondition, useRenderContext } from './context';
+import { useRenderContext } from './context';
 
 /**
  * One data scope as rendered: the root, an `object`, or one Repeater row.
@@ -22,23 +22,24 @@ export const DataScopeContext = createContext<DataScope | null>(null);
  * depends on it. `path` has the syntax of a Condition reference: leading
  * `../` to leave the current data scope (from a Repeater row, to the scope
  * holding the Repeater), then names joined by dots, with no index. It reads
- * the store's input, so a Repeater reads as its rows and an `object` as its
- * Fields. Like a Condition, it reads an Inactive Field as empty
- * (`undefined`), whatever the store still holds.
+ * the value the way a Condition does: an Inactive Field as empty
+ * (`undefined`), whatever the store still holds; a Locked Field as its Locked
+ * value; and an `object` or a Repeater's rows without their Inactive Fields.
+ * The calling component re-renders on every input of the form.
  *
  * @throws when `path` names no Field from where the Widget renders.
  */
 export function useFormValue<T = unknown>(path: string): T | undefined {
-  const { store, conditions } = useRenderContext();
+  const { form, store } = useRenderContext();
   const scope = useContext(DataScopeContext);
   if (scope === null) throw new Error('useFormValue must be called inside <AutoForm>');
+  // The whole input, so that an `object` read as a whole follows every Field
+  // in it, and their Conditions. The root path `[]` names the whole form,
+  // which the schema's path type cannot express.
+  const root = useField(store, { path: [] as never });
+  const state = form.conditions.evaluate(root.input);
   // The resolver Conditions use, so both read the same Field the same way.
-  const found = conditions.get().locate(path, scope.path);
+  const found = state.locate(path, scope.path);
   if ('error' in found) throw new Error(`useFormValue("${path}"): ${found.error}`);
-  const active = useCondition((state) => {
-    const location = state.locate(path, scope.path);
-    return !('error' in location) && location.active;
-  });
-  const field = useField(store, { path: found.path as [string] });
-  return active ? (field.input as T | undefined) : undefined;
+  return state.valueOf(found) as T | undefined;
 }

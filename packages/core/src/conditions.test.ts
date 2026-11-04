@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { compile, DefinitionError, type FormError } from './index';
+import { compile, DefinitionError, lock, type FormError } from './index';
 
 const validate = (definition: unknown, input: unknown) =>
   compile(definition)['~standard'].validate(input);
@@ -654,6 +654,47 @@ describe('locate', () => {
       error: 'A reference is "../" steps, then names joined by "."',
     });
     expect(locate({}, 'a', ['items'])).toEqual({ error: 'No data scope at "items"' });
+  });
+});
+
+describe('valueOf', () => {
+  const compiled = compile(
+    root(
+      { type: 'boolean', name: 'off' },
+      object('box', [text('a'), text('b', { disabled: leaf('../off', 'eq', true) })]),
+      repeater('items', [text('kind'), text('age', { visible: leaf('kind', 'eq', 'dog') })]),
+      text('plan'),
+    ),
+  );
+  const valueOf = (form: typeof compiled, input: unknown, reference: string) => {
+    const state = form.conditions.evaluate(input);
+    const found = state.locate(reference, []);
+    if ('error' in found) throw new Error(found.error);
+    return state.valueOf(found);
+  };
+  const input = {
+    off: true,
+    box: { a: 'A', b: 'B', other: 1 },
+    items: [{ kind: 'dog', age: 3 }, { kind: 'cat', age: 9 }, 'odd'],
+    plan: 'free',
+  };
+
+  it('reads an object and Repeater rows without their Inactive Fields', () => {
+    expect(valueOf(compiled, input, 'box')).toEqual({ a: 'A' });
+    expect(valueOf(compiled, { ...input, off: false }, 'box')).toEqual({ a: 'A', b: 'B' });
+    expect(valueOf(compiled, input, 'items')).toEqual([
+      { kind: 'dog', age: 3 },
+      { kind: 'cat' },
+      'odd',
+    ]);
+    expect(valueOf(compiled, input, 'box.b')).toBeUndefined();
+    expect(valueOf(compiled, input, 'plan')).toBe('free');
+  });
+
+  it('reads a Locked Field as its Locked value', () => {
+    const locked = lock(compiled, { plan: 'pro', 'box.a': 'L' });
+    expect(valueOf(locked, input, 'plan')).toBe('pro');
+    expect(valueOf(locked, input, 'box')).toEqual({ a: 'L' });
   });
 });
 

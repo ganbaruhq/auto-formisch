@@ -213,7 +213,7 @@ Fluent Builder functions, each its own export:
 | `id`           | Set on the `form` element, so buttons outside it can use `form="id"`.                                                                               |
 
 - `useAutoForm(form, { initialInput }?)`: the Formisch store `<AutoForm>` would create, validating on submit and revalidating on input. A Wizard's store validates the whole form on every input, so its `isValid` and errors include Pages not reached yet.
-- `useFormValue(path)`: inside a Widget, the value of another Field, `undefined` while Inactive.
+- `useFormValue(path)`: inside a Widget, the value of another Field as a Condition reads it: `undefined` while Inactive, the Locked value of a Locked Field, an `object` or Repeater without its Inactive Fields.
 - `AutoFormError`: thrown on mount for an unknown Widget, a wrong `appliesTo` or an unknown override, and when `form` changes without a remount.
 - Contracts: `WidgetProps`, `InputProps`, `FieldWrapperProps`, `ObjectProps`, `RepeaterProps`, `RepeaterRow`, `ContentProps`, `LayoutProps`, `TabsLayoutProps`, `TabItem`, `PageLayoutProps`, `Wizard`, `WizardPage`, `ActionsProps`, `WidgetMap`, `WidgetEntry`, `WidgetDeclaration`, `WidgetPropsByType`, `Overrides`, `FieldOverride`, `Labels`, `SubmitResult`. The default Widgets and Layouts themselves are not exported.
 
