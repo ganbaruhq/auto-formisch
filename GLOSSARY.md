@@ -60,6 +60,10 @@ _Avoid_: Expression, visibleIf
 The state of a Field that a Condition or its setting has made hidden or disabled, directly or through an enclosing Component. An Inactive Field is not validated, contributes no value to the submission, and reads as empty to Conditions.
 _Avoid_: Excluded, skipped
 
+**Locked**:
+The state of a Field whose value the application fixes for one form instance, so the person filling in the form cannot change it. A Locked Field is shown read-only and is not validated. Unless a Condition makes it Inactive, its value drives Conditions and appears in the submission.
+_Avoid_: Read-only field, frozen, prefilled
+
 **Renderer**:
 A framework-specific adapter that turns a Form Definition into an interactive form backed by Formisch.
 _Avoid_: AutoForm (that is one React export), theme
