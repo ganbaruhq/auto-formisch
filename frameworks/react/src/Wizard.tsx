@@ -14,13 +14,12 @@ import {
   pageOf,
   shownPages,
   type CompiledForm,
-  type ConditionState,
   type FormOutput,
   type PageLayout,
   type PathKey,
 } from '@auto-formisch/core';
 import { Components } from './Components';
-import { useRenderContext } from './context';
+import { useRenderContext, useSelectedCondition, type ConditionSource } from './context';
 import type { Wizard } from './contracts';
 import type { AutoFormStore } from './useAutoForm';
 
@@ -77,7 +76,7 @@ const errorPages = (compiled: CompiledForm, store: AutoFormStore, root?: readonl
 interface WizardOptions {
   readonly compiled: CompiledForm;
   readonly store: AutoFormStore;
-  readonly conditions: ConditionState;
+  readonly conditions: ConditionSource;
   /** Marks a submit attempt, as the form's capture handler does for a regular form. */
   readonly attempt: () => void;
   /** Runs `onSubmit` with the validated output and places the errors it returns. */
@@ -100,10 +99,10 @@ export function useWizardController({
   focusFirstError,
 }: WizardOptions) {
   const pages = compiled.definition.pages;
-  const shown = useMemo(
-    () => (pages ?? []).flatMap((page, index) => (conditions.isVisible(page, []) ? [index] : [])),
-    [pages, conditions],
+  const shownKey = useSelectedCondition(conditions, (state) =>
+    (pages ?? []).flatMap((page, index) => (state.isVisible(page, []) ? [index] : [])).join(),
   );
+  const shown = useMemo(() => (shownKey === '' ? [] : shownKey.split(',').map(Number)), [shownKey]);
   const [current, setCurrent] = useState(() => shown[0] ?? 0);
   const [attempted, setAttempted] = useState<ReadonlySet<number>>(() => new Set());
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);

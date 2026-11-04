@@ -2,7 +2,7 @@ import { useCallback, useContext, type ComponentType } from 'react';
 import { useField } from '@formisch/react';
 import type { PathKey, ValueField } from '@auto-formisch/core';
 import type { InputProps, WidgetProps } from './contracts';
-import { useRenderContext } from './context';
+import { useCondition, useRenderContext } from './context';
 import { isHiddenWidget, keyOf } from './submission';
 import { ShowErrorsContext } from './Wizard';
 
@@ -22,7 +22,6 @@ export function Field({ node: declared, scope }: FieldProps) {
   const {
     form,
     store,
-    conditions,
     widgetOf,
     fieldWrapper: Wrapper,
     labels,
@@ -58,10 +57,11 @@ export function Field({ node: declared, scope }: FieldProps) {
   // it fails with would read "Expected number but received NaN".
   const errors = shown.length > 0 && Number.isNaN(field.input) ? [labels.invalidNumber] : shown;
   // The declared node, which the evaluator knows; `node` has the overrides.
-  const disabled = conditions.isDisabled(declared, scope);
+  const disabled = useCondition((state) => state.isDisabled(declared, scope));
   // Locks never reach into Repeater rows, so the declared node is enough.
   const readOnly = form.locked.has(declared);
-  const required = !disabled && !readOnly && conditions.isRequired(declared, scope);
+  const requiredHere = useCondition((state) => state.isRequired(declared, scope));
+  const required = !disabled && !readOnly && requiredHere;
   const describedBy = [
     node.description !== undefined ? descriptionId : undefined,
     errors.length > 0 ? errorsId : undefined,

@@ -1,5 +1,6 @@
 import {
   Fragment,
+  memo,
   useCallback,
   useContext,
   useState,
@@ -23,7 +24,7 @@ import type {
   TabsLayout,
 } from '@auto-formisch/core';
 import type { ContentProps, ObjectProps, RepeaterProps, RepeaterRow } from './contracts';
-import { useRenderContext } from './context';
+import { useCondition, useRenderContext } from './context';
 import { Field } from './Field';
 import { FocusTargetContext, keyOf, leadsInto, namesIn } from './submission';
 import { DataScopeContext } from './useFormValue';
@@ -45,12 +46,10 @@ interface ComponentsProps {
  * fallback of `--af-columns`, so an application can change it in a media query.
  */
 export function Components({ components, scope, columns }: ComponentsProps) {
-  const { conditions } = useRenderContext();
   // A hidden Component is left out before the grid wraps it, so it takes no
   // cell. Its values stay in the store and come back when it reappears.
-  const shown = components.flatMap((node, index) =>
-    conditions.isVisible(node, scope) ? [{ node, index }] : [],
-  );
+  const visible = useVisibility(components, scope);
+  const shown = components.flatMap((node, index) => (visible[index] ? [{ node, index }] : []));
   const children = shown.map(({ node, index }) => {
     // A name is unique in its scope and never starts with '#'.
     const key = 'name' in node ? node.name : `#${index}`;
@@ -67,13 +66,33 @@ export function Components({ components, scope, columns }: ComponentsProps) {
   return <div style={gridStyle(columns)}>{children}</div>;
 }
 
+/**
+ * Which of `components` are visible, one boolean per Component. It re-renders
+ * the caller only when one of them changes.
+ */
+function useVisibility(components: readonly Component[], scope: Scope): readonly boolean[] {
+  const key = useCondition((state) =>
+    components.map((node) => (state.isVisible(node, scope) ? '1' : '0')).join(''),
+  );
+  return [...key].map((flag) => flag === '1');
+}
+
 const gridStyle = (columns: number): CSSProperties => ({
   display: 'grid',
   gridTemplateColumns: `repeat(var(--af-columns, ${columns}), minmax(0, 1fr))`,
 });
 
-/** Dispatches one Component by `type`. */
-function ComponentNode({ node, scope }: { readonly node: Component; readonly scope: Scope }) {
+/**
+ * Dispatches one Component by `type`. Memoized: when a sibling appears or
+ * disappears, the list re-renders, but the Components already shown don't.
+ */
+const ComponentNode = memo(function ComponentNode({
+  node,
+  scope,
+}: {
+  readonly node: Component;
+  readonly scope: Scope;
+}) {
   const { layouts } = useRenderContext();
   switch (node.type) {
     case 'section': {
@@ -101,7 +120,7 @@ function ComponentNode({ node, scope }: { readonly node: Component; readonly sco
     default:
       return <Field node={node} scope={scope} />;
   }
-}
+});
 
 /**
  * Keeps the active Tab and renders every shown Tab, so inactive ones stay
@@ -110,7 +129,8 @@ function ComponentNode({ node, scope }: { readonly node: Component; readonly sco
  * opens that Tab. Each Tab counts its Fields with errors.
  */
 function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scope }) {
-  const { store, layouts, conditions } = useRenderContext();
+  const { store, layouts } = useRenderContext();
+  const visible = useVisibility(node.components, scope);
   const showErrors = useContext(ShowErrorsContext);
   const [activeKey, setActiveKey] = useState('0');
   // A Formisch hook makes this component re-render when the errors it reads
@@ -133,7 +153,7 @@ function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scop
 
   const { tabs: TabsLayout, tab: TabLayout } = layouts;
   const tabs = node.components.flatMap((tab, index) =>
-    conditions.isVisible(tab, scope)
+    visible[index]
       ? [
           {
             key: String(index),
@@ -177,13 +197,14 @@ interface NestedProps<N> {
 
 /** An `object`: its Widget around its Components, which add `name` to their path. */
 function ObjectGroup({ node: declared, scope }: NestedProps<ObjectField>) {
-  const { widgetOf, conditions } = useRenderContext();
+  const { widgetOf } = useRenderContext();
   const { node, entry } = widgetOf(declared);
   const Widget = entry.component as ComponentType<ObjectProps>;
   const parent = useContext(DataScopeContext);
   const path = [...scope, declared.name];
+  const disabled = useCondition((state) => state.isDisabled(declared, scope));
   return (
-    <Widget node={node} disabled={conditions.isDisabled(declared, scope)}>
+    <Widget node={node} disabled={disabled}>
       <DataScopeContext value={{ path, components: declared.components, parent }}>
         <Components components={declared.components} scope={path} />
       </DataScopeContext>
@@ -198,7 +219,7 @@ function ObjectGroup({ node: declared, scope }: NestedProps<ObjectField>) {
  * removing and reordering rows do nothing, whatever the Widget shows.
  */
 function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
-  const { form, store, widgetOf, conditions, focusElements } = useRenderContext();
+  const { form, store, widgetOf, focusElements } = useRenderContext();
   const { node, entry } = widgetOf(declared);
   const Widget = entry.component as ComponentType<RepeaterProps>;
   const parent = useContext(DataScopeContext);
@@ -219,7 +240,7 @@ function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
     [focusElements, key],
   );
   const showErrors = useContext(ShowErrorsContext);
-  const disabled = conditions.isDisabled(declared, scope);
+  const disabled = useCondition((state) => state.isDisabled(declared, scope));
   const unlessDisabled = (change: () => void) => () => {
     if (!disabled) change();
   };

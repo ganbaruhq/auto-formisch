@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { useField } from '@formisch/react';
 import type { Component, PathKey } from '@auto-formisch/core';
-import { useRenderContext } from './context';
+import { useCondition, useRenderContext } from './context';
 
 /**
  * One data scope as rendered: the root, an `object`, or one Repeater row.
@@ -33,8 +33,12 @@ export function useFormValue<T = unknown>(path: string): T | undefined {
   const scope = useContext(DataScopeContext);
   if (scope === null) throw new Error('useFormValue must be called inside <AutoForm>');
   // The resolver Conditions use, so both read the same Field the same way.
-  const found = conditions.locate(path, scope.path);
+  const found = conditions.get().locate(path, scope.path);
   if ('error' in found) throw new Error(`useFormValue("${path}"): ${found.error}`);
+  const active = useCondition((state) => {
+    const location = state.locate(path, scope.path);
+    return !('error' in location) && location.active;
+  });
   const field = useField(store, { path: found.path as [string] });
-  return found.active ? (field.input as T | undefined) : undefined;
+  return active ? (field.input as T | undefined) : undefined;
 }

@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -9,16 +10,9 @@ import {
   type ReactNode,
 } from 'react';
 import { Form, getErrors, getInput, submit, useField } from '@formisch/react';
-import type {
-  CompiledForm,
-  Component,
-  ConditionState,
-  FormOutput,
-  PathKey,
-  ValueField,
-} from '@auto-formisch/core';
+import type { CompiledForm, Component, FormOutput, PathKey, ValueField } from '@auto-formisch/core';
 import { Components } from './Components';
-import { RenderContext, useRenderContext } from './context';
+import { conditionSource, RenderContext, useRenderContext, type ConditionSource } from './context';
 import { FieldWrapper } from './FieldWrapper';
 import { defaultLayouts } from './layouts';
 import type {
@@ -140,9 +134,51 @@ function WithOwnStore({ initialInput, ...props }: Omit<AutoFormProps, 'store'>) 
   return <Rendered {...props} store={useAutoForm(props.form, { initialInput })} />;
 }
 
-function Rendered({
+type RenderedProps = Omit<AutoFormProps, 'initialInput'> & { readonly store: AutoFormStore };
+
+function Rendered(props: RenderedProps) {
+  useSameForm(props.form);
+  const [source] = useState(() => conditionSource(props.form.conditions.evaluate(undefined)));
+  return (
+    <ConditionsProvider compiled={props.form} store={props.store} source={source}>
+      <RenderedForm {...props} conditions={source} />
+    </ConditionsProvider>
+  );
+}
+
+/**
+ * Keeps the form's `ConditionSource` up to date. It re-renders on every input
+ * of a form with Conditions, but its `children` come from its parent, so they
+ * don't: each Component re-renders only when its own Condition result changes.
+ * The state is replaced during render, so the Components that render in the
+ * same pass read it, and the others are told once it commits.
+ */
+function ConditionsProvider({
+  compiled,
+  store,
+  source,
+  children,
+}: {
+  readonly compiled: CompiledForm;
+  readonly store: AutoFormStore;
+  readonly source: ReturnType<typeof conditionSource>;
+  readonly children: ReactNode;
+}) {
+  // The root path `[]` names the whole form, which the schema's path type
+  // cannot express. Reading its input subscribes this component to all of it.
+  const root = useField(store, { path: [] as never });
+  const { conditions } = compiled;
+  if (conditions.readsValues) source.set(conditions.evaluate(root.input));
+  useLayoutEffect(() => {
+    if (conditions.readsValues) source.notify();
+  });
+  return children;
+}
+
+function RenderedForm({
   form: compiled,
   store,
+  conditions,
   onSubmit,
   id,
   widgets,
@@ -151,8 +187,10 @@ function Rendered({
   overrides,
   labels,
   actions = DefaultActions,
-}: Omit<AutoFormProps, 'initialInput'> & { readonly store: AutoFormStore }) {
-  useSameForm(compiled);
+}: RenderedProps & { readonly conditions: ConditionSource }) {
+  // A Formisch hook, so that the store's root errors and `isSubmitting`, read
+  // below, re-render this component.
+  const root = useField(store, { path: [] as never });
   const idPrefix = useId();
   const focusElements = useRef<FocusElements>(new Map()).current;
   const rootScope = useMemo(
@@ -171,10 +209,22 @@ function Rendered({
       layouts: { ...defaultLayouts, ...definedOnly(layouts) },
       fieldWrapper,
       labels: { ...defaultLabels, ...definedOnly(labels) },
+      conditions,
       idPrefix,
       focusElements,
     }),
-    [compiled, store, idPrefix, focusElements, widgets, layouts, fieldWrapper, overrides, labels],
+    [
+      compiled,
+      store,
+      conditions,
+      idPrefix,
+      focusElements,
+      widgets,
+      layouts,
+      fieldWrapper,
+      overrides,
+      labels,
+    ],
   );
   const hasHidden = useMemo(() => hasHiddenWidget(compiled, base.widgetOf), [compiled, base]);
   useEffect(() => {
@@ -186,8 +236,6 @@ function Rendered({
     }
     // On mount only, like the initialInput warnings.
   }, []);
-  const conditions = useConditions(compiled, store);
-  const context = useMemo(() => ({ ...base, conditions }), [base, conditions]);
   // A Wizard opens the Page of the first error before focusing it.
   const openFirstError = useRef<(() => void) | null>(null);
   const { attempt, handle, focusTarget, focusFirstError } = useSubmission(
@@ -209,7 +257,7 @@ function Rendered({
   openFirstError.current = wizard?.openFirstError ?? null;
 
   return (
-    <RenderContext value={context}>
+    <RenderContext value={base}>
       <WizardProvider value={wizard?.controller ?? null}>
         <FocusTargetContext value={focusTarget}>
           <Form
@@ -226,7 +274,7 @@ function Rendered({
               )}
             </DataScopeContext>
             <div role="alert">
-              {store.errors?.map((error, index) => (
+              {root.errors?.map((error, index) => (
                 <div key={index}>{error}</div>
               ))}
               {hasHidden && <HiddenWidgetErrors />}
@@ -310,22 +358,6 @@ function useSubmission(
   };
 }
 
-/**
- * What the Conditions decide for the current input, with the evaluator `prep`
- * uses. The whole input is read through a Formisch hook of this component, so
- * that this render subscribes to it whoever owns the store, and every change
- * re-evaluates. A form without Conditions never reads it, so it never
- * re-renders as a whole on input.
- */
-function useConditions(compiled: CompiledForm, store: AutoFormStore): ConditionState {
-  // The root path `[]` names the whole form, which the schema's path type
-  // cannot express.
-  const root = useField(store, { path: [] as never });
-  const { conditions } = compiled;
-  const input = conditions.readsValues ? root.input : undefined;
-  return useMemo(() => conditions.evaluate(input), [conditions, input]);
-}
-
 /** Whether any value Field of the form, in any row template, uses the `hidden` Widget. */
 function hasHiddenWidget(compiled: CompiledForm, widgetOf: WidgetResolver): boolean {
   const any = (components: readonly Component[]): boolean =>
@@ -388,15 +420,16 @@ const isBlank = (value: unknown) =>
  * have no Field Wrapper to show them, in Definition order.
  */
 function HiddenWidgetErrors() {
-  const { form, store, widgetOf, conditions } = useRenderContext();
+  const { form, store, widgetOf, conditions: source } = useRenderContext();
   // A Formisch hook makes this component re-render when what it reads below
   // changes: the rows of the form, and the errors of those Fields.
   const root = useField(store, { path: [] as never });
   // On a Wizard, only the errors of attempted Pages show.
   const showsErrorsAt = useShowsErrorsAt();
+  // Up to date: the `ConditionsProvider` re-renders first on the same input.
   const fields = shownFields(
     form.definition.pages ?? form.definition.components,
-    conditions,
+    source.get(),
     root.input,
     presentedHidden(widgetOf),
   );
