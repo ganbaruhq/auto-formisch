@@ -3,6 +3,7 @@ import type { Component, FieldNode, FormDefinition } from './definition';
 import { toFormErrors } from './errors';
 import { builtinFieldTypes } from './field-types';
 import { loadDefinition } from './load';
+import { getRequiredMessage, type RequiredMessage } from './messages';
 import { MISSING, prep } from './prep';
 import { builtinRules } from './rules';
 import type { StandardSchemaV1 } from './standard';
@@ -111,5 +112,16 @@ function typedLeaf(field: FieldNode): v.GenericSchema {
   );
 }
 
-// `setRequiredMessage` slots in between the two.
-const requiredMessage = (field: FieldNode): string => field.requiredMessage ?? 'Required';
+/**
+ * `requiredMessage`, then `setRequiredMessage` for the issue's language, then
+ * `Required`. Always a message of the action's own, so neither Valibot's
+ * defaults nor its specific, schema or global messages can show the symbol.
+ */
+const requiredMessage =
+  (field: FieldNode): RequiredMessage =>
+  (issue) => {
+    if (field.requiredMessage !== undefined) return field.requiredMessage;
+    const message = getRequiredMessage(issue.lang);
+    if (message === undefined) return 'Required';
+    return typeof message === 'function' ? message(issue) : message;
+  };

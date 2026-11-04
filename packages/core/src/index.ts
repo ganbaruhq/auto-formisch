@@ -20,4 +20,5 @@ export type {
   TextField,
 } from './definition';
 export { DefinitionError, type FormError, type PathKey } from './errors';
+export { deleteRequiredMessage, setRequiredMessage, type RequiredMessage } from './messages';
 export type { StandardSchemaV1 } from './standard';
