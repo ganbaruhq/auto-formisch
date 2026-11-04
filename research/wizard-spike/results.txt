@@ -1,0 +1,28 @@
+OBS Q1 store after blocked next ["name","city","rows.0.street"]
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q1: next blocks on the current Page only; store also holds errors of later Pages 76ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q1: same under StrictMode 53ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q1: errors clear and return while typing, before any submit 57ms
+OBS Q1 errorCount per Page [{"index":0,"isCurrent":false,"errorCount":0},{"index":1,"isCurrent":true,"errorCount":0},{"index":3,"isCurrent":false,"errorCount":0}]
+OBS autoFocus activeElement by leak {"true":"INPUT:[\"b\"]","false":"BUTTON:"}
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q1: never-attempted Page shows no error though the store has one 56ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > autoFocus: forwarding field.props.autoFocus steals focus on the new Page; omitting it does not 40ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q2/Q5: late error on an earlier Page does not block next; submit jumps back and focuses 115ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q3: back does not validate and keeps values; goTo stops at the first failing Page 48ms
+OBS Q4 output {"name":"a","city":"c","rows":[{"street":"s"}]}
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q4: hidden Page leaves navigation, re-enters when shown, and its value survives 194ms
+OBS Q4 cycles ["page -> a -> page","page -> b -> page -> a -> page","page -> b -> page -> c -> a -> page"]
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q4: open Page hidden from outside moves to next visible, else previous 89ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q4: every Page hidden needs a cycle, so the cycle check rules it out 1ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q5: Enter on a middle Page runs next, not submit; submit() forces a real submit 40ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Escape hatch: F.submit(store) on a middle Page goes through the capture handler as next 26ms
+OBS Q5 server error after typing another Field null
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q5: server errors open the Page of an Active Field; unknown path goes to the alert 112ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q6: values survive unmount; repeater row error maps to its Page through path[0] 98ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q8: a double click on next moves one Page 22ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Q12: reset keeps the Page and attempted set; changing key resets the Wizard 74ms
+OBS Cost throw on keystroke {"unhandled":["boom-rule"],"isSubmitted":false}
+OBS Cost parse ms [{"size":50,"medianMs":0.09,"maxMs":0.21},{"size":200,"medianMs":0.67,"maxMs":1.04},{"size":500,"medianMs":2.33,"maxMs":5.09}]
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Cost: a throwing custom Rule rejects on the first keystroke, before any submit 57ms
+ ✓ packages/auto-formisch-react/src/wizard.spike.test.tsx > AF-10 > Cost: rough time for one full parse per keystroke 103ms
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
