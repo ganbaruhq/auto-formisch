@@ -20,3 +20,4 @@
 - A JSON Schema (draft-07) for format version 1 ships at `schema/v1.json`, with `$id` `https://cdn.jsdelivr.net/npm/@auto-formisch/core/schema/v1.json`, for a Definition's `$schema`. It describes every built-in `type`, Rule, Condition and `default`, and takes any other `type` or Rule name loosely as a custom one; the loader stays the one judge.
 - `validateForm(compiled, input, { lang })` validates in the language of one request and returns `{ value }` or `{ errors }` of `{ message, path }`, the shape `onSubmit` may return. New exports `validateForm`, `ValidateOptions` and `ValidationResult`.
 - A Field's Rules run in Definition order and stop at the first that fails, so a custom Rule after a failed `max_length` never sees the overlong value.
+- A list submitted where an object belongs (an `object`, a Repeater row or the root input), even `[]`, is an error at that path instead of reading as `{}`.

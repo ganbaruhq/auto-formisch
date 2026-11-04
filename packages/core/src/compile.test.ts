@@ -39,6 +39,14 @@ describe('compile: one text Field', () => {
     expect(result.issues).toHaveLength(1);
     expect(result.issues?.[0].path).toEqual([]);
   });
+
+  it('rejects a list at the root, an empty one too', () => {
+    for (const input of [[], ['Ada'], [{ name: 'Ada' }]]) {
+      expect(validate(definition, input)).toEqual({
+        issues: [{ message: 'Invalid type: Expected Object but received Array', path: [] }],
+      });
+    }
+  });
 });
 
 describe('compile: schema', () => {

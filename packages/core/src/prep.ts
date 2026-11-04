@@ -50,7 +50,8 @@ export function prep(
       case 'object':
         output[field.name] = !active
           ? INACTIVE
-          : isEmpty(value) || isRecord(value)
+          : // A list, even an empty one, is of the wrong shape.
+            !Array.isArray(value) && (isEmpty(value) || isRecord(value))
             ? prep(field.components, state, value, path, locks)
             : value;
         break;

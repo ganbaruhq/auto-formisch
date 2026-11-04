@@ -60,6 +60,16 @@ describe('object', () => {
     }
   });
 
+  it('rejects a list at its own path, an empty one too', () => {
+    for (const value of [[], ['Main St'], [{ street: 'Main St' }]]) {
+      expect(validate(address, { address: value })).toEqual({
+        issues: [
+          { message: 'Invalid type: Expected Object but received Array', path: ['address'] },
+        ],
+      });
+    }
+  });
+
   it('drops keys its Components do not declare', () => {
     expect(validate(address, { address: { street: 'Main St', other: 1 } })).toEqual({
       value: { address: { street: 'Main St' } },
@@ -133,6 +143,12 @@ describe('repeater', () => {
       ['addresses', 1],
       ['addresses', 2],
     ]);
+    expect(validate(addresses, { addresses: [[], [{ street: 'x' }]] })).toEqual({
+      issues: [
+        { message: 'Invalid type: Expected Object but received Array', path: ['addresses', 0] },
+        { message: 'Invalid type: Expected Object but received Array', path: ['addresses', 1] },
+      ],
+    });
   });
 
   it('nests: a Repeater inside a Repeater row, inside an object', () => {

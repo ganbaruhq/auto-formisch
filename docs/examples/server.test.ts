@@ -283,14 +283,16 @@ describe('Before you ship', () => {
     ]);
   });
 
-  it('reads a list submitted for an object as an empty object', () => {
+  it('rejects a list submitted for an object', () => {
     const address = {
       version: 1,
       components: [
         { type: 'object', name: 'address', components: [{ type: 'text', name: 'city' }] },
       ],
     };
-    expect(validate(address, { address: ['x'] })).toEqual({ value: { address: {} } });
+    expect(validate(address, { address: ['x'] })).toEqual({
+      issues: [{ message: 'Invalid type: Expected Object but received Array', path: ['address'] }],
+    });
   });
 
   it('rejects an empty nested Repeater list in a default row', () => {

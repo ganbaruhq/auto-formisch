@@ -231,14 +231,17 @@ function buildSchema(
 ): v.GenericSchema<Record<string, unknown>, FormOutput> {
   const components = rootComponents(definition);
   const { locks } = typing;
+  // Typed as its output: a record of the Definition's Fields.
   return v.pipe(
     skeletonOf(components),
     v.transform((input) => {
+      // A list passes on for `typedObject` to reject; `prep` would read it as `{}`.
+      if (Array.isArray(input)) return input;
       const locked = withLocks(input, locks);
       return prep(components, conditions.evaluate(locked), locked, [], locks);
     }),
     typedObjectOf(components, typing),
-  );
+  ) as v.GenericSchema<Record<string, unknown>, FormOutput>;
 }
 
 /**
@@ -248,11 +251,42 @@ function buildSchema(
  * every row its own Field stores, but never fails: a value of the wrong shape
  * passes through for `typedObject` to report.
  */
-function skeletonOf(components: readonly Component[]) {
-  return v.object(
-    Object.fromEntries(fieldsIn(components).map((field) => [field.name, skeletonLeaf(field)])),
+function skeletonOf(components: readonly Component[]): v.GenericSchema {
+  return passingLists(
+    v.object(
+      Object.fromEntries(fieldsIn(components).map((field) => [field.name, skeletonLeaf(field)])),
+    ),
   );
 }
+
+/*
+ * Valibot's `v.object` reads a list as an object, so `[]` would pass as `{}`.
+ * The skeleton lets a list through untouched, and `typedObject` rejects it at
+ * its own path. Both keep their `type` and `entries`, which Formisch builds
+ * its store from (a pipe in their place breaks the store).
+ */
+
+/** `schema`, but a list passes through it unchanged. */
+const passingLists = (schema: v.GenericSchema): v.GenericSchema => ({
+  ...schema,
+  '~run'(dataset, config) {
+    if (!Array.isArray(dataset.value)) return schema['~run'](dataset, config);
+    return { typed: true, value: dataset.value };
+  },
+});
+
+/** Valibot's own type issue for a list where an object belongs. */
+const notAList = { ...v.custom((value) => !Array.isArray(value)), expects: 'Object' };
+
+/** `schema`, but a list fails it with the type issue an object schema gives. */
+const rejectingLists = (schema: v.GenericSchema): v.GenericSchema => ({
+  ...schema,
+  '~run'(dataset, config) {
+    return Array.isArray(dataset.value)
+      ? notAList['~run'](dataset, config)
+      : schema['~run'](dataset, config);
+  },
+});
 
 function skeletonLeaf(field: FieldNode): v.GenericSchema {
   switch (field.type) {
@@ -268,9 +302,13 @@ function skeletonLeaf(field: FieldNode): v.GenericSchema {
 const tolerant = (schema: v.GenericSchema): v.GenericSchema =>
   v.fallback(schema, (dataset?: { readonly value: unknown }) => dataset?.value);
 
-function typedObjectOf(components: readonly Component[], typing: Typing) {
-  return v.object(
-    Object.fromEntries(fieldsIn(components).map((field) => [field.name, typedLeaf(field, typing)])),
+function typedObjectOf(components: readonly Component[], typing: Typing): v.GenericSchema {
+  return rejectingLists(
+    v.object(
+      Object.fromEntries(
+        fieldsIn(components).map((field) => [field.name, typedLeaf(field, typing)]),
+      ),
+    ),
   );
 }
 

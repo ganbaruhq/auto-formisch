@@ -63,7 +63,7 @@ Any value Field can also use the `hidden` Widget, which keeps the value with no 
 
 Nests its Fields' values under its `name`: `{ "type": "object", "name": "address", "components": [...] }` outputs `address: { ... }`. It takes `label`, `description`, `widget`, `visible`, `disabled`, `colSpan` and a non-empty `components`, but no `required`, `rules` or `default`. It always keeps its key, as at least `{}`, even while Inactive. Its default Widget is a `fieldset` named by its label.
 
-A list submitted for an `object` is read as an object with no keys, so `address: ['x']` outputs `address: {}` rather than an error.
+A list submitted where an object belongs, for an `object`, a Repeater row or the whole input, even an empty one, is an error at that path: `Invalid type: Expected Object but received Array`.
 
 ### `repeater`
 
