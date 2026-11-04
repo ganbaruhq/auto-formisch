@@ -1,10 +1,16 @@
 export { compile, type CompiledForm, type FormOutput } from './compile';
+export type { ConditionState, FormConditions } from './conditions';
 export type {
+  AllCondition,
+  AnyCondition,
   BooleanField,
   Choice,
   ChoiceField,
   ChoiceValue,
   Component,
+  Condition,
+  ConditionLeaf,
+  ConditionOperator,
   ContentNode,
   DateField,
   FieldBase,
@@ -12,6 +18,7 @@ export type {
   FormDefinition,
   LayoutNode,
   MultiChoiceField,
+  NotCondition,
   NumberField,
   ObjectField,
   RepeaterField,

@@ -176,7 +176,7 @@ describe('Form Definition: rejected on load', () => {
         path: ['components', 0, 'label'],
       },
       {
-        message: 'Invalid type: Expected boolean but received "yes"',
+        message: 'Expected true, false or a Condition',
         path: ['components', 0, 'required'],
       },
     ]);

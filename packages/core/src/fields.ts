@@ -11,7 +11,8 @@ export function fieldsIn(components: readonly Component[]): FieldNode[] {
       case 'section':
       case 'tabs':
       case 'tab':
-        return fieldsIn(component.components);
+        // Missing only in a Definition the loader is about to reject.
+        return fieldsIn(component.components ?? []);
       case 'content':
         return [];
       default:

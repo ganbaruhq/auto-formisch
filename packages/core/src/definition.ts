@@ -17,6 +17,58 @@ export interface RuleNode {
   readonly message?: string;
 }
 
+/**
+ * A Condition operator. Which ones a leaf may use depends on the `type` of the
+ * Field it reads; `in` and `not_in` take a non-empty list, `empty` and
+ * `not_empty` take no `value`.
+ */
+export type ConditionOperator =
+  | 'eq'
+  | 'neq'
+  | 'in'
+  | 'not_in'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'contains'
+  | 'empty'
+  | 'not_empty';
+
+/**
+ * A Condition leaf: compares the value of one Field with a literal. `field` is
+ * a reference relative to the data scope of the Component that holds the
+ * Condition: `../` steps first, then `name`s joined by `.`, never an index.
+ */
+export interface ConditionLeaf {
+  readonly field: string;
+  readonly operator: ConditionOperator;
+  readonly value?: unknown;
+}
+
+/** True when every Condition is; never empty. */
+export interface AllCondition {
+  readonly all: readonly Condition[];
+}
+
+/** True when at least one Condition is; never empty. */
+export interface AnyCondition {
+  readonly any: readonly Condition[];
+}
+
+export interface NotCondition {
+  readonly not: Condition;
+}
+
+/**
+ * A serializable predicate over Field values, nested at most
+ * `MAX_CONDITION_DEPTH` levels. A Field that is Inactive reads as empty.
+ */
+export type Condition = ConditionLeaf | AllCondition | AnyCondition | NotCondition;
+
+/** The most levels a Condition nests, its leaves included. */
+export const MAX_CONDITION_DEPTH = 8;
+
 /** Keys shared by every Field. */
 export interface FieldBase {
   readonly type: string;
@@ -26,11 +78,19 @@ export interface FieldBase {
   readonly widget?: string;
   /** Grid columns this Field spans; only inside a Layout that sets `columns`. */
   readonly colSpan?: number;
+  /** Shown, and so active, only while this holds. */
+  readonly visible?: Condition;
+  /**
+   * Disabled, and so Inactive, when `true` or while this holds. Disables the
+   * Fields of an `object` or Repeater too.
+   */
+  readonly disabled?: boolean | Condition;
 }
 
 /** Keys shared by every Field that holds one value rather than child Fields. */
 export interface ValueFieldBase extends FieldBase {
-  readonly required?: boolean;
+  /** Must have a value when `true` or while this holds. Not inherited by children. */
+  readonly required?: boolean | Condition;
   readonly requiredMessage?: string;
   readonly rules?: readonly RuleNode[];
 }
@@ -113,6 +173,7 @@ export type FieldNode = ValueField | ObjectField | RepeaterField;
 /** A group of Components, optionally labelled and laid out in a grid. Adds no data path. */
 export interface SectionLayout {
   readonly type: 'section';
+  readonly visible?: Condition;
   readonly label?: string;
   readonly description?: string;
   /** Lays out the direct children in this many grid columns. */
@@ -124,6 +185,7 @@ export interface SectionLayout {
 /** A set of Tabs. Only one is shown, but every Tab stays mounted and validated. */
 export interface TabsLayout {
   readonly type: 'tabs';
+  readonly visible?: Condition;
   readonly colSpan?: number;
   readonly components: readonly TabLayout[];
 }
@@ -131,6 +193,7 @@ export interface TabsLayout {
 /** One Tab, directly inside `tabs`. Adds no data path. */
 export interface TabLayout {
   readonly type: 'tab';
+  readonly visible?: Condition;
   readonly label: string;
   readonly description?: string;
   readonly columns?: number;
@@ -143,6 +206,7 @@ export type LayoutNode = SectionLayout | TabsLayout | TabLayout;
 /** Fixed plain text. Never read as HTML or Markdown. */
 export interface ContentNode {
   readonly type: 'content';
+  readonly visible?: Condition;
   readonly text: string;
   /** Presentation only, looked up in the Renderer's Widget map like a Field's. */
   readonly widget?: string;

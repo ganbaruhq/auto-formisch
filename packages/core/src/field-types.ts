@@ -19,13 +19,15 @@ export interface FieldTypeSpec {
   readonly value: (node: FieldNode) => v.GenericSchema;
 }
 
-/** Keys every Field takes beside `type`, `name` and `rules`, with their schemas. */
+/**
+ * Keys every value Field takes beside `type`, `name`, `rules` and the
+ * Condition keys `visible`, `disabled` and `required`, with their schemas.
+ */
 export const fieldKeys: Readonly<Record<string, v.GenericSchema>> = {
   label: v.string(),
   description: v.string(),
   // Presentation only: core never validates by `widget`; the Renderer checks the name.
   widget: v.string(),
-  required: v.boolean(),
   requiredMessage: v.string(),
 };
 

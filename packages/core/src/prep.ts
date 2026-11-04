@@ -1,5 +1,7 @@
+import type { ConditionState } from './conditions';
 import type { Component } from './definition';
 import { isEmpty } from './empty';
+import type { PathKey } from './errors';
 import { fieldsIn, isRecord } from './fields';
 
 /**
@@ -9,36 +11,61 @@ import { fieldsIn, isRecord } from './fields';
 export const MISSING: unique symbol = Symbol('auto-formisch.missing');
 
 /**
- * The `prep` stage: normalizes the skeleton's output before `typedObject` runs
- * types and Rules. An empty value Field drops its key, or becomes `MISSING`
- * when it is required; keys the Definition doesn't declare are already gone.
- * An `object` always keeps its key, as `{}` at least, and a Repeater as `[]`;
- * each row is normalized like its own small form. A value of the wrong shape
- * is kept, so that `typedObject` reports it.
- *
- * Conditions and Inactive Fields belong here, with an evaluator the Renderer
- * shares (ADR 0002).
+ * The value of an Inactive `object` or Repeater. `typedObject` skips its
+ * children and Rules and outputs `{}` or `[]`, so the key always stays. It is
+ * `undefined` under a key that is present, which Valibot runs the optional
+ * schema on but nothing else on.
  */
-export function prep(components: readonly Component[], input: unknown): Record<string, unknown> {
+export const INACTIVE = undefined;
+
+/**
+ * The `prep` stage: normalizes the skeleton's output before `typedObject` runs
+ * types and Rules. `state` holds what the Conditions decide for this input,
+ * and `scope` is the data path of `components`.
+ *
+ * An Inactive Field contributes nothing: a value Field drops its key, an
+ * `object` or Repeater becomes `INACTIVE`, whatever they hold. An active,
+ * empty value Field drops its key, or becomes `MISSING` when it is required.
+ * An active `object` always keeps its key, as `{}` at least, and a Repeater as
+ * `[]`; each row is normalized like its own small form. A value of the wrong
+ * shape is kept, so that `typedObject` reports it. Keys the Definition doesn't
+ * declare are already gone.
+ */
+export function prep(
+  components: readonly Component[],
+  state: ConditionState,
+  input: unknown,
+  scope: readonly PathKey[] = [],
+): Record<string, unknown> {
   const source = isRecord(input) ? input : {};
   const output: Record<string, unknown> = {};
   for (const field of fieldsIn(components)) {
     const value = source[field.name];
+    const active = state.isVisible(field, scope) && !state.isDisabled(field, scope);
+    const path = [...scope, field.name];
     switch (field.type) {
       case 'object':
-        output[field.name] =
-          isEmpty(value) || isRecord(value) ? prep(field.components, value) : value;
-        break;
-      case 'repeater':
-        output[field.name] = isEmpty(value)
-          ? []
-          : Array.isArray(value)
-            ? value.map((row) => (isRecord(row) ? prep(field.components, row) : row))
+        output[field.name] = !active
+          ? INACTIVE
+          : isEmpty(value) || isRecord(value)
+            ? prep(field.components, state, value, path)
             : value;
         break;
+      case 'repeater':
+        output[field.name] = !active
+          ? INACTIVE
+          : isEmpty(value)
+            ? []
+            : Array.isArray(value)
+              ? value.map((row, index) =>
+                  isRecord(row) ? prep(field.components, state, row, [...path, index]) : row,
+                )
+              : value;
+        break;
       default:
+        if (!active) break;
         if (!isEmpty(value)) output[field.name] = value;
-        else if (field.required === true) output[field.name] = MISSING;
+        else if (state.isRequired(field, scope)) output[field.name] = MISSING;
     }
   }
   return output;

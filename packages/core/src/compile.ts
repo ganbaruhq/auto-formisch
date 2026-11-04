@@ -1,4 +1,5 @@
 import * as v from 'valibot';
+import { conditionsOf, type FormConditions } from './conditions';
 import type { Component, FieldNode, FormDefinition, RuleNode, ValueField } from './definition';
 import { toFormErrors } from './errors';
 import { builtinFieldTypes } from './field-types';
@@ -23,6 +24,11 @@ export interface CompiledForm<TOutput extends FormOutput = FormOutput> extends S
   /** The loaded Definition. Frozen. */
   readonly definition: FormDefinition;
   /**
+   * The Condition evaluator `prep` uses. A Renderer decides with it what is
+   * shown, disabled and required, so the form cannot drift from validation.
+   */
+  readonly conditions: FormConditions;
+  /**
    * The root pipe `skeleton -> prep -> typedObject` (ADR 0002), for Formisch
    * and for `v.safeParse` with a per-request config. Read errors from it only
    * as `{message, path}`, never as raw Valibot issues.
@@ -45,9 +51,11 @@ export interface CompiledForm<TOutput extends FormOutput = FormOutput> extends S
  */
 export function compile(input: unknown): CompiledForm {
   const definition = loadDefinition(input);
-  const schema = buildSchema(definition);
+  const conditions = conditionsOf(definition.components);
+  const schema = buildSchema(definition, conditions);
   return {
     definition,
+    conditions,
     schema,
     '~standard': {
       version: 1,
@@ -63,11 +71,12 @@ export function compile(input: unknown): CompiledForm {
 /** `v.pipe(skeleton, v.transform(prep), typedObject)`, per ADR 0002. */
 function buildSchema(
   definition: FormDefinition,
+  conditions: FormConditions,
 ): v.GenericSchema<Record<string, unknown>, FormOutput> {
   const { components } = definition;
   return v.pipe(
     skeletonOf(components),
-    v.transform((input) => prep(components, input)),
+    v.transform((input) => prep(components, conditions.evaluate(input), input)),
     typedObjectOf(components),
   );
 }
@@ -111,10 +120,17 @@ function typedObjectOf(components: readonly Component[]) {
  */
 function typedLeaf(field: FieldNode): v.GenericSchema {
   switch (field.type) {
+    // `undefined` only when Inactive (`INACTIVE`): nothing inside it runs.
     case 'object':
-      return typedObjectOf(field.components);
+      return v.pipe(
+        v.optional(typedObjectOf(field.components)),
+        v.transform((value) => value ?? {}),
+      );
     case 'repeater':
-      return v.pipe(v.array(typedObjectOf(field.components)), ...ruleActions(field.rules));
+      return v.pipe(
+        v.optional(v.pipe(v.array(typedObjectOf(field.components)), ...ruleActions(field.rules))),
+        v.transform((rows) => rows ?? []),
+      );
     default:
       return v.optional(
         v.pipe(
