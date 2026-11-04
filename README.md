@@ -62,6 +62,39 @@ A Form Definition is plain JSON. Store it, send it to a Worker, or write it by h
 
 `compile` checks the Definition and throws a `DefinitionError` whose `errors` lists every problem as `{message, path}`: an unknown key (such as `requried`), an unknown `type` or Rule, or a `version` other than `1`. It never evaluates code from a Definition.
 
+### In code: the Fluent Builder
+
+Write the same Definition with Valibot-style functions and pipes. Rules, metadata (`label`, `description`, `placeholder`, `widget`, `columns`, `colSpan`, `defaultValue`) and Conditions (`visible`, `required`, `disabled`) all go in the pipe:
+
+```ts
+import {
+  choice,
+  compile,
+  email,
+  eq,
+  form,
+  label,
+  repeater,
+  required,
+  section,
+  text,
+  visible,
+} from '@auto-formisch/core';
+
+const definition = form([
+  section('Contact', [text('email', [label('Email address'), email(), required()])]),
+  choice('country', ['VN', 'US']),
+  text('taxId', [required(), visible(eq('country', 'VN'))]),
+  repeater('addresses', [text('street', [required()]), text('city')]),
+]);
+
+const compiled = compile(definition);
+// onSubmit / ~standard.validate output:
+// { email: string; country?: 'VN' | 'US'; taxId?: string; addresses: { street: string; city?: string }[] }
+```
+
+`form()` returns the plain, frozen Definition data, deep-equal to the JSON, so it can be stored or sent to a Worker as is. It runs the same loader as JSON and throws the same `DefinitionError`, including for a Condition that reads a Field that doesn't exist. `compile` infers the output: a Field is optional unless it is `required()` with no Condition on it or on a Component around it. A pipe item only fits the Fields its JSON key or Rule applies to, so `boolean('agree', [email()])` fails to compile. `email()` and `url()` also set the matching `widget` unless the pipe names one; `grid(2, [...])` is a `section` with `columns: 2`. The Condition helpers return the JSON AST: `all`, `any`, `not`, `eq`, `neq`, `isIn` (`in`), `notIn` (`not_in`), `gt`, `gte`, `lt`, `lte`, `contains`, `isEmpty` (`empty`) and `notEmpty` (`not_empty`). Every function is its own export, so unused ones are left out of a bundle.
+
 ### In React
 
 ```tsx
@@ -145,7 +178,7 @@ Like Valibot, a message set for one language doesn't fall back to another; `dele
 
 ### Supported so far
 
-- Value Fields: every value Field takes `label`, `description`, `widget`, `required` and `requiredMessage`, and is optional by default.
+- Value Fields: every value Field takes `label`, `description`, `widget`, `required`, `requiredMessage` and `default`, and is optional by default. `default` must be non-empty, of the Field's type and pass its Rules, or loading fails; it stays out of the schema, so the server never fills it in. (The Renderer doesn't seed it into the form yet.)
 
   | `type`         | Value                                     | Extra keys               | Default Widget                        |
   | -------------- | ----------------------------------------- | ------------------------ | ------------------------------------- |

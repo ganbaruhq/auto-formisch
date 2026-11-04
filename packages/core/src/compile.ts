@@ -1,13 +1,14 @@
 import * as v from 'valibot';
+import type { TypedDefinition } from './builder/infer';
 import { conditionsOf, type FormConditions } from './conditions';
-import type { Component, FieldNode, FormDefinition, RuleNode, ValueField } from './definition';
+import type { Component, FieldNode, FormDefinition, ValueField } from './definition';
 import { toFormErrors } from './errors';
 import { builtinFieldTypes } from './field-types';
 import { fieldsIn } from './fields';
 import { loadDefinition } from './load';
 import { getRequiredMessage, type RequiredMessage } from './messages';
 import { MISSING, prep } from './prep';
-import { builtinRules } from './rules';
+import { ruleActions } from './rules';
 import type { StandardSchemaV1 } from './standard';
 
 /** The submitted value of a form compiled from JSON. */
@@ -47,8 +48,15 @@ export interface CompiledForm<TOutput extends FormOutput = FormOutput> extends S
  * Checks a Form Definition and compiles it into a self-sufficient schema that
  * gives a server the same result as the form.
  *
+ * A Definition built by `form()` gives its inferred output type; JSON gives
+ * `FormOutput`.
+ *
  * @throws {DefinitionError} with every load error as `{message, path}`.
  */
+export function compile<TOutput extends FormOutput>(
+  input: TypedDefinition<TOutput>,
+): CompiledForm<TOutput>;
+export function compile(input: unknown): CompiledForm;
 export function compile(input: unknown): CompiledForm {
   const definition = loadDefinition(input);
   const conditions = conditionsOf(definition.components);
@@ -142,9 +150,6 @@ function typedLeaf(field: FieldNode): v.GenericSchema {
       );
   }
 }
-
-const ruleActions = (rules: readonly RuleNode[] = []) =>
-  rules.map((rule) => builtinRules.get(rule.type)!.action(rule.requirement, rule.message));
 
 /**
  * `requiredMessage`, then `setRequiredMessage` for the issue's language, then

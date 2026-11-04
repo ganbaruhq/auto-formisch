@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 import { dateSchema } from './date';
+import type { RuleNode } from './definition';
 
 /** A Valibot action that a Rule compiles to, run after the Field's value schema. */
 export type RuleAction = v.PipeAction<any, any, v.BaseIssue<unknown>>;
@@ -103,3 +104,7 @@ export const builtinRules: ReadonlyMap<string, RuleSpec> = new Map(
     (spec) => [spec.type, spec],
   ),
 );
+
+/** The actions of loaded `rules`, in order. */
+export const ruleActions = (rules: readonly RuleNode[] = []): RuleAction[] =>
+  rules.map((rule) => builtinRules.get(rule.type)!.action(rule.requirement, rule.message));

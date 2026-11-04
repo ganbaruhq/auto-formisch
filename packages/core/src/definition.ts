@@ -93,23 +93,31 @@ export interface ValueFieldBase extends FieldBase {
   readonly required?: boolean | Condition;
   readonly requiredMessage?: string;
   readonly rules?: readonly RuleNode[];
+  /**
+   * The value a new form starts with: non-empty, of the Field's type, and
+   * through its Rules. It seeds the form only and stays out of the schema.
+   */
+  readonly default?: unknown;
 }
 
 /** A single-line or multi-line text value. */
 export interface TextField extends ValueFieldBase {
   readonly type: 'text';
   readonly placeholder?: string;
+  readonly default?: string;
 }
 
 /** A finite number. */
 export interface NumberField extends ValueFieldBase {
   readonly type: 'number';
   readonly placeholder?: string;
+  readonly default?: number;
 }
 
 /** `true` or `false`; `false` is a value, not empty. */
 export interface BooleanField extends ValueFieldBase {
   readonly type: 'boolean';
+  readonly default?: boolean;
 }
 
 /** The submitted value of one choice. One list never mixes strings and numbers. */
@@ -123,17 +131,20 @@ export interface ChoiceField extends ValueFieldBase {
   readonly type: 'choice';
   readonly choices: readonly Choice[];
   readonly placeholder?: string;
+  readonly default?: ChoiceValue;
 }
 
 /** Any number of distinct values from a fixed list of `choices`. */
 export interface MultiChoiceField extends ValueFieldBase {
   readonly type: 'multi_choice';
   readonly choices: readonly Choice[];
+  readonly default?: readonly ChoiceValue[];
 }
 
 /** A calendar date as a `YYYY-MM-DD` string, with no time or time zone. */
 export interface DateField extends ValueFieldBase {
   readonly type: 'date';
+  readonly default?: string;
 }
 
 /** Any Field that holds one value. */
