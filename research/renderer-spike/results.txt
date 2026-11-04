@@ -1,0 +1,99 @@
+note: You are running `vp test` as a Vite+ built-in command. If you meant to run the test npm script, use `vpr test` instead.
+
+ RUN  v5.0.5 <repo>
+
+OBS Q1 checkAsync during {"isSubmitting":true,"isValidating":true,"isSubmitted":true,"errors":null,"isValid":true,"dom":"true|true"}
+OBS Q1 checkAsync after {"isSubmitting":false,"isValidating":false,"isSubmitted":true,"errors":["boom-checkAsync"],"isValid":false,"dom":"false|false","onSubmit":0,"unhandled":[]}
+OBS Q1 rawCheckAsync during {"isSubmitting":true,"isValidating":true,"isSubmitted":true,"errors":null,"isValid":true,"dom":"true|true"}
+OBS Q1 rawCheckAsync after {"isSubmitting":false,"isValidating":false,"isSubmitted":true,"errors":["boom-rawCheckAsync"],"isValid":false,"dom":"false|false","onSubmit":0,"unhandled":[]}
+OBS Q1 syncCheck during {"isSubmitting":false,"isValidating":false,"isSubmitted":true,"errors":["boom-syncCheck"],"isValid":false,"dom":"false|false"}
+OBS Q1 syncCheck after {"isSubmitting":false,"isValidating":false,"isSubmitted":true,"errors":["boom-syncCheck"],"isValid":false,"dom":"false|false","onSubmit":0,"unhandled":[]}
+OBS Q1 validate() direct {"res":"rejected:boom","isSubmitting":false,"isValidating":false,"isSubmitted":false,"errors":null,"isValid":true,"dom":"false|false","unhandled":[]}
+OBS Q1 revalidate-on-input throw {"isSubmitting":false,"isValidating":false,"isSubmitted":true,"errors":["boom"],"isValid":false,"dom":"false|false","unhandled":["boom"]}
+OBS Q1 recovery resubmit {"isSubmitting":false,"isValidating":false,"isSubmitted":true,"errors":null,"isValid":true,"dom":"false|false","onSubmit":1,"unhandled":["boom"]}
+OBS Q1 validate:initial throw {"isSubmitting":false,"isValidating":false,"isSubmitted":false,"errors":null,"isValid":true,"dom":"false|false","unhandled":["boom-checkAsync"]}
+OBS Q1 validate:input throw {"isSubmitting":false,"isValidating":false,"isSubmitted":false,"errors":null,"isValid":true,"dom":"false|false","unhandled":["boom-checkAsync"]}
+OBS Q1 onSubmit syncThrow {"isSubmitting":false,"isValidating":false,"isSubmitted":true,"errors":["handler-sync"],"isValid":false,"dom":"false|false","onSubmit":1,"unhandled":[]}
+OBS Q1 onSubmit asyncReject {"isSubmitting":false,"isValidating":false,"isSubmitted":true,"errors":["handler-async"],"isValid":false,"dom":"false|false","onSubmit":1,"unhandled":[]}
+OBS Q1 onSubmit throwString {"isSubmitting":false,"isValidating":false,"isSubmitted":true,"errors":["An unknown error has occurred."],"isValid":false,"dom":"false|false","onSubmit":1,"unhandled":[]}
+OBS Q1 slow onSubmit during {"isSubmitting":true,"isValidating":false,"isSubmitted":true,"errors":null,"isValid":true,"dom":"true|false"}
+OBS Q1 double submit {"calls":2,"isSubmitting":true,"isValidating":false,"isSubmitted":true,"errors":null,"isValid":true,"dom":"true|false"}
+OBS Q1 first handler done, second pending {"isSubmitting":true,"isValidating":false,"isSubmitted":true,"errors":null,"isValid":true,"dom":"true|false"}
+OBS Q1 both done {"isSubmitting":false,"isValidating":false,"isSubmitted":true,"errors":null,"isValid":true,"dom":"false|false"}
+OBS Q1 typing during submit validation {"onSubmit":0,"isSubmitting":false,"isValidating":false,"isSubmitted":true,"errors":null,"isValid":true,"dom":"false|false","unhandled":[]}
+OBS Q1 hang {"isSubmitting":true,"isValidating":true,"isSubmitted":true,"errors":null,"isValid":true,"dom":"true|true"}
+OBS Q1 hang after reset {"isSubmitting":false,"isValidating":false,"isSubmitted":false,"errors":null,"isValid":true,"dom":"false|false"}
+OBS Q2 start [{"value":"a0X","name":"[\"items\",0,\"name\"]","node":1,"local":"1","touched":"true","dirty":"true","edited":"true","errors":"null","active":true,"key":"4c6947"},{"value":"b0","name":"[\"items\",1,\"name\"]","node":2,"local":"2","touched":"false","dirty":"false","edited":"false","errors":"[\"server-b\"]","active":false,"key":"wtclzs"},{"value":"c0","name":"[\"items\",2,\"name\"]","node":3,"local":"3","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"n3tx6c"}]
+OBS Q2 move 0->2 [{"value":"b0","name":"[\"items\",0,\"name\"]","node":2,"local":"2","touched":"false","dirty":"false","edited":"false","errors":"[\"server-b\"]","active":false,"key":"wtclzs"},{"value":"c0","name":"[\"items\",1,\"name\"]","node":3,"local":"3","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"n3tx6c"},{"value":"a0X","name":"[\"items\",2,\"name\"]","node":1,"local":"1","touched":"true","dirty":"true","edited":"true","errors":"null","active":true,"key":"4c6947"}]
+OBS Q2 getInput {"items":[{"name":"b0"},{"name":"c0"},{"name":"a0X"}]}
+OBS Q2 swap 0<->2 [{"value":"a0X","name":"[\"items\",0,\"name\"]","node":1,"local":"1","touched":"true","dirty":"true","edited":"true","errors":"null","active":true,"key":"4c6947"},{"value":"c0","name":"[\"items\",1,\"name\"]","node":3,"local":"3","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"n3tx6c"},{"value":"b0","name":"[\"items\",2,\"name\"]","node":2,"local":"2","touched":"false","dirty":"false","edited":"false","errors":"[\"server-b\"]","active":false,"key":"wtclzs"}]
+OBS Q2 getInput {"items":[{"name":"a0X"},{"name":"c0"},{"name":"b0"}]}
+OBS Q2 remove 1 [{"value":"a0X","name":"[\"items\",0,\"name\"]","node":1,"local":"1","touched":"true","dirty":"true","edited":"true","errors":"null","active":true,"key":"4c6947"},{"value":"b0","name":"[\"items\",1,\"name\"]","node":2,"local":"2","touched":"false","dirty":"false","edited":"false","errors":"[\"server-b\"]","active":false,"key":"wtclzs"}]
+OBS Q2 getInput {"items":[{"name":"a0X"},{"name":"b0"}]}
+OBS Q2 array flags {"dirty":true,"touched":true}
+OBS Q2 insert at end [{"value":"a0X","name":"[\"items\",0,\"name\"]","node":1,"local":"1","touched":"true","dirty":"true","edited":"true","errors":"null","active":true,"key":"4c6947"},{"value":"b0","name":"[\"items\",1,\"name\"]","node":2,"local":"2","touched":"false","dirty":"false","edited":"false","errors":"[\"server-b\"]","active":false,"key":"wtclzs"},{"value":"new","name":"[\"items\",2,\"name\"]","node":4,"local":"4","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"dhfzuj"}]
+OBS Q2 reset [{"value":"a0","name":"[\"items\",0,\"name\"]","node":1,"local":"1","touched":"false","dirty":"false","edited":"false","errors":"null","active":true,"key":"4c6947"},{"value":"b0","name":"[\"items\",1,\"name\"]","node":2,"local":"2","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"wtclzs"},{"value":"c0","name":"[\"items\",2,\"name\"]","node":5,"local":"5","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"n3tx6c"}]
+OBS Q2 reset getInput {"items":[{"name":"a0"},{"name":"b0"},{"name":"c0"}]}
+OBS Q2 focus move first->last, focused moved row {"wasLocal":"6","sameNodeConnected":true,"activeTag":"INPUT","activeLocal":"6","rows":[["7","b0"],["8","c0"],["6","a0"]]}
+OBS Q2 focus move last->first, focused moved row {"wasLocal":"11","sameNodeConnected":true,"activeTag":"INPUT","activeLocal":"11","rows":[["11","c0"],["9","a0"],["10","b0"]]}
+OBS Q2 focus move 0->1, focus row 0 {"wasLocal":"12","sameNodeConnected":true,"activeTag":"INPUT","activeLocal":"12","rows":[["13","b0"],["12","a0"],["14","c0"]]}
+OBS Q2 focus move 2->0, focus unmoved row 0 {"wasLocal":"15","sameNodeConnected":true,"activeTag":"INPUT","activeLocal":"15","rows":[["17","c0"],["15","a0"],["16","b0"]]}
+OBS Q2 focus swap 0<->2, focus 0 {"wasLocal":"18","sameNodeConnected":true,"activeTag":"INPUT","activeLocal":"18","rows":[["20","c0"],["19","b0"],["18","a0"]]}
+OBS Q2 focus swap 0<->2, focus 2 {"wasLocal":"23","sameNodeConnected":true,"activeTag":"INPUT","activeLocal":"23","rows":[["23","c0"],["22","b0"],["21","a0"]]}
+OBS Q2 focus remove middle, focus last {"wasLocal":"26","sameNodeConnected":true,"activeTag":"INPUT","activeLocal":"26","rows":[["24","a0"],["26","c0"]]}
+OBS Q2 focus remove middle, focus removed {"wasLocal":"28","sameNodeConnected":false,"activeTag":"BODY","activeLocal":null,"rows":[["27","a0"],["29","c0"]]}
+OBS Q2 focus(path items.2) active value "b"
+OBS Q2 validate shouldFocus active value {"active":"b","snap":[{"value":"a0","name":"[\"items\",0,\"name\"]","node":28,"local":"30","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"ncsnmo"},{"value":"c0","name":"[\"items\",1,\"name\"]","node":29,"local":"32","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"94m4p7"},{"value":"b","name":"[\"items\",2,\"name\"]","node":30,"local":"31","touched":"true","dirty":"true","edited":"true","errors":"[\"short\"]","active":true,"key":"4y320b"}]}
+OBS Q2 after remove, shouldFocus {"active":"b","snap":[{"value":"c0","name":"[\"items\",0,\"name\"]","node":29,"local":"32","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"94m4p7"},{"value":"b","name":"[\"items\",1,\"name\"]","node":30,"local":"31","touched":"true","dirty":"true","edited":"true","errors":"[\"short\"]","active":true,"key":"4y320b"}]}
+OBS Q2 post-submit [{"value":"a","name":"[\"items\",0,\"name\"]","node":31,"local":"33","touched":"true","dirty":"true","edited":"true","errors":"[\"short\"]","active":true,"key":"ruj7k7"},{"value":"b0","name":"[\"items\",1,\"name\"]","node":32,"local":"34","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"6s29p2"},{"value":"c0","name":"[\"items\",2,\"name\"]","node":33,"local":"35","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"gh3m95"}]
+OBS Q2 + setErrors c [{"value":"a","name":"[\"items\",0,\"name\"]","node":31,"local":"33","touched":"true","dirty":"true","edited":"true","errors":"[\"short\"]","active":true,"key":"ruj7k7"},{"value":"b0","name":"[\"items\",1,\"name\"]","node":32,"local":"34","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"6s29p2"},{"value":"c0","name":"[\"items\",2,\"name\"]","node":33,"local":"35","touched":"false","dirty":"false","edited":"false","errors":"[\"server-c\"]","active":false,"key":"gh3m95"}]
+OBS Q2 move (sync, before revalidate settles) [{"value":"b0","name":"[\"items\",0,\"name\"]","node":32,"local":"34","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"6s29p2"},{"value":"c0","name":"[\"items\",1,\"name\"]","node":33,"local":"35","touched":"false","dirty":"false","edited":"false","errors":"[\"server-c\"]","active":false,"key":"gh3m95"},{"value":"a","name":"[\"items\",2,\"name\"]","node":31,"local":"33","touched":"true","dirty":"true","edited":"true","errors":"[\"short\"]","active":true,"key":"ruj7k7"}]
+OBS Q2 move (after revalidate) [{"value":"b0","name":"[\"items\",0,\"name\"]","node":32,"local":"34","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"6s29p2"},{"value":"c0","name":"[\"items\",1,\"name\"]","node":33,"local":"35","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"gh3m95"},{"value":"a","name":"[\"items\",2,\"name\"]","node":31,"local":"33","touched":"true","dirty":"true","edited":"true","errors":"[\"short\"]","active":true,"key":"ruj7k7"}]
+OBS Q2 uncontrolled initial [{"value":"","name":"[\"items\",0,\"name\"]","node":34,"local":"36","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"211639"},{"value":"","name":"[\"items\",1,\"name\"]","node":35,"local":"37","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"rlz2je"},{"value":"","name":"[\"items\",2,\"name\"]","node":36,"local":"38","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"b3xzww"}]
+OBS Q2 uncontrolled move [{"value":"","name":"[\"items\",0,\"name\"]","node":35,"local":"37","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"rlz2je"},{"value":"","name":"[\"items\",1,\"name\"]","node":36,"local":"38","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"b3xzww"},{"value":"","name":"[\"items\",2,\"name\"]","node":34,"local":"36","touched":"false","dirty":"false","edited":"false","errors":"null","active":false,"key":"211639"}]
+OBS Q2 uncontrolled getInput {"items":[{"name":"b0"},{"name":"c0"},{"name":"a0"}]}
+OBS Q3 useField {"path":"object","input":"getter","errors":"getter","isTouched":"getter","isEdited":"getter","isDirty":"getter","isValid":"getter","onChange":"function","props":"object"}
+OBS Q3 useField.props {"name":"string","autoFocus":"boolean","ref":"function","onFocus":"function","onChange":"function","onBlur":"function","values":{"name":"[\"a\"]","autoFocus":false}}
+OBS Q3 Field arg {"path":"object","input":"getter","errors":"getter","isTouched":"getter","isEdited":"getter","isDirty":"getter","isValid":"getter","onChange":"function","props":"object"}
+OBS Q3 useFieldArray {"path":"object","items":"getter","errors":"getter","isTouched":"getter","isEdited":"getter","isDirty":"getter","isValid":"getter"}
+OBS Q3 useForm {"~internal":"object","isSubmitting":"getter","isSubmitted":"getter","isValidating":"getter","isTouched":"getter","isEdited":"getter","isDirty":"getter","isValid":"getter","errors":"getter"}
+OBS Q3 exports ["Field","FieldArray","Form","focus","getDeepError","getDeepErrorEntries","getDeepErrorEntry","getDeepErrors","getDirtyInput","getDirtyPaths","getErrors","getInput","handleSubmit","insert","isDirty","isEdited","isTouched","isValid","move","pickDirty","remove","replace","reset","setErrors","setInput","submit","swap","useField","useFieldArray","useForm","validate"]
+OBS Q3 Widget text "widget:from-onChange"
+OBS Q3 Widget last render {"input":"from-onChange","touched":true,"dirty":true,"edited":true,"n":1}
+OBS Q3 uncontrolled props-only DOM value (initial "init") ""
+OBS Q3 Widget w/o ref after failed submit {"errors":["too short"],"active":"BODY","text":"widget:from-onChange"}
+OBS Q3 renders init {"parent":1,"siblingField":1,"plain":1,"plainFirst":1,"hookCond":1,"objCond":1}
+OBS Q3 renders after typing a=yes {"parent":2,"siblingField":2,"plain":2,"plainFirst":2,"hookCond":2,"objCond":2}
+OBS Q3 vals seen in render {"plainFirst":"yes","plain":"yes","hookCond":"yes","objCond":{"x":"1"}}
+OBS Q3 shown true
+OBS Q3 getInput outside render "yes"
+OBS Q3 nested set {"before":2,"after":3,"objCond":{"x":"2"}}
+OBS Q3 set b (unrelated to Conditions): deltas {"parent":0,"siblingField":1,"plain":0,"plainFirst":0,"hookCond":0,"objCond":0}
+OBS Q3 strict cond "2"
+OBS Q3 unmounted state {"input":"ab","touched":true,"dirty":true,"errors":null,"formInput":{"a":"ab","b":"b"}}
+OBS Q3 unmounted invalid submit {"input":"ab","touched":true,"dirty":true,"errors":["short"],"formInput":{"a":"ab","b":"b"},"onSubmit":0,"active":"BODY","deep":[{"path":["a"],"errors":["short"]}],"formValid":false}
+OBS Q3 unmounted valid submit output {"calls":[{"a":"abc","b":"b"}]}
+OBS Q3 remount {"dom":"abcd","input":"abcd","touched":true,"dirty":true,"errors":null,"formInput":{"a":"abcd","b":"b"}}
+OBS Q3 useField invalid path "No field store found at path [\"nope\"]"
+OBS Q4 ext-attr {"calls":1,"arg0":{"a":"1","b":"2"},"arg1Type":"submit"}
+OBS Q4 ext-method {"calls":1,"arg0":{"a":"1","b":"2"},"arg1Type":"submit"}
+OBS Q4 ext-hs {"calls":1,"arg0":{"a":"1","b":"2"},"arg1Type":"click"}
+OBS Q4 handleSubmit()() no event {"calls":1,"args":2}
+OBS Q4 validate result {"success":false,"issues":["a short","b short"],"a":["a short"],"b":["b short"],"deep":["a short","b short"],"entries":[{"path":["a"],"errors":["a short"]},{"path":["b"],"errors":["b short"]}],"first":"a short","entry":{"path":["a"],"errors":["a short"]}}
+OBS Q4 getDirtyPaths after edit {"paths":[],"dirtyInput":{"a":"zz"},"isDirtyA":true,"pick":{"a":"zz"}}
+OBS Q4 setErrors {"b":["server"],"form":["form-level"],"isValid":false}
+OBS Q4 setErrors then submit {"b":["b short"],"form":null}
+OBS Q4 setErrors a, then after-submit typing in b {"a":null,"b":null}
+OBS Q4 focus(b) "b"
+Not implemented: HTMLFormElement's requestSubmit() method
+OBS Q4 submit after Form unmount {"msg":"no throw","calls":0}
+OBS Q3b plain after Field {"r0":{"parent":1,"fieldB":1,"plain":1},"r":{"parent":1,"fieldB":2,"plain":1},"dom":"0"}
+OBS Q3b plain under owner {"r":{"parent":2,"plain":2},"dom":"1"}
+OBS Q3b effect read {"e0":1,"effects":1}
+OBS Q3b useField + getInput(form) ["{\"a\":\"0\",\"b\":\"\"}","{\"a\":\"0\",\"b\":\"z\"}"]
+
+ Test Files  1 passed (1)
+      Tests  37 passed (37)
+   Start at  00:02:33
+   Duration  1.96s (tests 88%, environment 9%, import 3%)
+
