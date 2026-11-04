@@ -5,13 +5,18 @@ export type {
   ChoiceField,
   ChoiceValue,
   Component,
+  ContentNode,
   DateField,
   FieldBase,
   FieldNode,
   FormDefinition,
+  LayoutNode,
   MultiChoiceField,
   NumberField,
   RuleNode,
+  SectionLayout,
+  TabLayout,
+  TabsLayout,
   TextField,
 } from './definition';
 export { DefinitionError, type FormError, type PathKey } from './errors';

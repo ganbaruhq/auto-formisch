@@ -5,6 +5,7 @@ import {
   type FormDefinition,
   type RuleNode,
 } from './definition';
+import { builtinComponents, gridSize, type ComponentSpec } from './components';
 import { DefinitionError, toFormErrors, type FormError, type PathKey } from './errors';
 import { builtinFieldTypes, fieldKeys, type FieldTypeSpec } from './field-types';
 import { builtinRules } from './rules';
@@ -14,6 +15,19 @@ type Node = Record<string, unknown>;
 
 /** Field `name`s already used in one data scope. Layouts share their parent's scope. */
 type Scope = Set<string>;
+
+/** What a Component's direct parent allows: its `type`, its grid, its child types. */
+interface Parent {
+  readonly type: string;
+  /** The parent has a `columns` key, so its children may take `colSpan`. */
+  readonly hasColumns: boolean;
+  /** The parent's `columns`, when it is valid. */
+  readonly columns?: number;
+  /** The only child `type` the parent holds. */
+  readonly only?: string;
+}
+
+const ROOT: Parent = { type: 'root', hasColumns: false };
 
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const RESERVED_NAMES = new Set(['__proto__', 'prototype', 'constructor']);
@@ -52,29 +66,55 @@ class Loader {
     if (!has(node, 'components')) this.fail(['components'], 'Missing key "components"');
     return this.copy(node, ROOT_KEYS, (key, value) => {
       if (key === '$schema') return this.value(v.string(), value, ['$schema']);
-      if (key === 'components') return this.components(value, ['components'], new Set());
+      if (key === 'components') return this.components(value, ['components'], new Set(), ROOT);
       return value;
     });
   }
 
-  private components(input: unknown, path: Path, scope: Scope): Component[] {
+  private components(input: unknown, path: Path, scope: Scope, parent: Parent): Component[] {
     const list = this.array(input, path) ?? [];
-    return list.flatMap((item, index) => this.component(item, [...path, index], scope) ?? []);
+    return list.flatMap(
+      (item, index) => this.component(item, [...path, index], scope, parent) ?? [],
+    );
   }
 
-  private component(input: unknown, path: Path, scope: Scope): Component | undefined {
+  private component(
+    input: unknown,
+    path: Path,
+    scope: Scope,
+    parent: Parent,
+  ): Component | undefined {
     const node = this.object(input, path);
     if (node === undefined) return undefined;
     if (!has(node, 'type')) return this.fail([...path, 'type'], 'Missing key "type"');
-    // Layouts and Content get their own tables beside the Field Types.
-    const field = typeof node.type === 'string' ? builtinFieldTypes.get(node.type) : undefined;
-    if (field !== undefined) return this.field(node, field, path, scope);
-    return this.fail([...path, 'type'], `Unknown type ${JSON.stringify(node.type)}`);
+    const type = typeof node.type === 'string' ? node.type : undefined;
+    const field = type === undefined ? undefined : builtinFieldTypes.get(type);
+    const other = type === undefined ? undefined : builtinComponents.get(type);
+    if (field === undefined && other === undefined) {
+      return this.fail([...path, 'type'], `Unknown type ${JSON.stringify(node.type)}`);
+    }
+    // A misplaced node is still read, so that its own errors are reported too.
+    if (parent.only !== undefined && type !== parent.only) {
+      this.fail(
+        [...path, 'type'],
+        `Expected "${parent.only}" inside "${parent.type}", not "${type}"`,
+      );
+    } else if (other?.parent !== undefined && parent.type !== other.parent) {
+      this.fail([...path, 'type'], `A "${type}" goes directly inside "${other.parent}"`);
+    }
+    if (field !== undefined) return this.field(node, field, path, scope, parent);
+    return this.layout(node, other!, path, scope, parent);
   }
 
-  private field(node: Node, spec: FieldTypeSpec, path: Path, scope: Scope): Component {
+  private field(
+    node: Node,
+    spec: FieldTypeSpec,
+    path: Path,
+    scope: Scope,
+    parent: Parent,
+  ): Component {
     const schemas: Readonly<Record<string, v.GenericSchema>> = { ...fieldKeys, ...spec.keys };
-    const allowed = new Set(['type', 'name', 'rules', ...Object.keys(schemas)]);
+    const allowed = new Set(['type', 'name', 'rules', 'colSpan', ...Object.keys(schemas)]);
     this.unknownKeys(node, allowed, path);
     for (const key of ['name', ...(spec.requiredKeys ?? [])]) {
       if (!has(node, key)) this.fail([...path, key], `Missing key "${key}"`);
@@ -82,9 +122,57 @@ class Loader {
     return this.copy(node, allowed, (key, value) => {
       if (key === 'name') return this.name(value, [...path, key], scope);
       if (key === 'rules') return this.rules(value, spec, [...path, key]);
+      if (key === 'colSpan') return this.colSpan(value, [...path, key], parent);
       if (key === 'type') return value;
       return this.value(schemas[key], value, [...path, key]);
     }) as unknown as Component;
+  }
+
+  /** A Layout or Content: no `name`, and children in the parent's data scope. */
+  private layout(
+    node: Node,
+    spec: ComponentSpec,
+    path: Path,
+    scope: Scope,
+    parent: Parent,
+  ): Component {
+    const allowed = new Set(['type', ...Object.keys(spec.keys)]);
+    if (spec.children !== undefined) allowed.add('components');
+    // A type with a fixed parent, like `tab` in `tabs`, never sits in a grid.
+    if (spec.parent === undefined) allowed.add('colSpan');
+    this.unknownKeys(node, allowed, path);
+    for (const key of [...spec.required, ...(spec.children ? ['components'] : [])]) {
+      if (!has(node, key)) this.fail([...path, key], `Missing key "${key}"`);
+    }
+    const hasColumns = Object.hasOwn(spec.keys, 'columns') && has(node, 'columns');
+    const self: Parent = {
+      type: spec.type,
+      hasColumns,
+      columns: hasColumns && v.is(gridSize, node.columns) ? node.columns : undefined,
+      only: spec.children?.only,
+    };
+    return this.copy(node, allowed, (key, value) => {
+      if (key === 'type') return value;
+      if (key === 'colSpan') return this.colSpan(value, [...path, key], parent);
+      if (key !== 'components') return this.value(spec.keys[key], value, [...path, key]);
+      const children = this.components(value, [...path, key], scope, self);
+      if (spec.children?.nonEmpty === true && Array.isArray(value) && value.length === 0) {
+        const child = self.only === undefined ? 'Component' : `"${self.only}"`;
+        this.fail([...path, key], `A "${spec.type}" needs at least one ${child}`);
+      }
+      return children;
+    }) as unknown as Component;
+  }
+
+  /** `colSpan` is only meaningful inside a grid, and no wider than it. */
+  private colSpan(input: unknown, path: Path, parent: Parent): number | undefined {
+    const span = this.value(gridSize, input, path);
+    if (span === undefined) return undefined;
+    if (!parent.hasColumns) return this.fail(path, '"colSpan" needs "columns" on its parent');
+    if (parent.columns !== undefined && span > parent.columns) {
+      return this.fail(path, `"colSpan" ${span} is wider than the ${parent.columns} columns`);
+    }
+    return span;
   }
 
   private name(input: unknown, path: Path, scope: Scope): string | undefined {

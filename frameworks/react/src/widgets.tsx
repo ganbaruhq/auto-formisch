@@ -8,7 +8,7 @@ import type {
   NumberField,
   TextField,
 } from '@auto-formisch/core';
-import type { WidgetEntry, WidgetProps } from './contracts';
+import type { ContentProps, WidgetEntry, WidgetProps } from './contracts';
 
 /** `input[type=text]`. Emits `undefined` when emptied. */
 export function TextInput({
@@ -200,7 +200,12 @@ export function Checkboxes({
   );
 }
 
-/** The default Widget map. Keys are a Field's `widget ?? type`. */
+/** Content's text in a paragraph. React escapes it, so markup shows as text. */
+export function ContentText({ node }: ContentProps) {
+  return <p>{node.text}</p>;
+}
+
+/** The default Widget map. Keys are a Field's or Content's `widget ?? type`. */
 export const defaultWidgets: Readonly<Record<string, WidgetEntry>> = {
   text: { component: TextInput, appliesTo: ['text'] },
   number: { component: NumberInput, appliesTo: ['number'] },
@@ -208,4 +213,5 @@ export const defaultWidgets: Readonly<Record<string, WidgetEntry>> = {
   choice: { component: Select, appliesTo: ['choice'] },
   multi_choice: { component: Checkboxes, group: true, appliesTo: ['multi_choice'] },
   date: { component: DateInput, appliesTo: ['date'] },
+  content: { component: ContentText, appliesTo: ['content'] },
 };

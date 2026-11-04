@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import type { FieldNode, FormDefinition } from './definition';
+import type { Component, FieldNode, FormDefinition } from './definition';
 import { toFormErrors } from './errors';
 import { builtinFieldTypes } from './field-types';
 import { loadDefinition } from './load';
@@ -58,8 +58,21 @@ export function compile(input: unknown): CompiledForm {
   };
 }
 
-/** The Fields of one data scope. Layouts will be flattened here, as they add no path. */
-const fieldsIn = (components: FormDefinition['components']): readonly FieldNode[] => components;
+/** The Fields of one data scope, in Definition order. Layouts add no path, so they flatten. */
+function fieldsIn(components: readonly Component[]): FieldNode[] {
+  return components.flatMap((component) => {
+    switch (component.type) {
+      case 'section':
+      case 'tabs':
+      case 'tab':
+        return fieldsIn(component.components);
+      case 'content':
+        return [];
+      default:
+        return [component];
+    }
+  });
+}
 
 /** `v.pipe(skeleton, v.transform(prep), typedObject)`, per ADR 0002. */
 function buildSchema(
