@@ -48,6 +48,10 @@ _Avoid_: Validator
 The Renderer's UI control that presents a Field; swappable without changing the Form Definition.
 _Avoid_: Input
 
+**Field Wrapper**:
+The Renderer's frame around a Widget that presents a Field's label, description and errors; swappable independently of the Widget.
+_Avoid_: Decorator, field template
+
 **Condition**:
 A serializable predicate over Field values that decides whether a Component is visible, or a Field is required or disabled.
 _Avoid_: Expression, visibleIf
