@@ -57,7 +57,7 @@ export function Components({ components, scope, columns }: ComponentsProps) {
     if (columns === undefined) return <Fragment key={key}>{element}</Fragment>;
     const span = 'colSpan' in node ? node.colSpan : undefined;
     return (
-      <div key={key} style={span !== undefined ? { gridColumn: `span ${span}` } : undefined}>
+      <div key={key} style={span !== undefined ? cellStyle(span, columns) : undefined}>
         {element}
       </div>
     );
@@ -80,6 +80,14 @@ function useVisibility(components: readonly Component[], scope: Scope): readonly
 const gridStyle = (columns: number): CSSProperties => ({
   display: 'grid',
   gridTemplateColumns: `repeat(var(--af-columns, ${columns}), minmax(0, 1fr))`,
+});
+
+/**
+ * A cell spans `span` columns, but never more than the grid has: a span wider
+ * than an application's smaller `--af-columns` would add implicit columns.
+ */
+const cellStyle = (span: number, columns: number): CSSProperties => ({
+  gridColumn: `span min(${span}, var(--af-columns, ${columns}))`,
 });
 
 /**

@@ -236,7 +236,7 @@ Two Rules need care:
 
 A Layout (`section`, `tabs`, `tab`, and `page` for Wizards) arranges Components and adds nothing to the data: `street` above is submitted as `street`, not `delivery.street`, so you can move a Field in or out of a Layout without changing what is stored. A Field's `name` therefore has to be unique across all the Layouts of its data scope.
 
-`columns` on a `section`, `tab` or `page` lays its children out in a grid, and `colSpan` widens one child. The default grid reads its column count from the CSS variable `--af-columns` when set, so a media query can change it. The default Tabs keep every panel mounted, so the Fields of a closed Tab are still validated, and a Tab's name shows how many Fields in it have errors, such as `Invoice (1)`. Content shows its `text` as plain text, never as HTML.
+`columns` on a `section`, `tab` or `page` lays its children out in a grid, and `colSpan` widens one child. The default grid reads its column count from the CSS variable `--af-columns` when set, so a media query can change it; a `colSpan` wider than that spans the whole row. The default Tabs keep every panel mounted, so the Fields of a closed Tab are still validated, and a Tab's name shows how many Fields in it have errors, such as `Invoice (1)`. Content shows its `text` as plain text, never as HTML.
 
 ## Conditions
 

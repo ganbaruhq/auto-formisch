@@ -135,7 +135,7 @@ The Fluent Builder writes Conditions with `all`, `any`, `not`, `eq`, `neq`, `isI
 
 Every Layout takes a `components` list, which may be empty except on `tabs`. A Layout adds no data path: moving a Field in or out of one changes neither its path nor the output.
 
-Inside a Layout with `columns`, every child except a `tab` or `page` may take `colSpan`, at most `columns`. The default grid is an inline CSS grid whose column count falls back from the variable `--af-columns`, so a stylesheet can change it per screen size. A hidden child takes no cell.
+Inside a Layout with `columns`, every child except a `tab` or `page` may take `colSpan`, at most `columns`. The default grid is an inline CSS grid whose column count falls back from the variable `--af-columns`, so a stylesheet can change it per screen size. A cell spans `min(colSpan, var(--af-columns))` columns, so a smaller count never adds implicit columns. A hidden child takes no cell.
 
 ## Editor support
 

@@ -207,7 +207,9 @@ describe('AutoForm: columns and colSpan', () => {
     const grid = firstCell.parentElement!;
     expect(grid.style.display).toBe('grid');
     expect(grid.style.gridTemplateColumns).toBe('repeat(var(--af-columns, 3), minmax(0, 1fr))');
-    expect(firstCell.style.gridColumn).toBe('span 2');
+    // Never wider than the column count, so an application that lowers
+    // `--af-columns` in a media query gets no implicit columns.
+    expect(firstCell.getAttribute('style')).toBe('grid-column: span min(2, var(--af-columns, 3));');
     const lastCell = input('Last').parentElement!.parentElement!;
     expect(lastCell.parentElement).toBe(grid);
     expect(lastCell.style.gridColumn).toBe('');
@@ -228,7 +230,7 @@ describe('AutoForm: columns and colSpan', () => {
       }),
     );
     const lastCell = input('Last').parentElement!.parentElement!;
-    expect(lastCell.style.gridColumn).toBe('span 2');
+    expect(lastCell.getAttribute('style')).toBe('grid-column: span min(2, var(--af-columns, 2));');
     expect(lastCell.parentElement!.style.display).toBe('grid');
   });
 

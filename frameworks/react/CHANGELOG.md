@@ -30,3 +30,4 @@
 - The default number Widget no longer reads text the browser can't parse ("1e", "-", ".") as empty: it emits `NaN`, the Field shows `labels.invalidNumber` (`Enter a number`), the form doesn't submit, and the text stays in the box. New label `invalidNumber`.
 - A keystroke in a form with Conditions re-renders only the Field typed into and the Components whose Condition result changed, not every mounted Field: each Component subscribes to its own result.
 - `useFormValue` reads a whole `object` or Repeater without its Inactive Fields, and a Locked Field as its Locked value, as Conditions do.
+- A grid cell spans at most `--af-columns` columns, so an application that lowers the variable in a media query no longer gets implicit columns from a wider `colSpan`.
