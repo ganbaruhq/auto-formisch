@@ -1,7 +1,7 @@
 import { useState, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AutoForm, compile, type FormOutput } from '@auto-formisch/react';
-import { FieldsScenario, HiddenScenario } from './scenarios/fields';
+import { FieldsScenario, HiddenScenario, ThrowingScenario } from './scenarios/fields';
 import { FormischScenario } from './scenarios/formisch';
 import { LargeForm, LargeWizard } from './scenarios/large';
 import { LockedScenario } from './scenarios/locked';
@@ -60,6 +60,7 @@ const scenarios: Record<string, { readonly title: string; readonly component: Co
   locked: { title: 'Locked Fields', component: LockedScenario },
   fields: { title: 'Native controls', component: FieldsScenario },
   hidden: { title: 'Hidden Widget error', component: HiddenScenario },
+  throwing: { title: 'Custom Rule that throws', component: ThrowingScenario },
   formisch: { title: 'Formisch probes', component: FormischScenario },
   worker: { title: 'Core in a Worker', component: WorkerScenario },
 };

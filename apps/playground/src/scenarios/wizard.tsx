@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { setInput } from '@formisch/react';
 import { AutoForm, compile, useAutoForm, type PageLayoutProps } from '@auto-formisch/react';
-import { record } from './record';
+import { explode, record } from './record';
 
 /**
  * A Wizard of three Pages. With `?hiddenError=1`, the first Page holds a
@@ -9,8 +9,9 @@ import { record } from './record';
  * blocked by an error the user cannot fix. Controls outside the form run
  * "Next" through `form="id"` and hide the open Page through `setInput`. With
  * `?stepper=1`, a custom `page` Layout lists the Pages with their error counts.
+ * With `?throwingRule=1`, "Name" has a custom Rule that throws on "boom".
  */
-const definition = (hiddenError: boolean) => ({
+const definition = (hiddenError: boolean, throwingRule: boolean) => ({
   version: 1,
   pages: [
     {
@@ -18,7 +19,13 @@ const definition = (hiddenError: boolean) => ({
       label: 'Account',
       description: 'Who you are.',
       components: [
-        { type: 'text', name: 'name', label: 'Name', required: true },
+        {
+          type: 'text',
+          name: 'name',
+          label: 'Name',
+          required: true,
+          ...(throwingRule && { rules: [{ type: 'explode' }] }),
+        },
         hiddenError
           ? { type: 'number', name: 'id', widget: 'hidden', required: true }
           : { type: 'number', name: 'id', widget: 'hidden', default: 7 },
@@ -73,7 +80,10 @@ export function WizardScenario() {
   const query = new URLSearchParams(location.search);
   const hiddenError = query.get('hiddenError') === '1';
   const stepper = query.get('stepper') === '1';
-  const [form] = useState(() => compile(definition(hiddenError)));
+  const throwingRule = query.get('throwingRule') === '1';
+  const [form] = useState(() =>
+    compile(definition(hiddenError, throwingRule), { rules: [explode] }),
+  );
   const store = useAutoForm(form);
   const hideDetails = () => setInput(store, { path: ['skipDetails'], input: true } as never);
   return (

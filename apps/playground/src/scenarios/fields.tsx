@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AutoForm, compile } from '@auto-formisch/react';
-import { record } from './record';
+import { explode, record } from './record';
 
 /**
  * Native control behaviours: partial typing in a number input, errors after a
@@ -51,5 +51,16 @@ const hiddenDefinition = {
 
 export function HiddenScenario() {
   const [form] = useState(() => compile(hiddenDefinition));
+  return <AutoForm form={form} onSubmit={record} />;
+}
+
+/** A regular form whose "Code" has a custom Rule that throws on "boom". */
+const throwingDefinition = {
+  version: 1,
+  components: [{ type: 'text', name: 'code', label: 'Code', rules: [{ type: 'explode' }] }],
+};
+
+export function ThrowingScenario() {
+  const [form] = useState(() => compile(throwingDefinition, { rules: [explode] }));
   return <AutoForm form={form} onSubmit={record} />;
 }
