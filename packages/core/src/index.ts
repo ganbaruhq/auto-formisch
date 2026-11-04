@@ -1,5 +1,12 @@
 export * from './builder';
-export { compile, type CompiledForm, type FormOutput } from './compile';
+export {
+  compile,
+  validateForm,
+  type CompiledForm,
+  type FormOutput,
+  type ValidateOptions,
+  type ValidationResult,
+} from './compile';
 export type { ConditionState, FieldLocation, FormConditions } from './conditions';
 export type {
   AllCondition,

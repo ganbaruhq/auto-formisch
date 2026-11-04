@@ -802,25 +802,16 @@ v.setGlobalConfig({ lang: 'de' });
 
 The required error is the exception: it resolves through `requiredMessage`, then `setRequiredMessage`, then `Required`, so `setGlobalMessage` and messages for `v.check` never reach it. Like Valibot's own, a message set for one language never falls back to another, nor to the one set with no language: with `lang: 'en'` and no English message registered, users see `Required`. `deleteRequiredMessage(lang?)` removes one.
 
-`~standard.validate` takes no language and uses the global one. A server answering each request in its own language validates the Valibot schema directly, and converts its issues to `{ message, path }` at once, because a raw required issue carries an internal value:
+`~standard.validate` takes no language and uses the global one. A server answering each request in its own language calls `validateForm(form, input, { lang })`, which returns `{ value }` or `{ errors }` of `{ message, path }`, the shape `onSubmit` may return. Never read raw issues from `v.safeParse(form.schema, ...)`: a required issue carries an internal value.
 
 <!-- example: docs/examples/messages.ts#per-request -->
 
 ```ts
-import type { CompiledForm, FormError } from '@auto-formisch/core';
+import { validateForm, type CompiledForm } from '@auto-formisch/core';
 
-// `~standard.validate` takes no language. To answer each request in its own,
-// validate the Valibot schema with `lang` and convert its issues at once.
+// On the server, each request in its own language.
 export function validateIn(form: CompiledForm, input: unknown, lang: string) {
-  const result = v.safeParse(form.schema, input, { lang });
-  if (result.success) return { value: result.output };
-  const issues: FormError[] = result.issues.map((issue) => ({
-    message: issue.message,
-    path: (issue.path ?? []).map((item) =>
-      typeof item.key === 'number' ? item.key : String(item.key),
-    ),
-  }));
-  return { issues };
+  return validateForm(form, input, { lang }); // { value } or { errors: [{ message, path }] }
 }
 ```
 

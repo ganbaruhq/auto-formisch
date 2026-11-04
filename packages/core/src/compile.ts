@@ -10,7 +10,7 @@ import {
   type RuleNode,
   type ValueField,
 } from './definition';
-import { toFormErrors } from './errors';
+import { toFormErrors, type FormError } from './errors';
 import { fieldsIn } from './fields';
 import { defaultsOf, newRowOf, normalize, type NormalizedInput } from './initial';
 import { load } from './load';
@@ -167,8 +167,8 @@ function compiledForm(
       version: 1,
       vendor: 'auto-formisch',
       validate: (value) => {
-        const result = v.safeParse(schema, value);
-        return result.success ? { value: result.output } : { issues: toFormErrors(result.issues) };
+        const result = parse(schema, value);
+        return 'errors' in result ? { issues: result.errors } : result;
       },
     },
   };
@@ -178,6 +178,40 @@ function compiledForm(
     valueSchema: (field) => valueSchemas.get(field)!,
   });
   return compiled;
+}
+
+/** What `validateForm` returns: the output, or every error as `{message, path}`. */
+export type ValidationResult<TOutput extends FormOutput = FormOutput> =
+  | { readonly value: TOutput }
+  | { readonly errors: readonly FormError[] };
+
+/** What `validateForm` takes beside the input. */
+export interface ValidateOptions {
+  /** The language of Valibot's messages and `setRequiredMessage`; the global one when left out. */
+  readonly lang?: string;
+}
+
+/**
+ * Validates `input` against a compiled form, like `~standard.validate`, but in
+ * the language of one request, such as a server's `Accept-Language`. The
+ * errors are `{ message, path }`, which `onSubmit` may return as they are.
+ */
+export function validateForm<TOutput extends FormOutput>(
+  form: CompiledForm<TOutput>,
+  input: unknown,
+  options: ValidateOptions = {},
+): ValidationResult<TOutput> {
+  return parse(form.schema, input, options.lang === undefined ? undefined : { lang: options.lang });
+}
+
+function parse<TOutput>(
+  schema: v.GenericSchema<unknown, TOutput>,
+  input: unknown,
+  config?: v.Config<v.BaseIssue<unknown>>,
+): { readonly value: TOutput } | { readonly errors: FormError[] } {
+  const result = v.safeParse(schema, input, config);
+  // Raw issues never leave the package: a required one carries a symbol.
+  return result.success ? { value: result.output } : { errors: toFormErrors(result.issues) };
 }
 
 /**

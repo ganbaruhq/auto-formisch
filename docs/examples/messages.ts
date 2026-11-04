@@ -13,19 +13,10 @@ v.setGlobalConfig({ lang: 'de' });
 // #endregion setup
 
 // #region per-request
-import type { CompiledForm, FormError } from '@auto-formisch/core';
+import { validateForm, type CompiledForm } from '@auto-formisch/core';
 
-// `~standard.validate` takes no language. To answer each request in its own,
-// validate the Valibot schema with `lang` and convert its issues at once.
+// On the server, each request in its own language.
 export function validateIn(form: CompiledForm, input: unknown, lang: string) {
-  const result = v.safeParse(form.schema, input, { lang });
-  if (result.success) return { value: result.output };
-  const issues: FormError[] = result.issues.map((issue) => ({
-    message: issue.message,
-    path: (issue.path ?? []).map((item) =>
-      typeof item.key === 'number' ? item.key : String(item.key),
-    ),
-  }));
-  return { issues };
+  return validateForm(form, input, { lang }); // { value } or { errors: [{ message, path }] }
 }
 // #endregion per-request

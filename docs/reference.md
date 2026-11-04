@@ -163,6 +163,7 @@ The schema describes only the built-ins, and takes any other `type` or Rule name
 | --------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `compile(definition, { fieldTypes, rules }?)` | Loads and checks a Definition, and returns a `CompiledForm`. Throws `DefinitionError`.                    |
 | `lock(compiled, values)`                      | Returns a new `CompiledForm` with Locked Fields, by data path. Throws `LockError`.                        |
+| `validateForm(compiled, input, { lang }?)`    | Validates in one request's language. Returns `{ value }` or `{ errors: { message, path }[] }`.            |
 | `defineFieldType`, `defineRule`               | Register a custom Field Type or Rule. Throw `TypeError` for an invalid registration.                      |
 | `setRequiredMessage(message, lang?)`          | Sets the required message for a language, or with no language; `deleteRequiredMessage(lang?)` removes it. |
 | `shownPages(compiled, input)`                 | The indexes of the Wizard Pages shown for `input`.                                                        |
@@ -176,7 +177,7 @@ A `CompiledForm` has:
 | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `['~standard']`     | A Standard Schema. `validate(input)` is synchronous and returns `{ value }` or `{ issues: { message, path }[] }`. |
 | `definition`        | The loaded Definition: a deep-frozen copy holding only the checked keys, in the author's order.                   |
-| `schema`            | The Valibot schema, for Formisch and for `v.safeParse` with a config. Convert its issues to `{ message, path }`.  |
+| `schema`            | The Valibot schema, for Formisch. Validate with `validateForm` or `~standard`, never raw `v.safeParse` issues.    |
 | `defaults`          | The input a new form starts with; a fresh copy on every read.                                                     |
 | `normalize(record)` | `{ input, warnings }`: a record shaped for the form, as `initialInput` does it.                                   |
 | `newRow(repeater)`  | A new row for a Repeater, from its Fields' defaults.                                                              |

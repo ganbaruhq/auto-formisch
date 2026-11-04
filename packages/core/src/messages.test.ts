@@ -1,7 +1,7 @@
 import '@valibot/i18n/de';
 import * as v from 'valibot';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
-import { compile, deleteRequiredMessage, setRequiredMessage } from './index';
+import { compile, deleteRequiredMessage, setRequiredMessage, validateForm } from './index';
 
 const required = (extra: object = {}) =>
   compile({
@@ -190,5 +190,24 @@ describe('messages: @valibot/i18n', () => {
       'Name fehlt',
       'Mindestens 3',
     ]);
+  });
+
+  it('translates per request with validateForm, as { value } or { errors }', () => {
+    setRequiredMessage('Pflichtfeld', 'de');
+    v.setGlobalConfig({ lang: 'en' });
+    const compiled = form();
+    expect(validateForm(compiled, { code: 'a' }, { lang: 'de' })).toEqual({
+      errors: [
+        { message: 'Pflichtfeld', path: ['name'] },
+        { message: 'Ungültige Länge: >=3 erwartet aber 1 erhalten', path: ['code'] },
+      ],
+    });
+    expect(validateForm(compiled, { name: 'Ada', code: 'abc' }, { lang: 'de' })).toEqual({
+      value: { name: 'Ada', code: 'abc' },
+    });
+    // Without a language, the global one, like ~standard.validate.
+    expect(validateForm(compiled, { code: 'abc' })).toEqual({
+      errors: [{ message: 'Required', path: ['name'] }],
+    });
   });
 });
