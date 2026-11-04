@@ -107,7 +107,7 @@ describe('Content', () => {
 
   it('keeps markup in its text as plain text', () => {
     const compiled = compile(root({ type: 'content', text: '<b>Bold</b> & <script>' }));
-    expect(compiled.definition.components[0]).toEqual({
+    expect(compiled.definition.components![0]).toEqual({
       type: 'content',
       text: '<b>Bold</b> & <script>',
     });
@@ -161,7 +161,7 @@ describe('Layouts and Content: round trip', () => {
   });
 
   it('freezes Layouts and their children', () => {
-    const section = compile(definition).definition.components[0] as SectionLayout;
+    const section = compile(definition).definition.components![0] as SectionLayout;
     expect(Object.isFrozen(section)).toBe(true);
     expect(Object.isFrozen(section.components)).toBe(true);
     expect(Object.isFrozen(section.components[0])).toBe(true);
@@ -300,9 +300,9 @@ describe('Layouts and Content: rejected on load', () => {
     ]);
   });
 
-  it('rejects page until Wizards exist', () => {
+  it('rejects a page outside the root "pages" (see wizard.test.ts)', () => {
     expect(loadErrors(root({ type: 'page', label: 'Step', components: [] }))).toEqual([
-      { message: 'Unknown type "page"', path: ['components', 0, 'type'] },
+      { message: 'A "page" goes directly inside "pages"', path: ['components', 0, 'type'] },
     ]);
   });
 });

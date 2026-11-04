@@ -53,7 +53,7 @@ describe('number Field', () => {
   });
 
   it('takes a placeholder', () => {
-    expect(compile(one('number', { placeholder: 'Age' })).definition.components[0]).toMatchObject({
+    expect(compile(one('number', { placeholder: 'Age' })).definition.components![0]).toMatchObject({
       placeholder: 'Age',
     });
   });
@@ -507,7 +507,7 @@ describe('Form Definition with every value Field Type: round trip', () => {
     country.choices[1].value = 'FR';
     country.choices.push('JP');
     expect(compiled.definition).toEqual(everyType);
-    expect(Object.isFrozen((compiled.definition.components[3] as ChoiceField).choices[1])).toBe(
+    expect(Object.isFrozen((compiled.definition.components![3] as ChoiceField).choices[1])).toBe(
       true,
     );
     expect(

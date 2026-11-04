@@ -15,6 +15,7 @@ export type {
   LayoutProps,
   ObjectProps,
   Overrides,
+  PageLayoutProps,
   RepeaterProps,
   RepeaterRow,
   TabItem,
@@ -24,4 +25,6 @@ export type {
   WidgetMap,
   WidgetProps,
   WidgetPropsByType,
+  Wizard,
+  WizardPage,
 } from './contracts';

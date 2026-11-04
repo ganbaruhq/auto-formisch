@@ -1,6 +1,6 @@
 import * as v from 'valibot';
 import { internalsOf, type CompiledForm, type FormOutput } from './compile';
-import type { ValueField } from './definition';
+import { rootComponents, type ValueField } from './definition';
 import { isEmpty } from './empty';
 import type { FormError, PathKey } from './errors';
 import { copy } from './initial';
@@ -64,7 +64,7 @@ export function lock<TOutput extends FormOutput>(
     throw new LockError([{ message: 'Expected an object of data paths and values', path: [] }]);
   }
 
-  const tree = treeOf(compiled.definition.components);
+  const tree = treeOf(rootComponents(compiled.definition));
   const errors: FormError[] = [];
   const locks = new Map<ValueField, Lock>();
   for (const key of Object.keys(values)) {

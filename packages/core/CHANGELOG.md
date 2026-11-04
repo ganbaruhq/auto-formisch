@@ -14,4 +14,9 @@
 - A value Field's `default`, checked on load for being non-empty, of the Field's type and through its Rules. It stays out of the schema.
 - A Repeater's `default`: a non-empty list of rows, each checked against the template and the whole list through the Repeater's Rules. The Fluent Builder's `defaultValue` takes it on a `repeater`.
 - `compiled.defaults`: the input a new form starts with, a fresh copy on every read. `compiled.normalize(record)` and `compiled.newRow(repeater)` serve Renderers: the starting input for an edited record (full shape, keys without a Field dropped, wrongly typed values emptied with a warning), and a new Repeater row from its template's defaults.
+  <<<<<<< HEAD
 - `lock(compiled, values)` Locks single-value Fields by data path for one form instance. Their values replace the input's before Conditions run, beat `initialInput` and `default`, and skip `required` and Rules; a Condition can still make them Inactive. Invalid paths, wrongly typed values and locking twice throw a `LockError` of `{message, path}`. `compiled.locked` lists the Locked Fields for Renderers.
+  \=======
+- Wizards: the root has `components` or root `pages`, never both. A `page` (label, description, columns, visible) sits only in `pages`, and all Pages share the root data scope. A Wizard compiles to one whole-form schema, so a server validates it like any form; a hidden Page makes its Fields Inactive. `page()` and `wizard()` write Pages in the Fluent Builder. `shownPages`, `pageOf` and `pageErrors` let a Renderer navigate and a server check one step. `FormDefinition` is now `SinglePageDefinition | WizardDefinition`, and `TypedDefinition` a type alias.
+
+> > > > > > > claude/relaxed-bell-711fr3

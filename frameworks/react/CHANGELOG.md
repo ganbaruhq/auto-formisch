@@ -20,4 +20,9 @@
 - `initialInput`, on `<AutoForm>` and `useAutoForm(form, { initialInput })`, starts the form from an existing record, read only at mount. It replaces every default, and is normalized first; a dropped value gets a `console.warn`. Combining it with `store` throws.
 - A `form` that changes without a remount throws an `AutoFormError`, from `<AutoForm>` and `useAutoForm`.
 - The `hidden` Widget keeps a value of any value Field with no UI and no Field Wrapper; its errors show in the general error region.
+  <<<<<<< HEAD
 - Locked Fields (from `lock`) render read-only: Widgets and the Field Wrapper get `readOnly: true`, the default text, number and date Widgets use native `readonly`, and select, radio, checkbox and multi-choice use native `disabled`. The Renderer passes a Locked Field's Widget the Locked value and ignores its `onChange`, and Conditions read the Locked value, not the store.
+  \=======
+- Wizards: only the open Page is mounted, inside a focusable `role="group"` named by its label, which takes focus on a Page change. Going forward validates the whole form and stops at the first Page on the way with errors; going back never validates. Only attempted Pages show errors. A failed submit opens the first Page with an error and focuses it, and a native submit before the last Page runs "Next". A Wizard store validates on input. `actions` and the new `page` Layout get `wizard { pages, isFirst, isLast, next, back, goTo }`; `labels` gains `next` and `back`. New contract types `Wizard`, `WizardPage` and `PageLayoutProps`.
+
+> > > > > > > claude/relaxed-bell-711fr3

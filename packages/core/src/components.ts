@@ -59,6 +59,16 @@ const tab: ComponentSpec = {
   parent: 'tabs',
 };
 
+const page: ComponentSpec = {
+  type: 'page',
+  keys: { label: v.string(), description: v.string(), columns: gridSize },
+  required: [],
+  children: {},
+  // Only the root's `pages` holds Pages, so a Page never sits inside another
+  // Component or in a data scope of its own.
+  parent: 'pages',
+};
+
 const content: ComponentSpec = {
   type: 'content',
   // Plain text only, so a stored Definition can never inject HTML.
@@ -86,5 +96,5 @@ const repeater: ComponentSpec = {
 };
 
 export const builtinComponents: ReadonlyMap<string, ComponentSpec> = new Map(
-  [section, tabs, tab, content, object, repeater].map((spec) => [spec.type, spec]),
+  [section, tabs, tab, page, content, object, repeater].map((spec) => [spec.type, spec]),
 );

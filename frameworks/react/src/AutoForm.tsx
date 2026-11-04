@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -39,6 +40,13 @@ import {
 import { AutoFormError } from './AutoFormError';
 import { useAutoForm, useSameForm, type AutoFormStore } from './useAutoForm';
 import { DataScopeContext } from './useFormValue';
+import {
+  CurrentPage,
+  useShowsErrorsAt,
+  useWizard,
+  useWizardController,
+  WizardProvider,
+} from './Wizard';
 import { defaultWidgets } from './widgets';
 
 export interface AutoFormProps<TOutput extends FormOutput = FormOutput> {
@@ -88,6 +96,8 @@ export interface AutoFormProps<TOutput extends FormOutput = FormOutput> {
 
 const defaultLabels: Labels = {
   submit: 'Submit',
+  next: 'Next',
+  back: 'Back',
   add: 'Add',
   remove: 'Remove',
   moveUp: 'Move up',
@@ -96,7 +106,9 @@ const defaultLabels: Labels = {
 
 /**
  * Renders a compiled Form Definition on Formisch with native HTML and no
- * stylesheet. It validates on submit and revalidates on input.
+ * stylesheet. It validates on submit and revalidates on input. A Wizard shows
+ * one Page at a time and validates on input, but shows only the errors of the
+ * Pages already attempted.
  */
 export function AutoForm<TOutput extends FormOutput = FormOutput>(props: AutoFormProps<TOutput>) {
   const { store, initialInput, ...rest } = props as AutoFormProps;
@@ -132,14 +144,18 @@ function Rendered({
   const idPrefix = useId();
   const focusElements = useRef<FocusElements>(new Map()).current;
   const rootScope = useMemo(
-    () => ({ path: [], components: compiled.definition.components, parent: null }),
+    () => ({
+      path: [],
+      components: compiled.definition.pages ?? compiled.definition.components,
+      parent: null,
+    }),
     [compiled],
   );
   const base = useMemo(
     () => ({
       form: compiled,
       store,
-      widgetOf: resolveWidgets(compiled.definition.components, widgetMap(widgets), overrides),
+      widgetOf: resolveWidgets(compiled.definition, widgetMap(widgets), overrides),
       layouts: { ...defaultLayouts, ...definedOnly(layouts) },
       fieldWrapper,
       labels: { ...defaultLabels, ...definedOnly(labels) },
@@ -151,35 +167,60 @@ function Rendered({
   const hasHidden = useMemo(() => hasHiddenWidget(compiled, base.widgetOf), [compiled, base]);
   const conditions = useConditions(compiled, store);
   const context = useMemo(() => ({ ...base, conditions }), [base, conditions]);
-  const { attempt, handle, focusTarget } = useSubmission(
+  // A Wizard opens the Page of the first error before focusing it.
+  const openFirstError = useRef<(() => void) | null>(null);
+  const { attempt, handle, focusTarget, focusFirstError } = useSubmission(
     compiled,
     store,
     base.widgetOf,
     onSubmit,
     focusElements,
+    openFirstError,
   );
+  const wizard = useWizardController({
+    compiled,
+    store,
+    conditions,
+    attempt,
+    handle,
+    focusFirstError,
+  });
+  openFirstError.current = wizard?.openFirstError ?? null;
 
   return (
     <RenderContext value={context}>
-      <FocusTargetContext value={focusTarget}>
-        <Form of={store} id={id} onSubmitCapture={attempt} onSubmit={handle}>
-          <DataScopeContext value={rootScope}>
-            <Components components={rootScope.components} scope={[]} />
-          </DataScopeContext>
-          <div role="alert">
-            {store.errors?.map((error, index) => (
-              <div key={index}>{error}</div>
-            ))}
-            {hasHidden && <HiddenWidgetErrors />}
-          </div>
-          <Actions
-            render={actions}
-            isSubmitting={store.isSubmitting}
-            submit={() => submit(store)}
-            wizard={null}
-          />
-        </Form>
-      </FocusTargetContext>
+      <WizardProvider value={wizard?.controller ?? null}>
+        <FocusTargetContext value={focusTarget}>
+          <Form
+            of={store}
+            id={id}
+            onSubmitCapture={wizard?.onSubmitCapture ?? attempt}
+            onSubmit={handle}
+          >
+            <DataScopeContext value={rootScope}>
+              {wizard !== null ? (
+                <CurrentPage />
+              ) : (
+                <Components components={rootScope.components} scope={[]} />
+              )}
+            </DataScopeContext>
+            <div role="alert">
+              {store.errors?.map((error, index) => (
+                <div key={index}>{error}</div>
+              ))}
+              {wizard?.generalErrors.map((error, index) => (
+                <div key={`wizard#${index}`}>{error}</div>
+              ))}
+              {hasHidden && <HiddenWidgetErrors />}
+            </div>
+            <Actions
+              render={actions}
+              isSubmitting={store.isSubmitting}
+              submit={wizard?.submit ?? (() => submit(store))}
+            />
+          </Form>
+        </FocusTargetContext>
+      </WizardProvider>
     </RenderContext>
   );
 }
@@ -207,6 +248,8 @@ function useSubmission(
   widgetOf: WidgetResolver,
   onSubmit: AutoFormProps['onSubmit'],
   focusElements: FocusElements,
+  /** Replaces focusing the first error, such as a Wizard's opening its Page first. */
+  onFailed: { readonly current: (() => void) | null },
 ) {
   const pending = useRef<Attempt | null>(null);
   const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
@@ -217,15 +260,22 @@ function useSubmission(
     if (attempt === null || isSubmitting) return;
     pending.current = null;
     if (attempt.reached && !attempt.rejected) return;
-    setFocusTarget(firstErrorTarget(compiled, store, widgetOf, focusElements));
+    if (onFailed.current !== null) onFailed.current();
+    else setFocusTarget(firstErrorTarget(compiled, store, widgetOf, focusElements));
   });
 
   useEffect(() => {
     if (focusTarget !== null) focusElements.get(keyOf(focusTarget.path))?.focus();
   }, [focusTarget, focusElements]);
 
+  const focusFirstError = useCallback(
+    () => setFocusTarget(firstErrorTarget(compiled, store, widgetOf, focusElements)),
+    [compiled, store, widgetOf, focusElements],
+  );
+
   return {
     focusTarget,
+    focusFirstError,
     attempt: () => {
       pending.current = { reached: false, rejected: false };
     },
@@ -267,7 +317,7 @@ function hasHiddenWidget(compiled: CompiledForm, widgetOf: WidgetResolver): bool
       if ('components' in node) return any(node.components);
       return isHiddenWidget(widgetOf(node).node);
     });
-  return any(compiled.definition.components);
+  return any(compiled.definition.pages ?? compiled.definition.components);
 }
 
 /**
@@ -279,14 +329,16 @@ function HiddenWidgetErrors() {
   // A Formisch hook makes this component re-render when what it reads below
   // changes: the rows of the form, and the errors of those Fields.
   const root = useField(store, { path: [] as never });
+  // On a Wizard, only the errors of attempted Pages show.
+  const showsErrorsAt = useShowsErrorsAt();
   const fields = shownFields(
-    form.definition.components,
+    form.definition.pages ?? form.definition.components,
     conditions,
     root.input,
     presentedHidden(widgetOf),
   );
   return fields.flatMap(({ path, hidden }) =>
-    hidden
+    hidden && showsErrorsAt(path)
       ? (getErrors(store, { path } as never) ?? []).map((error, index) => (
           <div key={`${keyOf(path)}#${index}`}>{error}</div>
         ))
@@ -294,21 +346,36 @@ function HiddenWidgetErrors() {
   );
 }
 
-/** Renders the `actions` slot as a component of its own, so it may use hooks. */
+/**
+ * Renders the `actions` slot as a component of its own, so it may use hooks,
+ * and so that live Wizard error counts re-render only the buttons.
+ */
 function Actions({
   render,
   ...props
-}: ActionsProps & { readonly render: AutoFormProps['actions'] & {} }) {
-  return render(props);
+}: Omit<ActionsProps, 'wizard'> & { readonly render: AutoFormProps['actions'] & {} }) {
+  const wizard = useWizard();
+  return render({ ...props, wizard });
 }
 
-/** The default action area: a submit button, disabled while submitting. */
-function DefaultActions({ isSubmitting }: ActionsProps) {
+/**
+ * The default action area: a submit button, disabled while submitting. In a
+ * Wizard it reads "Next" before the last Page, and a "Back" button that never
+ * submits comes first on every Page but the first.
+ */
+function DefaultActions({ isSubmitting, wizard }: ActionsProps) {
   const { labels } = useRenderContext();
   return (
-    <button type="submit" disabled={isSubmitting}>
-      {labels.submit}
-    </button>
+    <>
+      {wizard !== null && !wizard.isFirst && (
+        <button type="button" onClick={wizard.back}>
+          {labels.back}
+        </button>
+      )}
+      <button type="submit" disabled={isSubmitting}>
+        {wizard !== null && !wizard.isLast ? labels.next : labels.submit}
+      </button>
+    </>
   );
 }
 

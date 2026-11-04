@@ -6,9 +6,10 @@ import { set, type ComponentType, type FieldType, type PipeItem, type ValueType 
  * `description`, they sit in the pipe beside the Rules.
  */
 
-export const label = (text: string): PipeItem<FieldType | 'section'> => set({ label: text });
+export const label = (text: string): PipeItem<FieldType | 'section' | 'page'> =>
+  set({ label: text });
 
-export const description = (text: string): PipeItem<FieldType | 'section' | 'tab'> =>
+export const description = (text: string): PipeItem<FieldType | 'section' | 'tab' | 'page'> =>
   set({ description: text });
 
 export const placeholder = (text: string): PipeItem<'text' | 'number' | 'choice'> =>
@@ -18,10 +19,11 @@ export const placeholder = (text: string): PipeItem<'text' | 'number' | 'choice'
 export const widget = (name: string): PipeItem<FieldType | 'content'> => set({ widget: name });
 
 /** Lays out the direct children in this many grid columns. */
-export const columns = (count: number): PipeItem<'section' | 'tab'> => set({ columns: count });
+export const columns = (count: number): PipeItem<'section' | 'tab' | 'page'> =>
+  set({ columns: count });
 
 /** Grid columns this Component spans, inside a Layout that sets `columns`. */
-export const colSpan = (count: number): PipeItem<Exclude<ComponentType, 'tab'>> =>
+export const colSpan = (count: number): PipeItem<Exclude<ComponentType, 'tab' | 'page'>> =>
   set({ colSpan: count });
 
 /** Shown, and so active, only while `condition` holds. */

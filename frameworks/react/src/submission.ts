@@ -108,8 +108,10 @@ const valueAt = (input: unknown, path: Path): unknown =>
 const currentFields = (compiled: CompiledForm, store: AutoFormStore, widgetOf: WidgetResolver) => {
   const input = getInput(store);
   const state = compiled.conditions.evaluate(input);
+  const { definition } = compiled;
+  // A Wizard's Pages are Layouts: a Field on another Page counts as shown.
   return shownFields(
-    compiled.definition.components,
+    definition.pages ?? definition.components,
     state,
     input,
     presentedHidden(widgetOf),

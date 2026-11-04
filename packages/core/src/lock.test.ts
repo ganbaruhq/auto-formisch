@@ -151,6 +151,30 @@ describe('lock on the server', () => {
     expect(form['~standard'].validate({})).toEqual({ value: { multi: ['a'] } });
   });
 
+  it('locks a Field on a Wizard Page, driving a Field on another Page', () => {
+    const form = lock(
+      compile({
+        version: 1,
+        pages: [
+          {
+            type: 'page',
+            components: [{ type: 'choice', name: 'type', choices: ['person', 'company'] }],
+          },
+          {
+            type: 'page',
+            visible: { field: 'type', operator: 'eq', value: 'company' },
+            components: [{ type: 'text', name: 'taxId', required: true }],
+          },
+        ],
+      }),
+      { type: 'company' },
+    );
+    expect(form['~standard'].validate({ type: 'person' })).toEqual({
+      issues: [{ message: 'Required', path: ['taxId'] }],
+    });
+    expect(form.defaults).toEqual({ type: 'company' });
+  });
+
   it('leaves the compiled form as it was', () => {
     const compiled = company();
     const form = lock(compiled, { type: 'company' });
@@ -262,7 +286,7 @@ describe('lock rejects', () => {
 describe('lock for a Renderer', () => {
   it('lists the Locked Fields by their declared nodes', () => {
     const compiled = company();
-    const [type, taxId] = compiled.definition.components;
+    const [type, taxId] = compiled.definition.components!;
     const form = lock(compiled, { type: 'company' });
     expect(form.locked.get(type as never)).toBe('company');
     expect(form.locked.has(taxId as never)).toBe(false);
@@ -271,7 +295,7 @@ describe('lock for a Renderer', () => {
 
   it('evaluates Conditions with the Locked values', () => {
     const compiled = company();
-    const taxId = compiled.definition.components[1];
+    const taxId = compiled.definition.components![1];
     const form = lock(compiled, { type: 'company' });
     expect(form.conditions.evaluate({ type: 'person' }).isVisible(taxId, [])).toBe(true);
     expect(form.conditions.evaluate(undefined).isVisible(taxId, [])).toBe(true);

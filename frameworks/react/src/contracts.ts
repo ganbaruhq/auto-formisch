@@ -8,6 +8,7 @@ import type {
   MultiChoiceField,
   NumberField,
   ObjectField,
+  PageLayout,
   RepeaterField,
   SectionLayout,
   TabLayout,
@@ -138,11 +139,55 @@ export interface TabsLayoutProps {
   readonly onActiveChange: (key: string) => void;
 }
 
+/** One shown Page as the Wizard's navigation sees it. */
+export interface WizardPage {
+  /** Its index in the Definition's `pages`, the same whichever Pages are hidden. */
+  readonly index: number;
+  readonly label?: string;
+  /** How many Fields on the Page show errors: always 0 until the Page is attempted. */
+  readonly errorCount: number;
+  readonly isCurrent: boolean;
+}
+
+/**
+ * Navigation of a Wizard, for the `actions` slot and the `page` Layout.
+ * Going forward validates the Pages on the way and stops at the first one with
+ * errors; going back never validates. While a step or a submit is pending,
+ * every command is ignored.
+ */
+export interface Wizard {
+  /** The shown Pages only, in order. Use the position here for "Step 2 of 3". */
+  readonly pages: readonly WizardPage[];
+  readonly isFirst: boolean;
+  readonly isLast: boolean;
+  /** Moves to the next shown Page; `false` when errors or a pending command stop it. */
+  readonly next: () => Promise<boolean>;
+  /** Moves to the previous shown Page, keeping values and validating nothing. */
+  readonly back: () => void;
+  /**
+   * Moves to the Page at `index` in the Definition's `pages`. Forward, it
+   * validates every Page from the current one up to the target; `false` for
+   * a hidden Page, an unknown index, or errors on the way.
+   */
+  readonly goTo: (index: number) => Promise<boolean>;
+}
+
+/**
+ * Props of the `page` Layout. The Renderer wraps it in a focusable
+ * `role="group"` named by the Page's label, and focuses that on a Page change.
+ */
+export interface PageLayoutProps {
+  readonly node: PageLayout;
+  readonly children: ReactNode;
+  readonly wizard: Wizard;
+}
+
 /** The Layouts the Renderer uses, by `type`. */
 export interface LayoutMap {
   readonly section: ComponentType<LayoutProps<SectionLayout>>;
   readonly tabs: ComponentType<TabsLayoutProps>;
   readonly tab: ComponentType<LayoutProps<TabLayout>>;
+  readonly page: ComponentType<PageLayoutProps>;
 }
 
 /**
@@ -204,11 +249,16 @@ export interface FieldOverride {
 export type Overrides = Readonly<Record<string, FieldOverride>>;
 
 /**
- * The wording of the default buttons, as plain strings. The submit button is
- * the default action area's; the others are the default Repeater Widget's.
+ * The wording of the default buttons, as plain strings. `submit`, `next` and
+ * `back` are the default action area's; the others are the default Repeater
+ * Widget's.
  */
 export interface Labels {
   readonly submit: string;
+  /** A Wizard's button to the next Page, in place of `submit` before the last one. */
+  readonly next: string;
+  /** A Wizard's button to the previous Page. */
+  readonly back: string;
   readonly add: string;
   readonly remove: string;
   readonly moveUp: string;
@@ -218,8 +268,11 @@ export interface Labels {
 /** What the `actions` slot gets to draw the form's buttons. */
 export interface ActionsProps {
   readonly isSubmitting: boolean;
-  /** Validates and submits the form, as its submit button would. */
+  /**
+   * Validates and submits the whole form. In a Wizard it is always a real
+   * submit, even before the last Page, unlike the form's native submit.
+   */
   readonly submit: () => void;
   /** Wizard navigation; always `null` for a form without Pages. */
-  readonly wizard: null;
+  readonly wizard: Wizard | null;
 }

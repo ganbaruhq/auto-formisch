@@ -1,7 +1,14 @@
 import * as v from 'valibot';
 import type { TypedDefinition } from './builder/infer';
 import { conditionsOf, type FormConditions } from './conditions';
-import type { Component, FieldNode, FormDefinition, RepeaterField, ValueField } from './definition';
+import {
+  rootComponents,
+  type Component,
+  type FieldNode,
+  type FormDefinition,
+  type RepeaterField,
+  type ValueField,
+} from './definition';
 import { toFormErrors } from './errors';
 import { builtinFieldTypes } from './field-types';
 import { fieldsIn } from './fields';
@@ -81,7 +88,7 @@ export function compile<TOutput extends FormOutput>(
 export function compile(input: unknown): CompiledForm;
 export function compile(input: unknown): CompiledForm {
   const definition = loadDefinition(input);
-  return compiledForm(definition, conditionsOf(definition.components), new Map());
+  return compiledForm(definition, conditionsOf(rootComponents(definition)), new Map());
 }
 
 /** What `lock` needs from a form that `compile` made. Not public. */
@@ -117,6 +124,7 @@ function compiledForm(
           readsValues: base.readsValues,
           evaluate: (input) => base.evaluate(withLocks(input, locks)),
         };
+  const components = rootComponents(definition);
   const schema = buildSchema(definition, base, locks);
   const lockedPaths = new Set([...locks.values()].map(({ path }) => path.join('.')));
   const compiled: CompiledForm = {
@@ -125,10 +133,10 @@ function compiledForm(
     locked: new Map([...locks].map(([field, { value }]) => [field, value])),
     // A getter, so every read is a fresh copy.
     get defaults() {
-      return withLocks(defaultsOf(definition.components), locks);
+      return withLocks(defaultsOf(components), locks);
     },
     normalize: (record) => {
-      const { input, warnings } = normalize(definition.components, record);
+      const { input, warnings } = normalize(components, record);
       return {
         input: withLocks(input, locks),
         // A Locked value replaces whatever the record held there.
@@ -163,7 +171,7 @@ function buildSchema(
   conditions: FormConditions,
   locks: Locks,
 ): v.GenericSchema<Record<string, unknown>, FormOutput> {
-  const { components } = definition;
+  const components = rootComponents(definition);
   return v.pipe(
     skeletonOf(components),
     v.transform((input) => {

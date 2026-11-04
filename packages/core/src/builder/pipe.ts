@@ -7,7 +7,7 @@ export type ValueType = 'text' | 'number' | 'boolean' | 'choice' | 'multi_choice
 export type FieldType = ValueType | 'object' | 'repeater';
 
 /** Every built-in Component `type` the Fluent Builder makes. */
-export type ComponentType = FieldType | 'section' | 'tabs' | 'tab' | 'content';
+export type ComponentType = FieldType | 'section' | 'tabs' | 'tab' | 'page' | 'content';
 
 /** What a pipe item does to the inferred output of the Component it sits on. */
 export type PipeEffect =

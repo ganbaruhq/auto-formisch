@@ -1,9 +1,10 @@
-import { useCallback, type ComponentType } from 'react';
+import { useCallback, useContext, type ComponentType } from 'react';
 import { useField } from '@formisch/react';
 import type { PathKey, ValueField } from '@auto-formisch/core';
 import type { InputProps, WidgetProps } from './contracts';
 import { useRenderContext } from './context';
 import { isHiddenWidget, keyOf } from './submission';
+import { ShowErrorsContext } from './Wizard';
 
 interface FieldProps {
   readonly node: ValueField;
@@ -50,7 +51,8 @@ export function Field({ node: declared, scope }: FieldProps) {
   const id = `${idPrefix}-${path.join('.')}`;
   const descriptionId = `${id}-description`;
   const errorsId = `${id}-errors`;
-  const errors = field.errors ?? [];
+  // A Wizard Page not attempted yet keeps its errors to itself.
+  const errors = (useContext(ShowErrorsContext) && field.errors) || [];
   // The declared node, which the evaluator knows; `node` has the overrides.
   const disabled = conditions.isDisabled(declared, scope);
   // Locks never reach into Repeater rows, so the declared node is enough.
