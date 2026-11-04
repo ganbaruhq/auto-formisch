@@ -2,7 +2,7 @@
 
 Render forms automatically on top of [Formisch](https://formisch.dev/) from a portable, versioned JSON Form Definition, and validate submissions on a server with exactly the same logic.
 
-This is early work towards v1. So far a Form Definition supports the single-value Field Types `text`, `number`, `boolean`, `choice`, `multi_choice` and `date`.
+This is early work towards v1. So far a Form Definition supports the single-value Field Types `text`, `number`, `boolean`, `choice`, `multi_choice` and `date`, plus Layouts and Content.
 
 ## Workspace
 
