@@ -47,6 +47,9 @@ importers:
 
   apps/playground:
     dependencies:
+      '@auto-formisch/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@auto-formisch/react':
         specifier: workspace:*
         version: link:../../frameworks/react
