@@ -154,9 +154,10 @@ export interface WizardPage {
 /**
  * Navigation of a Wizard, for the `actions` slot and the `page` Layout.
  * Going forward validates the Pages on the way and stops at the first one with
- * errors; going back never validates. While a step or a submit is pending,
- * every command is ignored. Custom code that throws while validating is a
- * bug: `next` and `goTo` reject with its error.
+ * errors; going back never validates. While a move or a submit is pending,
+ * every command is ignored. `next` and `goTo` never reject: custom code that
+ * throws while validating is a bug, rethrown during render for an error
+ * boundary, and the move resolves `false`.
  */
 export interface Wizard {
   /** The shown Pages only, in order. Use the position here for "Step 2 of 3". */

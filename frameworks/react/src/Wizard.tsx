@@ -107,16 +107,6 @@ export function useWizardController({
   const [current, setCurrent] = useState(() => shown[0] ?? 0);
   const [attempted, setAttempted] = useState<ReadonlySet<number>>(() => new Set());
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
-  const [, setCrash] = useState<never>();
-  /**
-   * Rethrows an error of a step the Renderer itself started (the native
-   * submit, the default Back button) during render, so it reaches an error
-   * boundary as the bug it is instead of an unhandled rejection.
-   */
-  const crash = (error: unknown) =>
-    setCrash(() => {
-      throw error;
-    });
   // What async commands read: they must see the Page they started from, not
   // the one of the render that created them.
   const currentRef = useRef(current);
@@ -163,13 +153,10 @@ export function useWizardController({
       return true;
     }
     pending.current = true;
-    try {
-      // Custom code that throws while validating is a bug: it rejects the
-      // step, and is never a validation result (AF-8).
-      await validate(store);
-    } finally {
-      pending.current = false;
-    }
+    // Never rejects: custom code that throws while validating is rethrown
+    // during render by the store (`useAutoForm`), and fails the validation.
+    await validate(store);
+    pending.current = false;
     const steps = visible.filter((index) => index >= from && index < target);
     setAttempted((previous) => new Set([...previous, ...steps]));
     const onPages = errorPages(compiled, store);
@@ -193,7 +180,7 @@ export function useWizardController({
   const back = () => {
     const { visible, from } = now();
     const target = previous(visible, from);
-    if (target !== undefined) goTo(target).catch(crash);
+    if (target !== undefined) void goTo(target);
   };
 
   /** Validates and submits the whole form, whichever Page is open. */
@@ -226,7 +213,7 @@ export function useWizardController({
       event.stopPropagation();
       const { visible, from } = now();
       if (from === visible.at(-1)) submit();
-      else next().catch(crash);
+      else void next();
     },
     /** After a failed submit: opens the first shown Page with an error, then focuses it. */
     openFirstError: () => {

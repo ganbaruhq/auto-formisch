@@ -127,31 +127,6 @@ describe('AutoForm: custom Field Type', () => {
       consoleError.mockRestore();
     }
   });
-
-  // Formisch catches the error of a submit and shows its message in the
-  // general error region; the form is not stuck submitting.
-  it('never submits when its schema throws', async () => {
-    const failing = defineFieldType({
-      type: 'failing',
-      options: { max: v.number() },
-      schema: v.pipe(
-        v.number(),
-        v.check(() => {
-          throw new Error('bug in the schema');
-        }),
-      ),
-    });
-    const broken = compile(
-      { version: 1, components: [{ type: 'failing', name: 'score', label: 'Score', max: 3 }] },
-      { fieldTypes: [failing] },
-    );
-    const { user, submit, onSubmit } = setup(broken, { widgets: { failing: Stars } });
-    await user.click(screen.getByRole('radio', { name: '2 stars' }));
-    await submit();
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('bug in the schema'));
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Submit' }).disabled).toBe(false);
-  });
 });
 
 describe('AutoForm: custom Rule', () => {
@@ -179,7 +154,7 @@ describe('AutoForm: custom Rule', () => {
   });
 });
 
-describe('AutoForm: a custom Rule that throws in a Wizard step', () => {
+describe('AutoForm: custom code that throws while validating', () => {
   /** Throws once armed, so typing the value before is no problem. */
   const armed = { value: false };
   const buggy = defineRule({
@@ -190,24 +165,24 @@ describe('AutoForm: a custom Rule that throws in a Wizard step', () => {
       return true;
     },
   });
+  const code = { type: 'text', name: 'code', label: 'Code', rules: [{ type: 'buggy' }] };
+  const single = compile(
+    {
+      version: 1,
+      components: [code, { type: 'text', name: 'other', label: 'Other', required: true }],
+    },
+    { rules: [buggy] },
+  );
   const steps = compile(
     {
       version: 1,
       pages: [
-        {
-          type: 'page',
-          label: 'One',
-          components: [{ type: 'text', name: 'code', label: 'Code', rules: [{ type: 'buggy' }] }],
-        },
+        { type: 'page', label: 'One', components: [code] },
         { type: 'page', label: 'Two', components: [{ type: 'text', name: 'other' }] },
       ],
     },
     { rules: [buggy] },
   );
-
-  afterEach(() => {
-    armed.value = false;
-  });
 
   class Boundary extends Component<{ children: ReactNode }, { error?: Error }> {
     state: { error?: Error } = {};
@@ -219,49 +194,92 @@ describe('AutoForm: a custom Rule that throws in a Wizard step', () => {
     }
   }
 
-  it('reaches an error boundary from the Next button, and never moves on', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  /** Renders inside an error boundary; React's own report of the error is silenced. */
+  function guarded(compiled: CompiledForm, props: Partial<AutoFormProps> = {}) {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     const onSubmit = vi.fn();
     render(
       <Boundary>
-        <AutoForm form={steps} onSubmit={onSubmit} />
+        <AutoForm form={compiled} onSubmit={onSubmit} {...props} />
       </Boundary>,
     );
-    const user = userEvent.setup();
+    return { onSubmit, user: userEvent.setup() };
+  }
+
+  const crashed = () =>
+    waitFor(() => expect(screen.getByText('Crashed: bug in the check')).toBeTruthy());
+
+  afterEach(() => {
+    armed.value = false;
+    vi.restoreAllMocks();
+  });
+
+  it('reaches an error boundary from a regular submit, never as a validation message', async () => {
+    const { onSubmit, user } = guarded(single);
+    await user.type(screen.getByLabelText('Code'), 'x');
+    await user.type(screen.getByLabelText('Other'), 'y');
+    armed.value = true;
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+    await crashed();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('reaches an error boundary from revalidation on input, with no unhandled rejection', async () => {
+    const { onSubmit, user } = guarded(single);
+    // A failed submit turns on revalidation on input.
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+    await waitFor(() => expect(errorsOf(screen.getByLabelText('Other'))).toEqual(['Required']));
+    armed.value = true;
+    await user.type(screen.getByLabelText('Code'), 'x');
+    await crashed();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('reaches an error boundary from the Next button, and never moves on', async () => {
+    const { onSubmit, user } = guarded(steps);
     await user.type(screen.getByLabelText('Code'), 'x');
     armed.value = true;
     await user.click(screen.getByRole('button', { name: 'Next' }));
-    await waitFor(() => expect(screen.getByText('Crashed: bug in the check')).toBeTruthy());
+    await crashed();
     expect(onSubmit).not.toHaveBeenCalled();
-    consoleError.mockRestore();
   });
 
-  it('rejects wizard.next() and goTo() with the error, keeping the Page and no general error', async () => {
-    const settled: Promise<unknown>[] = [];
-    // Caught at once, so the rejection is never unhandled.
-    const record = (step: Promise<boolean>) => settled.push(step.catch((error: unknown) => error));
+  it('reaches an error boundary from a Wizard keystroke, which validates on input', async () => {
+    const { user } = guarded(steps);
+    armed.value = true;
+    await user.type(screen.getByLabelText('Code'), 'x');
+    await crashed();
+  });
+
+  it('resolves wizard.next() to false, never rejecting, and reaches the boundary', async () => {
+    const settled: Promise<boolean>[] = [];
     const actions: AutoFormProps['actions'] = ({ wizard }) => (
-      <>
-        <button type="button" onClick={() => record(wizard!.next())}>
-          Mine next
-        </button>
-        <button type="button" onClick={() => record(wizard!.goTo(1))}>
-          Mine to two
-        </button>
-      </>
+      <button type="button" onClick={() => settled.push(wizard!.next())}>
+        Mine next
+      </button>
     );
-    const { user } = setup(steps, { actions });
+    const { user } = guarded(steps, { actions });
     await user.type(screen.getByLabelText('Code'), 'x');
     armed.value = true;
     await user.click(screen.getByRole('button', { name: 'Mine next' }));
+    await crashed();
+    expect(await Promise.all(settled)).toEqual([false]);
+  });
+
+  it('resolves wizard.goTo() to false, never rejecting, and reaches the boundary', async () => {
+    const settled: Promise<boolean>[] = [];
+    const actions: AutoFormProps['actions'] = ({ wizard }) => (
+      <button type="button" onClick={() => settled.push(wizard!.goTo(1))}>
+        Mine to two
+      </button>
+    );
+    const { user } = guarded(steps, { actions });
+    await user.type(screen.getByLabelText('Code'), 'x');
+    armed.value = true;
     await user.click(screen.getByRole('button', { name: 'Mine to two' }));
-    const errors = await Promise.all(settled);
-    expect(errors.map((error) => (error as Error).message)).toEqual([
-      'bug in the check',
-      'bug in the check',
-    ]);
-    expect(screen.getByRole('group', { name: 'One' })).toBeTruthy();
-    expect(screen.getByRole('alert').textContent).toBe('');
+    await crashed();
+    expect(await Promise.all(settled)).toEqual([false]);
   });
 });
 

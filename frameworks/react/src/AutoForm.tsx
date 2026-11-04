@@ -60,6 +60,9 @@ export interface AutoFormProps<TOutput extends FormOutput = FormOutput> {
    * return `{ errors: [{ message, path }] }`, such as the server's: each error
    * shows on the shown Field its path names, every other one in the form's
    * general error region. A thrown error's `message` shows there too.
+   * Custom code that throws while validating, such as a buggy custom Rule, is
+   * a bug instead: it is rethrown during render, for an error boundary, and
+   * `onSubmit` is never called.
    */
   readonly onSubmit: (output: TOutput) => SubmitResult | Promise<SubmitResult>;
   /**

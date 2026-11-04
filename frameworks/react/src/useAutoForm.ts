@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useForm, type FormStore } from '@formisch/react';
 import type { CompiledForm, FormOutput } from '@auto-formisch/core';
+import type { BaseIssue, GenericSchema } from 'valibot';
 import { AutoFormError } from './AutoFormError';
 
 /** The Formisch store of a compiled form. */
@@ -29,6 +30,9 @@ export interface AutoFormOptions {
  * reached yet, which `<AutoForm>` doesn't show. Formisch's `submit(store)` is
  * the form's native submit: before the last Page it moves to the next one.
  *
+ * Custom code that throws while the store validates is rethrown during the
+ * render of the component that calls this hook, for an error boundary.
+ *
  * @throws {AutoFormError} when `form` changes without a remount.
  */
 export function useAutoForm<TOutput extends FormOutput = FormOutput>(
@@ -37,14 +41,54 @@ export function useAutoForm<TOutput extends FormOutput = FormOutput>(
 ): AutoFormStore<TOutput> {
   useSameForm(form);
   const [initialInput] = useState(() => startingInput(form, options.initialInput));
+  const [, setCrash] = useState<never>();
+  const [schema] = useState(() =>
+    reportingThrows(form.schema, (error) =>
+      setCrash(() => {
+        throw error;
+      }),
+    ),
+  );
   return useForm({
-    schema: form.schema,
+    schema,
     // The store's own copy, of a shape the schema accepts.
     initialInput: initialInput as never,
     validate: form.definition.pages !== undefined ? 'input' : 'submit',
     revalidate: 'input',
   });
 }
+
+/**
+ * `schema`, but custom code that throws while validating, such as a buggy
+ * custom Rule, is a bug and never a validation result (AF-8): `report`
+ * rethrows it during render, for an error boundary, and the parse fails with
+ * no message so nothing submits. Every path that validates goes through
+ * here, so none of them shows it as an error or leaves a rejected Promise:
+ * submit, revalidation on input, and a Wizard's steps.
+ */
+function reportingThrows<S extends GenericSchema>(schema: S, report: (error: unknown) => void): S {
+  return {
+    ...schema,
+    '~run'(dataset, config) {
+      try {
+        return schema['~run'](dataset, config);
+      } catch (error) {
+        report(error);
+        return { typed: false, value: dataset.value, issues: [crashIssue(dataset.value)] };
+      }
+    },
+  };
+}
+
+/** Fails the parse until the render that rethrows; never shown. */
+const crashIssue = (input: unknown): BaseIssue<unknown> => ({
+  kind: 'validation',
+  type: 'crash',
+  input,
+  expected: null,
+  received: 'unknown',
+  message: '',
+});
 
 /** The defaults, or the normalized record, with a warning per dropped value. */
 function startingInput(form: CompiledForm, record: object | undefined): Record<string, unknown> {

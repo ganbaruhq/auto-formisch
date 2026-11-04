@@ -936,7 +936,7 @@ Registration throws a `TypeError` at once for a name that is not `^[a-z][a-z0-9_
 
 - **ReDoS.** A custom Rule is the way to check a pattern, and a regular expression open to catastrophic backtracking, such as `/^(a+)+$/`, lets one crafted value block a server for seconds or more. Prefer simple, anchored patterns, and put a `max_length` Rule before yours: a Field's Rules run in order and stop at the first that fails, so your `check` never sees a value longer than that.
 - **Async is caught before it runs where it can be seen.** An async schema or action anywhere inside, such as `v.pipe(v.string(), v.checkAsync(...))`, and an `async` function passed to a sync check such as `v.check` or `v.custom`, are rejected at registration. `v.lazy` is rejected too, since its schema can't be checked before it runs. A plain function that returns a Promise can't be told apart until it runs: in a Field Type schema Valibot takes its Promise as valid, while a Rule's `check` that returns anything but a boolean throws.
-- **A throw is a bug, never a validation result.** Custom code that throws while validating makes `~standard.validate` throw. In `<AutoForm>`, Formisch catches it on submit and shows its message in the general error region, and the form never submits; in a Wizard, `next` and `goTo` reject with it.
+- **A throw is a bug, never a validation result.** Custom code that throws while validating makes `~standard.validate` throw. In `<AutoForm>`, every path that validates treats it the same way: a submit, revalidation on input and a Wizard's Next, Back or `goTo` rethrow it during render, so the nearest error boundary shows it, and the form never submits. It is never shown as an error message, `next` and `goTo` resolve `false` rather than reject, and no Promise is left rejected. Put an error boundary around the form.
 - **No versions.** Custom Field Types and Rules have no version of their own. Rename one, change its options or drop it, and a stored Definition that uses it throws on load until you migrate that Definition yourself.
 
 ## Before you ship
@@ -952,6 +952,6 @@ The behaviours most likely to surprise you in production, in one place:
 - **`url` accepts any scheme**, `javascript:` included. Check it before rendering a link.
 - **`accepted` needs `required`**, since Rules skip an empty value.
 - **Server errors from `onSubmit` clear at the next input** anywhere in the form, not only in their own Field.
-- **`lock` throws for a value outside its Field Type**, such as a choice since removed from `choices`, rather than locking it.
+- **`lock` checks only the JavaScript type.** A choice since removed from `choices` locks as it is and reaches the output; check the value yourself if that matters.
 - **A `hidden` Widget's errors go to the general error region.** On a Wizard Page, such an error blocks Next with a message the user can't act on, so make sure the value is valid before the form opens.
 - **Bundle size.** Unused Fluent Builder functions are left out of a bundle, but the loader always includes every built-in Field Type and Rule, since a stored JSON Definition may use any of them.
