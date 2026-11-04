@@ -8,11 +8,13 @@ import {
   type ConditionOperator,
   type FormDefinition,
   type RuleNode,
+  type ValueField,
 } from './definition';
 import { builtinComponents, gridSize, type ComponentSpec } from './components';
 import { DefinitionError, toFormErrors, type FormError, type PathKey } from './errors';
 import { builtinFieldTypes, fieldKeys, type FieldTypeSpec } from './field-types';
-import { builtinRules } from './rules';
+import { isEmpty } from './empty';
+import { builtinRules, ruleActions } from './rules';
 import { REFERENCE, REFERENCE_SYNTAX } from './tree';
 
 type Path = readonly PathKey[];
@@ -149,6 +151,7 @@ class Loader {
       'name',
       'rules',
       'colSpan',
+      'default',
       ...CONDITION_KEYS,
       ...Object.keys(schemas),
     ]);
@@ -156,14 +159,40 @@ class Loader {
     for (const key of ['name', ...(spec.requiredKeys ?? [])]) {
       if (!has(node, key)) this.fail([...path, key], `Missing key "${key}"`);
     }
-    return this.copy(node, allowed, (key, value) => {
+    let rulesLoaded = true;
+    const field = this.copy(node, allowed, (key, value) => {
       if (key === 'name') return this.name(value, [...path, key], scope);
-      if (key === 'rules') return this.rules(value, spec.type, [...path, key]);
+      if (key === 'rules') {
+        const errors = this.errors.length;
+        const rules = this.rules(value, spec.type, [...path, key]);
+        rulesLoaded = this.errors.length === errors;
+        return rules;
+      }
       if (key === 'colSpan') return this.colSpan(value, [...path, key], parent);
-      if (key === 'type') return value;
+      // Checked once the keys it depends on, `choices` and `rules`, are read.
+      if (key === 'type' || key === 'default') return value;
       if (CONDITION_KEYS.includes(key)) return this.setting(key, value, [...path, key]);
       return this.value(schemas[key], value, [...path, key]);
-    }) as unknown as Component;
+    });
+    if (has(field, 'default')) {
+      field.default = this.default(field, spec, rulesLoaded, [...path, 'default']);
+    }
+    return field as unknown as Component;
+  }
+
+  /**
+   * A value Field's `default`: never empty, of the Field's type, and through
+   * its Rules. Each check runs only once the keys it depends on have loaded.
+   */
+  private default(field: Node, spec: FieldTypeSpec, rulesLoaded: boolean, path: Path): unknown {
+    const input = field.default;
+    if (isEmpty(input)) return this.fail(path, 'A default cannot be empty');
+    if ((spec.requiredKeys ?? []).some((key) => field[key] === undefined)) return undefined;
+    const node = field as unknown as ValueField;
+    const rules = rulesLoaded ? ruleActions(node.rules) : [];
+    const value = this.value(v.pipe(v.unknown(), spec.value(node), ...rules), input, path);
+    // A copy, so that freezing the Definition never freezes the caller's input.
+    return Array.isArray(value) ? [...value] : value;
   }
 
   /**

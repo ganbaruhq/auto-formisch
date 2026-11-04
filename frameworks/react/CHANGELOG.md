@@ -15,3 +15,4 @@
 - `labels` sets the wording of the default buttons; `actions` replaces the action area.
 - `useAutoForm(form)` returns the Formisch store, which `<AutoForm store>` accepts; `useFormValue(path)` reads another Field from a Widget, through the resolver Conditions use, and reads an Inactive Field as empty.
 - Exports the Widget, Layout and Field Wrapper contracts (`WidgetProps`, `RepeaterProps`, `ObjectProps`, `ContentProps`, `LayoutProps`, `TabsLayoutProps`, `FieldWrapperProps`, `WidgetMap` and others).
+- `onSubmit` is typed by the output of a form built with the Fluent Builder.
