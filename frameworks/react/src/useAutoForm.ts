@@ -22,7 +22,8 @@ export interface AutoFormOptions {
 
 /**
  * Creates the Formisch store `<AutoForm>` would create, so that the application
- * can call Formisch's `reset`, `setInput` or `submit` on it. Pass it to
+ * can call Formisch's `reset`, `setInput` or `submit` on it (not `focus`: the
+ * Renderer keeps the Fields' elements itself). Pass it to
  * `<AutoForm store>`. It validates on submit and revalidates on input.
  *
  * A Wizard's store validates the whole form on every input, so its errors,

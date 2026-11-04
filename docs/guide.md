@@ -578,7 +578,7 @@ export function ProfileForm({ onSave }: { onSave: (output: object) => void }) {
 - `overrides` changes a Field's `widget`, `label`, `description` or `placeholder` on this screen only, by data path without Repeater indices (`'pets.kind'` is every row's `kind`). It never changes validation, so the server's result stays the same.
 - `labels` sets the text of the default buttons (`submit`, `next`, `back`, `add`, `remove`, `moveUp`, `moveDown`), and `actions` replaces the action area.
 - On mount, `<AutoForm>` checks the whole tree, including Fields that are hidden or on other Pages, and throws an `AutoFormError` listing every unknown Widget name, Widget whose `appliesTo` leaves out the Field's type, and unknown `overrides` path, as `{ message, path }`. A mistake shows the first time the form renders, not when a user first reveals the Field.
-- `useAutoForm(form)` returns the Formisch store `<AutoForm>` would create, for calling Formisch's own functions such as `reset`, `setInput` or `submit`; pass it back as `<AutoForm store>`.
+- `useAutoForm(form)` returns the Formisch store `<AutoForm>` would create, for calling Formisch's own functions such as `reset`, `setInput` or `submit`; pass it back as `<AutoForm store>`. Formisch's `focus` does nothing on it: the Renderer keeps the Fields' elements itself, so that a failed submit moves focus once, to the first error in Definition order.
 - `useFormValue(path)` lets a Widget read another Field, with the path syntax of Conditions, such as `useFormValue('../country')` in a Repeater row. Like a Condition, it reads an Inactive Field as `undefined`. Reading a whole `object` returns what the form holds for it, Inactive children included.
 
 ## Defaults and editing a record

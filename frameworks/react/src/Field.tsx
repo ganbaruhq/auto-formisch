@@ -32,19 +32,19 @@ export function Field({ node: declared, scope }: FieldProps) {
   // Paths come from a JSON Definition, so they cannot be typed against the schema.
   const field = useField(store, { path: path as [string] });
   const key = keyOf(path);
-  const formischRef = field.props.ref;
-  // Formisch keeps the element too; the Renderer's own copy lets a failed
-  // submit focus the first error in Definition order.
+  // Only the Renderer keeps the element, not Formisch, so that a failed
+  // submit moves focus once, to the first error in Definition order (AF-34):
+  // Formisch's own submit focuses the first focusable element in store order,
+  // which skips a closed Tab or another Wizard Page.
   const ref = useCallback(
     (element: HTMLElement | null) => {
       if (element === null) return;
-      formischRef(element as HTMLInputElement);
       focusElements.set(key, element);
       return () => {
         if (focusElements.get(key) === element) focusElements.delete(key);
       };
     },
-    [formischRef, focusElements, key],
+    [focusElements, key],
   );
 
   const { node, entry } = widgetOf(declared);

@@ -182,6 +182,75 @@ describe('AutoForm: a failed submit', () => {
   });
 });
 
+describe('AutoForm: a failed submit moves focus once', () => {
+  /** The labels of the controls focused after `act`, in order; buttons left out. */
+  async function focusesDuring(act: () => Promise<void>): Promise<string[]> {
+    const moves: string[] = [];
+    const record = (event: FocusEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.tagName !== 'BUTTON')
+        moves.push((target as HTMLInputElement).labels?.[0]?.textContent ?? target.tagName);
+    };
+    document.addEventListener('focusin', record);
+    try {
+      await act();
+      // Every effect of the attempt has run.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    } finally {
+      document.removeEventListener('focusin', record);
+    }
+    return moves;
+  }
+
+  it('to the first error in a closed Tab, never first to a later Field', async () => {
+    const { submit } = setup(
+      root(
+        {
+          type: 'tabs',
+          components: [
+            { type: 'tab', label: 'General', components: [text('note', 'Note')] },
+            {
+              type: 'tab',
+              label: 'Billing',
+              components: [text('company', 'Company', { required: true })],
+            },
+          ],
+        },
+        text('email', 'Contact email', { required: true }),
+      ),
+    );
+    expect(await focusesDuring(submit)).toEqual(['Company']);
+  });
+
+  it('to the first error on an earlier Wizard Page, never first to one on the open Page', async () => {
+    const steps = compile({
+      version: 1,
+      pages: [
+        {
+          type: 'page',
+          label: 'One',
+          components: [
+            text('first', 'First', { required: { field: 'last', operator: 'not_empty' } }),
+          ],
+        },
+        {
+          type: 'page',
+          label: 'Two',
+          components: [text('last', 'Last'), text('other', 'Other', { required: true })],
+        },
+      ],
+    });
+    render(<AutoForm form={steps} onSubmit={vi.fn()} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await focused(() => screen.getByRole('group', { name: 'Two' }));
+    await user.type(input('Last'), 'x');
+    expect(
+      await focusesDuring(() => user.click(screen.getByRole('button', { name: 'Submit' }))),
+    ).toEqual(['First']);
+  });
+});
+
 describe('AutoForm: Tab error counts', () => {
   const form = root({
     type: 'tabs',
