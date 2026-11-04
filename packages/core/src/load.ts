@@ -76,7 +76,9 @@ class Loader {
     const schemas: Readonly<Record<string, v.GenericSchema>> = { ...fieldKeys, ...spec.keys };
     const allowed = new Set(['type', 'name', 'rules', ...Object.keys(schemas)]);
     this.unknownKeys(node, allowed, path);
-    if (!has(node, 'name')) this.fail([...path, 'name'], 'Missing key "name"');
+    for (const key of ['name', ...(spec.requiredKeys ?? [])]) {
+      if (!has(node, key)) this.fail([...path, key], `Missing key "${key}"`);
+    }
     return this.copy(node, allowed, (key, value) => {
       if (key === 'name') return this.name(value, [...path, key], scope);
       if (key === 'rules') return this.rules(value, spec, [...path, key]);
@@ -118,8 +120,11 @@ class Loader {
     return this.copy(node, RULE_KEYS, (key, value) => {
       if (key === 'message') return this.value(v.string(), value, [...path, key]);
       if (key !== 'requirement') return value;
-      if (spec.requirement !== undefined)
-        return this.value(spec.requirement, value, [...path, key]);
+      if (spec.requirement !== undefined) {
+        const schema =
+          typeof spec.requirement === 'function' ? spec.requirement(field.type) : spec.requirement;
+        return this.value(schema, value, [...path, key]);
+      }
       return this.fail([...path, key], `Rule "${spec.type}" takes no requirement`);
     }) as unknown as RuleNode;
   }

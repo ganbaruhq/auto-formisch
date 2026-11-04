@@ -26,17 +26,58 @@ export interface FieldBase {
   readonly widget?: string;
   readonly required?: boolean;
   readonly requiredMessage?: string;
+  readonly rules?: readonly RuleNode[];
 }
 
 /** A single-line or multi-line text value. */
 export interface TextField extends FieldBase {
   readonly type: 'text';
   readonly placeholder?: string;
-  readonly rules?: readonly RuleNode[];
+}
+
+/** A finite number. */
+export interface NumberField extends FieldBase {
+  readonly type: 'number';
+  readonly placeholder?: string;
+}
+
+/** `true` or `false`; `false` is a value, not empty. */
+export interface BooleanField extends FieldBase {
+  readonly type: 'boolean';
+}
+
+/** The submitted value of one choice. One list never mixes strings and numbers. */
+export type ChoiceValue = string | number;
+
+/** One option of a `choice` or `multi_choice` Field. */
+export type Choice = ChoiceValue | { readonly value: ChoiceValue; readonly label?: string };
+
+/** One value from a fixed list of `choices`. */
+export interface ChoiceField extends FieldBase {
+  readonly type: 'choice';
+  readonly choices: readonly Choice[];
+  readonly placeholder?: string;
+}
+
+/** Any number of distinct values from a fixed list of `choices`. */
+export interface MultiChoiceField extends FieldBase {
+  readonly type: 'multi_choice';
+  readonly choices: readonly Choice[];
+}
+
+/** A calendar date as a `YYYY-MM-DD` string, with no time or time zone. */
+export interface DateField extends FieldBase {
+  readonly type: 'date';
 }
 
 /** Any Field this package knows. */
-export type FieldNode = TextField;
+export type FieldNode =
+  | TextField
+  | NumberField
+  | BooleanField
+  | ChoiceField
+  | MultiChoiceField
+  | DateField;
 
 /** Any node in a Form Definition's tree. */
 export type Component = FieldNode;
