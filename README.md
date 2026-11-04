@@ -1,18 +1,18 @@
 # Auto Formisch
 
-Generate React forms from Valibot schemas, keep presentation in a separate UI schema, and persist supported form definitions as versioned JSON.
+Render forms automatically on top of [Formisch](https://formisch.dev/) from a portable, versioned JSON Form Definition, and validate submissions on a server with exactly the same logic.
 
-This is an early working starter. The builder is a programmatic compiler; a visual editor is not implemented.
+This is early work towards v1. So far a Form Definition supports one Field Type, `text`.
 
 ## Workspace
 
-| Package                 | Responsibility                                                                  |
-| ----------------------- | ------------------------------------------------------------------------------- |
-| `auto-formisch-core`    | Shared types, Valibot inspection, inferred field metadata                       |
-| `auto-formisch-json`    | Serialize supported Valibot schemas + UI to JSON and rebuild executable schemas |
-| `auto-formisch-builder` | Compile editable definitions into Valibot + UI schemas                          |
-| `auto-formisch-react`   | Accessible native inputs, validation, and submission using `@formisch/react`    |
-| `apps/playground`       | Vite+ React example exercising all four packages                                |
+| Package                | Path               | Responsibility                                                                                    |
+| ---------------------- | ------------------ | ------------------------------------------------------------------------------------------------- |
+| `@auto-formisch/core`  | `packages/core`    | Framework-neutral loader and `compile`. Depends only on Valibot; no React, DOM, Node or Formisch. |
+| `@auto-formisch/react` | `frameworks/react` | `AutoForm`, default Widgets and Field Wrapper on `@formisch/react`. Re-exports all of `core`.     |
+| `playground`           | `apps/playground`  | Vite+ React example on the new API.                                                               |
+
+Valibot (`^1.5.0`) and, for React, `@formisch/react` (`^1.2.0`), `react` and `react-dom` are peer dependencies. Both packages are ESM with a single `.` entry and `sideEffects: false`.
 
 Tooling: pnpm workspaces, TypeScript, Vite+ (`vp pack`, `vp build`, `vp test`, `vp check`), GitHub Actions.
 
@@ -26,7 +26,7 @@ pnpm build
 pnpm dev
 ```
 
-Build first so workspace package exports resolve. During library development, run `pnpm --filter auto-formisch-core exec vp pack --watch` (or the corresponding package) alongside the playground.
+Build first so workspace package exports resolve. During library development, run `pnpm --filter @auto-formisch/core exec vp pack --watch` (or the corresponding package) alongside the playground.
 
 ```sh
 pnpm build
@@ -35,70 +35,66 @@ pnpm check
 pnpm test
 ```
 
+`core` tests run in a `node` environment with no DOM, and `core` is also type-checked without DOM types; `react` tests run in jsdom.
+
 ## Agent skills
 
 `.claude/skills/` vendors the skills from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT, commit `eb07f19`), with their shared checklists in `.claude/references/`. Claude Code loads them automatically. The files are excluded from formatting so they stay identical to upstream; to update, copy `skills/` and `references/` from a newer upstream checkout over them.
 
-## Schema-first usage
+## Usage
 
-```tsx
-import * as v from 'valibot';
-import { AutoForm } from 'auto-formisch-react';
-import { serialize, deserialize } from 'auto-formisch-json';
+A Form Definition is plain JSON. Store it, send it to a Worker, or write it by hand:
 
-const schema = v.object({
-  email: v.pipe(v.string(), v.email('Enter a valid email')),
-  age: v.pipe(v.number(), v.minValue(18)),
-  notes: v.optional(v.string()),
-  newsletter: v.boolean(),
-});
-const ui = { email: { label: 'Email address' } };
-const json = serialize(schema, ui);
-const restored = deserialize(json);
-
-export function ProfileForm() {
-  return (
-    <AutoForm
-      schema={restored.schema}
-      ui={restored.ui}
-      onSubmit={(values) => {
-        console.log(values);
-      }}
-    />
-  );
+```json
+{
+  "version": 1,
+  "components": [
+    {
+      "type": "text",
+      "name": "email",
+      "label": "Email address",
+      "required": true,
+      "rules": [{ "type": "email", "message": "Enter a valid email address" }]
+    }
+  ]
 }
 ```
 
-`AutoForm` infers email, number, checkbox, and text widgets. String fields can use `widget: 'textarea'`. Labels, descriptions, and placeholders live in `UISchema`. The initial checkbox value is false; other inputs start empty. Optional string fields edited to empty submit as an empty string. Empty number inputs become undefined. `onSubmit` receives validated values; its current type is `Record<string, unknown>` because portable definitions are dynamic. Remount `AutoForm` with a new React `key` when changing the schema.
+`compile` checks the Definition and throws a `DefinitionError` whose `errors` lists every problem as `{message, path}`: an unknown key (such as `requried`), an unknown `type` or Rule, or a `version` other than `1`. It never evaluates code from a Definition.
 
-## Definition-first usage
+### In React
 
-```ts
-import { buildForm } from 'auto-formisch-builder';
+```tsx
+import { AutoForm, compile } from '@auto-formisch/react';
 
-const { schema, ui } = buildForm({
-  version: 1,
-  fields: {
-    email: { type: 'string', rules: [{ type: 'email' }] },
-  },
-  ui: { email: { label: 'Email address' } },
-});
+const form = compile(definition); // once, outside render
+
+export function ContactForm() {
+  return <AutoForm form={form} onSubmit={(output) => save(output)} />;
+}
 ```
 
-The same definition is the editable data model for a future visual builder. It is a project-specific format, not standard JSON Schema and not a dump of Valibot internals. Submitted answers are separate from the form definition.
+`AutoForm` validates on submit and revalidates on input. To show a different form, change its React `key`.
 
-## Supported boundary
+### On a server or in a Worker
 
-- A synchronous `v.object` root with flat `string`, `number`, and `boolean` fields.
-- `v.optional` without defaults.
-- `email`, `minLength`, `maxLength`, `minValue`, and `maxValue` pipelines, including string validation messages.
-- UI labels, descriptions, placeholders, and compatible widget choices.
+```ts
+import { compile } from '@auto-formisch/core';
 
-Nested objects, arrays, unions, defaults, transforms, custom checks, async schemas, custom base error messages, and other pipelines are rejected explicitly. No arbitrary function evaluation is used when reading JSON. Stored definitions are validated before compilation. UI rendering currently shares this supported subset. Valibot inspection depends on its schema structure; extend the codec and round-trip tests together when adding support.
+const form = compile(definition);
+const result = form['~standard'].validate(await request.json());
+if (result.issues) return Response.json({ errors: result.issues }, { status: 422 });
+await store(result.value);
+```
 
-## Cloudflare Workers and D1
+`compiled['~standard']` is a Standard Schema whose issues are `{message, path}` with a plain key path; the client and the server get the same result. `compiled.schema` is the underlying Valibot pipe, for `v.safeParse` with a per-request config. Read its errors only as `{message, path}`.
 
-Core, JSON, and builder packages use no Node-specific runtime APIs or DOM APIs. Use them in a Worker to deserialize a form definition and run `v.safeParse(schema, requestData)`. Store the JSON string in a D1 TEXT column, version definitions immutably, and associate submissions with a definition version. The React adapter runs in the browser. This repository does not provision D1 or include authentication/persistence endpoints. Revalidate submissions on the server even when the browser already validated them.
+### Supported so far
+
+- Fields: `text`, with `label`, `description`, `placeholder`, `widget`, `required` and `requiredMessage`. A Field is optional by default.
+- Rules: `email`, `min_length` and `max_length`, each `{type, requirement?, message?}`.
+- Empty means `undefined`, `null`, `''` or a whitespace-only string. An empty Field drops its key from the output and skips its Rules; a required one reports `Required` or its `requiredMessage`.
+- Output holds only the keys the Definition declares.
 
 ## References
 
@@ -106,3 +102,4 @@ Core, JSON, and builder packages use no Node-specific runtime APIs or DOM APIs. 
 - [Vite+ library packaging](https://viteplus.dev/guide/pack)
 - [Formisch React](https://formisch.dev/react/guides/introduction/)
 - [Valibot](https://valibot.dev/)
+- [Standard Schema](https://standardschema.dev/)
