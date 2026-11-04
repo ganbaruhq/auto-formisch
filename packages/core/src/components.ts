@@ -1,16 +1,19 @@
 import * as v from 'valibot';
 
 /**
- * How the loader reads a Component `type` that is not a Field: the Layouts and
- * Content. None of them has a `name` or a value, so none adds a data path; a
- * Layout's children share its parent's data scope.
+ * How the loader reads a Component `type` that holds child Components or no
+ * value: the Layouts, Content, and the `object` and `repeater` Fields.
+ *
+ * A Layout or Content has no `name`, so it adds no data path, and a Layout's
+ * children share its parent's data scope. An `object` or `repeater` has a
+ * `name` in its parent's scope, and its children are a new scope.
  *
  * Every Component also takes `colSpan` when its parent sets `columns`; the
  * loader checks that key itself.
  */
 export interface ComponentSpec {
   readonly type: string;
-  /** Keys beside `type`, `components` and `colSpan`, with their schemas. */
+  /** Keys beside `type`, `name`, `rules`, `components` and `colSpan`, with their schemas. */
   readonly keys: Readonly<Record<string, v.GenericSchema>>;
   /** Keys of `keys` that must be present. */
   readonly required: readonly string[];
@@ -23,6 +26,11 @@ export interface ComponentSpec {
   };
   /** The `type` this one must sit directly inside. */
   readonly parent?: string;
+  /**
+   * Set when the type is a Field with child Fields: it takes a `name`, and its
+   * children are a new data scope. `'rules'` means it also takes `rules`.
+   */
+  readonly field?: 'plain' | 'rules';
 }
 
 /** A positive integer, for `columns` and `colSpan`. */
@@ -58,6 +66,25 @@ const content: ComponentSpec = {
   required: ['text'],
 };
 
+// Neither takes `required`: both always keep their key, as `{}` and `[]`.
+const groupKeys = { label: v.string(), description: v.string(), widget: v.string() };
+
+const object: ComponentSpec = {
+  type: 'object',
+  keys: groupKeys,
+  required: [],
+  children: { nonEmpty: true },
+  field: 'plain',
+};
+
+const repeater: ComponentSpec = {
+  type: 'repeater',
+  keys: groupKeys,
+  required: [],
+  children: { nonEmpty: true },
+  field: 'rules',
+};
+
 export const builtinComponents: ReadonlyMap<string, ComponentSpec> = new Map(
-  [section, tabs, tab, content].map((spec) => [spec.type, spec]),
+  [section, tabs, tab, content, object, repeater].map((spec) => [spec.type, spec]),
 );

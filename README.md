@@ -2,7 +2,7 @@
 
 Render forms automatically on top of [Formisch](https://formisch.dev/) from a portable, versioned JSON Form Definition, and validate submissions on a server with exactly the same logic.
 
-This is early work towards v1. So far a Form Definition supports the single-value Field Types `text`, `number`, `boolean`, `choice`, `multi_choice` and `date`, plus Layouts and Content.
+This is early work towards v1. So far a Form Definition supports the single-value Field Types `text`, `number`, `boolean`, `choice`, `multi_choice` and `date`, nested `object` and `repeater` Fields, plus Layouts and Content.
 
 ## Workspace
 
@@ -91,7 +91,7 @@ await store(result.value);
 
 ### Supported so far
 
-- Fields: every Field takes `label`, `description`, `widget`, `required` and `requiredMessage`, and is optional by default.
+- Value Fields: every value Field takes `label`, `description`, `widget`, `required` and `requiredMessage`, and is optional by default.
 
   | `type`         | Value                                     | Extra keys               | Default Widget                        |
   | -------------- | ----------------------------------------- | ------------------------ | ------------------------------------- |
@@ -104,18 +104,20 @@ await store(result.value);
 
   `choices` is required: a non-empty list of strings or finite numbers, or `{value, label?}`, with no empty, duplicate or mixed string and number values.
 
+- Nested Fields: `object` and `repeater` take `name`, `label`, `description`, `widget` and a non-empty `components`, but no `required`; they always keep their key in the output, as `{}` and `[]`. An `object` nests its Fields' values under its `name`. A `repeater` holds a list of rows, each an object made from its `components`; `min_items: 1` asks for at least one row. Each `object` and each row is its own data scope, so a `name` need only be unique within it, and errors carry plain key paths into rows, such as `['contacts', 1, 'name']`. Repeaters nest. The default Widgets are a `fieldset` for an `object`, and for a `repeater` a `fieldset` with one group per row (Move up, Move down, Remove) and an Add button that is disabled at `max_items`; values and errors stay with their row when it moves.
+
 - Rules, each `{type, requirement?, message?}`, are rejected on load on any other Field Type:
 
-  | Rule                       | Applies to       | `requirement`                                    |
-  | -------------------------- | ---------------- | ------------------------------------------------ |
-  | `email`, `url`             | `text`           | none                                             |
-  | `min_length`, `max_length` | `text`           | non-negative integer                             |
-  | `min_value`, `max_value`   | `number`, `date` | a number, or a `YYYY-MM-DD` date on a date Field |
-  | `integer`                  | `number`         | none                                             |
-  | `accepted`                 | `boolean`        | none                                             |
-  | `min_items`, `max_items`   | `multi_choice`   | non-negative integer                             |
+  | Rule                       | Applies to                 | `requirement`                                    |
+  | -------------------------- | -------------------------- | ------------------------------------------------ |
+  | `email`, `url`             | `text`                     | none                                             |
+  | `min_length`, `max_length` | `text`                     | non-negative integer                             |
+  | `min_value`, `max_value`   | `number`, `date`           | a number, or a `YYYY-MM-DD` date on a date Field |
+  | `integer`                  | `number`                   | none                                             |
+  | `accepted`                 | `boolean`                  | none                                             |
+  | `min_items`, `max_items`   | `multi_choice`, `repeater` | non-negative integer                             |
 
-- Empty means `undefined`, `null`, `''`, a whitespace-only string or `[]`; `0` and `false` are values. An empty Field drops its key from the output and skips its Rules; a required one reports `Required` or its `requiredMessage`.
+- Empty means `undefined`, `null`, `''`, a whitespace-only string or `[]`; `0` and `false` are values. An empty value Field drops its key from the output and skips its Rules; a required one reports `Required` or its `requiredMessage`.
 - Output holds only the keys the Definition declares.
 - Layouts `section` (`label`, `description`, `columns`), `tabs` and `tab` (`label`, `description`, `columns`; a `tab` sits only directly inside `tabs`), and Content `{type: 'content', text}` add no data path: moving a Field in or out of them changes neither its path nor the output. Inside a Layout with `columns`, any child but a `tab` takes `colSpan` (at most `columns`). The default Layouts are native HTML: a `fieldset` for a labelled section, a WAI-ARIA tab list whose inactive panels stay mounted (so their Fields are still validated), and an inline CSS grid whose column count is the fallback of `--af-columns`, so a media query can change it. Content renders as plain text, never as HTML.
 

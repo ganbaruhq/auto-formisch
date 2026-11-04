@@ -13,11 +13,15 @@ export type {
   LayoutNode,
   MultiChoiceField,
   NumberField,
+  ObjectField,
+  RepeaterField,
   RuleNode,
   SectionLayout,
   TabLayout,
   TabsLayout,
   TextField,
+  ValueField,
+  ValueFieldBase,
 } from './definition';
 export { DefinitionError, type FormError, type PathKey } from './errors';
 export type { StandardSchemaV1 } from './standard';

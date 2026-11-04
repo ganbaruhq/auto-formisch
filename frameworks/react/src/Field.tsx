@@ -1,10 +1,11 @@
+import type { ComponentType } from 'react';
 import { useField } from '@formisch/react';
-import type { FieldNode, PathKey } from '@auto-formisch/core';
+import type { PathKey, ValueField } from '@auto-formisch/core';
 import type { InputProps, WidgetProps } from './contracts';
 import { useRenderContext } from './context';
 
 interface FieldProps {
-  readonly node: FieldNode;
+  readonly node: ValueField;
   /** The Field's data path. Layouts add no segment. */
   readonly path: readonly PathKey[];
 }
@@ -51,7 +52,7 @@ export function Field({ node, path }: FieldProps) {
     required,
     node,
   };
-  const Widget = entry.component;
+  const Widget = entry.component as ComponentType<WidgetProps>;
 
   return (
     <Wrapper

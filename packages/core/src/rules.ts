@@ -86,14 +86,14 @@ const accepted: RuleSpec<undefined> = {
 
 const minItems: RuleSpec<number> = {
   type: 'min_items',
-  appliesTo: ['multi_choice'],
+  appliesTo: ['multi_choice', 'repeater'],
   requirement: length,
   action: (requirement, message) => v.minLength(requirement, message),
 };
 
 const maxItems: RuleSpec<number> = {
   type: 'max_items',
-  appliesTo: ['multi_choice'],
+  appliesTo: ['multi_choice', 'repeater'],
   requirement: length,
   action: (requirement, message) => v.maxLength(requirement, message),
 };

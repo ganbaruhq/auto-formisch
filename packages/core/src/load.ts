@@ -121,14 +121,18 @@ class Loader {
     }
     return this.copy(node, allowed, (key, value) => {
       if (key === 'name') return this.name(value, [...path, key], scope);
-      if (key === 'rules') return this.rules(value, spec, [...path, key]);
+      if (key === 'rules') return this.rules(value, spec.type, [...path, key]);
       if (key === 'colSpan') return this.colSpan(value, [...path, key], parent);
       if (key === 'type') return value;
       return this.value(schemas[key], value, [...path, key]);
     }) as unknown as Component;
   }
 
-  /** A Layout or Content: no `name`, and children in the parent's data scope. */
+  /**
+   * A Layout or Content: no `name`, and children in the parent's data scope.
+   * An `object` or `repeater`: a `name` in the parent's scope, and children in
+   * a new one. A Repeater's template is the scope of every row.
+   */
   private layout(
     node: Node,
     spec: ComponentSpec,
@@ -137,13 +141,21 @@ class Loader {
     parent: Parent,
   ): Component {
     const allowed = new Set(['type', ...Object.keys(spec.keys)]);
+    if (spec.field !== undefined) allowed.add('name');
+    if (spec.field === 'rules') allowed.add('rules');
     if (spec.children !== undefined) allowed.add('components');
     // A type with a fixed parent, like `tab` in `tabs`, never sits in a grid.
     if (spec.parent === undefined) allowed.add('colSpan');
     this.unknownKeys(node, allowed, path);
-    for (const key of [...spec.required, ...(spec.children ? ['components'] : [])]) {
+    const required = [
+      ...(spec.field !== undefined ? ['name'] : []),
+      ...spec.required,
+      ...(spec.children ? ['components'] : []),
+    ];
+    for (const key of required) {
       if (!has(node, key)) this.fail([...path, key], `Missing key "${key}"`);
     }
+    const childScope = spec.field !== undefined ? new Set<string>() : scope;
     const hasColumns = Object.hasOwn(spec.keys, 'columns') && has(node, 'columns');
     const self: Parent = {
       type: spec.type,
@@ -153,9 +165,11 @@ class Loader {
     };
     return this.copy(node, allowed, (key, value) => {
       if (key === 'type') return value;
+      if (key === 'name') return this.name(value, [...path, key], scope);
+      if (key === 'rules') return this.rules(value, spec.type, [...path, key]);
       if (key === 'colSpan') return this.colSpan(value, [...path, key], parent);
       if (key !== 'components') return this.value(spec.keys[key], value, [...path, key]);
-      const children = this.components(value, [...path, key], scope, self);
+      const children = this.components(value, [...path, key], childScope, self);
       if (spec.children?.nonEmpty === true && Array.isArray(value) && value.length === 0) {
         const child = self.only === undefined ? 'Component' : `"${self.only}"`;
         this.fail([...path, key], `A "${spec.type}" needs at least one ${child}`);
@@ -185,12 +199,13 @@ class Loader {
     return input;
   }
 
-  private rules(input: unknown, field: FieldTypeSpec, path: Path): RuleNode[] {
+  /** The `rules` of a Field of type `fieldType`. */
+  private rules(input: unknown, fieldType: string, path: Path): RuleNode[] {
     const list = this.array(input, path) ?? [];
-    return list.flatMap((item, index) => this.rule(item, field, [...path, index]) ?? []);
+    return list.flatMap((item, index) => this.rule(item, fieldType, [...path, index]) ?? []);
   }
 
-  private rule(input: unknown, field: FieldTypeSpec, path: Path): RuleNode | undefined {
+  private rule(input: unknown, fieldType: string, path: Path): RuleNode | undefined {
     const node = this.object(input, path);
     if (node === undefined) return undefined;
     this.unknownKeys(node, RULE_KEYS, path);
@@ -199,8 +214,8 @@ class Loader {
     if (spec === undefined) {
       return this.fail([...path, 'type'], `Unknown Rule ${JSON.stringify(node.type)}`);
     }
-    if (!spec.appliesTo.includes(field.type)) {
-      this.fail([...path, 'type'], `Rule "${spec.type}" does not apply to a "${field.type}" Field`);
+    if (!spec.appliesTo.includes(fieldType)) {
+      this.fail([...path, 'type'], `Rule "${spec.type}" does not apply to a "${fieldType}" Field`);
     }
     if (spec.requirement !== undefined && !has(node, 'requirement')) {
       this.fail([...path, 'requirement'], 'Missing key "requirement"');
@@ -210,7 +225,7 @@ class Loader {
       if (key !== 'requirement') return value;
       if (spec.requirement !== undefined) {
         const schema =
-          typeof spec.requirement === 'function' ? spec.requirement(field.type) : spec.requirement;
+          typeof spec.requirement === 'function' ? spec.requirement(fieldType) : spec.requirement;
         return this.value(schema, value, [...path, key]);
       }
       return this.fail([...path, key], `Rule "${spec.type}" takes no requirement`);

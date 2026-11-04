@@ -8,7 +8,14 @@ import type {
   NumberField,
   TextField,
 } from '@auto-formisch/core';
-import type { ContentProps, WidgetEntry, WidgetProps } from './contracts';
+import { useId } from 'react';
+import type {
+  ContentProps,
+  ObjectProps,
+  RepeaterProps,
+  WidgetEntry,
+  WidgetProps,
+} from './contracts';
 
 /** `input[type=text]`. Emits `undefined` when emptied. */
 export function TextInput({
@@ -205,6 +212,75 @@ export function ContentText({ node }: ContentProps) {
   return <p>{node.text}</p>;
 }
 
+/**
+ * An `object` as a `fieldset` named by its label (or `name`), described by
+ * its description. Native `disabled` disables every control inside.
+ */
+export function ObjectFieldset({ node, disabled, children }: ObjectProps) {
+  const descriptionId = useId();
+  const hasDescription = node.description !== undefined;
+  return (
+    <fieldset disabled={disabled} aria-describedby={hasDescription ? descriptionId : undefined}>
+      <legend>{node.label ?? node.name}</legend>
+      {hasDescription && <div id={descriptionId}>{node.description}</div>}
+      {children}
+    </fieldset>
+  );
+}
+
+/**
+ * A Repeater as a `fieldset` named by its label (or `name`). Each row is a
+ * group named "<label> <n>" with buttons to move it up or down and remove it;
+ * an Add button follows the rows. The Repeater's own errors sit in a polite
+ * live region that describes the `fieldset` while it has errors.
+ */
+export function RepeaterList({ rows, add, canAdd, disabled, errors, node }: RepeaterProps) {
+  const id = useId();
+  const descriptionId = `${id}-description`;
+  const errorsId = `${id}-errors`;
+  const label = node.label ?? node.name;
+  const describedBy = [
+    node.description !== undefined ? descriptionId : undefined,
+    errors.length > 0 ? errorsId : undefined,
+  ].filter((value) => value !== undefined);
+  return (
+    <fieldset aria-describedby={describedBy.length > 0 ? describedBy.join(' ') : undefined}>
+      <legend>{label}</legend>
+      {node.description !== undefined && <div id={descriptionId}>{node.description}</div>}
+      {rows.map((row) => (
+        <div key={row.key} role="group" aria-label={`${label} ${row.index + 1}`}>
+          {row.children}
+          <button
+            type="button"
+            disabled={disabled || row.index === 0}
+            onClick={() => row.moveTo(row.index - 1)}
+          >
+            Move up
+          </button>
+          <button
+            type="button"
+            disabled={disabled || row.index === rows.length - 1}
+            onClick={() => row.moveTo(row.index + 1)}
+          >
+            Move down
+          </button>
+          <button type="button" disabled={disabled} onClick={row.remove}>
+            Remove
+          </button>
+        </div>
+      ))}
+      <div id={errorsId} aria-live="polite">
+        {errors.map((error, index) => (
+          <div key={index}>{error}</div>
+        ))}
+      </div>
+      <button type="button" disabled={!canAdd} onClick={add}>
+        Add
+      </button>
+    </fieldset>
+  );
+}
+
 /** The default Widget map. Keys are a Field's or Content's `widget ?? type`. */
 export const defaultWidgets: Readonly<Record<string, WidgetEntry>> = {
   text: { component: TextInput, appliesTo: ['text'] },
@@ -213,5 +289,7 @@ export const defaultWidgets: Readonly<Record<string, WidgetEntry>> = {
   choice: { component: Select, appliesTo: ['choice'] },
   multi_choice: { component: Checkboxes, group: true, appliesTo: ['multi_choice'] },
   date: { component: DateInput, appliesTo: ['date'] },
+  object: { component: ObjectFieldset, appliesTo: ['object'] },
+  repeater: { component: RepeaterList, appliesTo: ['repeater'] },
   content: { component: ContentText, appliesTo: ['content'] },
 };

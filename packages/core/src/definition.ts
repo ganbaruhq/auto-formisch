@@ -3,8 +3,8 @@
  *
  * These types describe a Definition that has passed the loader. Add a new
  * Component `type` by adding its node type here, to the `Component` union, and
- * to the loader's table in `field-types.ts` (Fields) or `layouts.ts` (Layouts,
- * Content).
+ * to the loader's table in `field-types.ts` (value Fields) or `components.ts`
+ * (`object`, `repeater`, Layouts, Content).
  */
 
 /** The only Form Definition format version this package reads. */
@@ -24,27 +24,31 @@ export interface FieldBase {
   readonly label?: string;
   readonly description?: string;
   readonly widget?: string;
-  readonly required?: boolean;
-  readonly requiredMessage?: string;
-  readonly rules?: readonly RuleNode[];
   /** Grid columns this Field spans; only inside a Layout that sets `columns`. */
   readonly colSpan?: number;
 }
 
+/** Keys shared by every Field that holds one value rather than child Fields. */
+export interface ValueFieldBase extends FieldBase {
+  readonly required?: boolean;
+  readonly requiredMessage?: string;
+  readonly rules?: readonly RuleNode[];
+}
+
 /** A single-line or multi-line text value. */
-export interface TextField extends FieldBase {
+export interface TextField extends ValueFieldBase {
   readonly type: 'text';
   readonly placeholder?: string;
 }
 
 /** A finite number. */
-export interface NumberField extends FieldBase {
+export interface NumberField extends ValueFieldBase {
   readonly type: 'number';
   readonly placeholder?: string;
 }
 
 /** `true` or `false`; `false` is a value, not empty. */
-export interface BooleanField extends FieldBase {
+export interface BooleanField extends ValueFieldBase {
   readonly type: 'boolean';
 }
 
@@ -55,31 +59,56 @@ export type ChoiceValue = string | number;
 export type Choice = ChoiceValue | { readonly value: ChoiceValue; readonly label?: string };
 
 /** One value from a fixed list of `choices`. */
-export interface ChoiceField extends FieldBase {
+export interface ChoiceField extends ValueFieldBase {
   readonly type: 'choice';
   readonly choices: readonly Choice[];
   readonly placeholder?: string;
 }
 
 /** Any number of distinct values from a fixed list of `choices`. */
-export interface MultiChoiceField extends FieldBase {
+export interface MultiChoiceField extends ValueFieldBase {
   readonly type: 'multi_choice';
   readonly choices: readonly Choice[];
 }
 
 /** A calendar date as a `YYYY-MM-DD` string, with no time or time zone. */
-export interface DateField extends FieldBase {
+export interface DateField extends ValueFieldBase {
   readonly type: 'date';
 }
 
-/** Any Field this package knows. */
-export type FieldNode =
+/** Any Field that holds one value. */
+export type ValueField =
   | TextField
   | NumberField
   | BooleanField
   | ChoiceField
   | MultiChoiceField
   | DateField;
+
+/**
+ * Nested data: the values of its Fields, under its `name`. It has no
+ * `required` and always keeps its key, as `{}` when nothing in it has a value.
+ * Its Components are their own data scope.
+ */
+export interface ObjectField extends FieldBase {
+  readonly type: 'object';
+  readonly components: readonly Component[];
+}
+
+/**
+ * A list of rows, each an object built from the same template of Components.
+ * It has no `required` and always keeps its key, as `[]` when it has no rows;
+ * `min_items: 1` asks for at least one. Each row is its own data scope.
+ */
+export interface RepeaterField extends FieldBase {
+  readonly type: 'repeater';
+  readonly rules?: readonly RuleNode[];
+  /** The template of one row. */
+  readonly components: readonly Component[];
+}
+
+/** Any Field this package knows. */
+export type FieldNode = ValueField | ObjectField | RepeaterField;
 
 /** A group of Components, optionally labelled and laid out in a grid. Adds no data path. */
 export interface SectionLayout {

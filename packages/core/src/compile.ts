@@ -1,7 +1,8 @@
 import * as v from 'valibot';
-import type { Component, FieldNode, FormDefinition } from './definition';
+import type { Component, FieldNode, FormDefinition, RuleNode, ValueField } from './definition';
 import { toFormErrors } from './errors';
 import { builtinFieldTypes } from './field-types';
+import { fieldsIn } from './fields';
 import { loadDefinition } from './load';
 import { MISSING, prep } from './prep';
 import { builtinRules } from './rules';
@@ -58,58 +59,74 @@ export function compile(input: unknown): CompiledForm {
   };
 }
 
-/** The Fields of one data scope, in Definition order. Layouts add no path, so they flatten. */
-function fieldsIn(components: readonly Component[]): FieldNode[] {
-  return components.flatMap((component) => {
-    switch (component.type) {
-      case 'section':
-      case 'tabs':
-      case 'tab':
-        return fieldsIn(component.components);
-      case 'content':
-        return [];
-      default:
-        return [component];
-    }
-  });
-}
-
 /** `v.pipe(skeleton, v.transform(prep), typedObject)`, per ADR 0002. */
 function buildSchema(
   definition: FormDefinition,
 ): v.GenericSchema<Record<string, unknown>, FormOutput> {
-  const fields = fieldsIn(definition.components);
-  // Loosely typed leaves, so Formisch builds the right store and a wrongly
-  // typed Inactive value can't block submission. Multi-value, object and
-  // Repeater Fields will need real structure here, wrapped to never fail.
-  const skeleton = v.object(
-    Object.fromEntries(fields.map((field) => [field.name, v.optional(v.unknown())])),
-  );
-  const typedObject = v.object(
-    Object.fromEntries(fields.map((field) => [field.name, typedLeaf(field)])),
-  );
+  const { components } = definition;
   return v.pipe(
-    skeleton,
-    v.transform((input) => prep(fields, input)),
-    typedObject,
+    skeletonOf(components),
+    v.transform((input) => prep(components, input)),
+    typedObjectOf(components),
   );
 }
 
-/** Required check, then the Field Type's value schema, then its Rules. */
-function typedLeaf(field: FieldNode): v.GenericSchema {
-  const spec = builtinFieldTypes.get(field.type)!;
-  const rules = (field.rules ?? []).map((rule) =>
-    builtinRules.get(rule.type)!.action(rule.requirement, rule.message),
-  );
-  return v.optional(
-    v.pipe(
-      v.unknown(),
-      v.check((value) => value !== MISSING, requiredMessage(field)),
-      spec.value(field),
-      ...rules,
-    ),
+/**
+ * The skeleton of one data scope. Value leaves are loosely typed, so Formisch
+ * builds the right store and a wrongly typed Inactive value can't block
+ * submission. An `object` or Repeater has real structure, so Formisch gives
+ * every row its own Field stores, but never fails: a value of the wrong shape
+ * passes through for `typedObject` to report.
+ */
+function skeletonOf(components: readonly Component[]) {
+  return v.object(
+    Object.fromEntries(fieldsIn(components).map((field) => [field.name, skeletonLeaf(field)])),
   );
 }
+
+function skeletonLeaf(field: FieldNode): v.GenericSchema {
+  switch (field.type) {
+    case 'object':
+      return tolerant(skeletonOf(field.components));
+    case 'repeater':
+      return tolerant(v.array(skeletonOf(field.components)));
+    default:
+      return v.optional(v.unknown());
+  }
+}
+
+const tolerant = (schema: v.GenericSchema): v.GenericSchema =>
+  v.fallback(schema, (dataset?: { readonly value: unknown }) => dataset?.value);
+
+function typedObjectOf(components: readonly Component[]) {
+  return v.object(
+    Object.fromEntries(fieldsIn(components).map((field) => [field.name, typedLeaf(field)])),
+  );
+}
+/**
+ * A value Field: the required check, then the Field Type's value schema, then
+ * its Rules. An `object` or Repeater: its own typed objects, then its Rules.
+ */
+function typedLeaf(field: FieldNode): v.GenericSchema {
+  switch (field.type) {
+    case 'object':
+      return typedObjectOf(field.components);
+    case 'repeater':
+      return v.pipe(v.array(typedObjectOf(field.components)), ...ruleActions(field.rules));
+    default:
+      return v.optional(
+        v.pipe(
+          v.unknown(),
+          v.check((value) => value !== MISSING, requiredMessage(field)),
+          builtinFieldTypes.get(field.type)!.value(field),
+          ...ruleActions(field.rules),
+        ),
+      );
+  }
+}
+
+const ruleActions = (rules: readonly RuleNode[] = []) =>
+  rules.map((rule) => builtinRules.get(rule.type)!.action(rule.requirement, rule.message));
 
 // `setRequiredMessage` slots in between the two.
-const requiredMessage = (field: FieldNode): string => field.requiredMessage ?? 'Required';
+const requiredMessage = (field: ValueField): string => field.requiredMessage ?? 'Required';
