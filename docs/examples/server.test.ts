@@ -295,7 +295,7 @@ describe('Before you ship', () => {
     });
   });
 
-  it('rejects an empty nested Repeater list in a default row', () => {
+  it('accepts an empty nested Repeater list in a default row', () => {
     const nested = (row: object) => ({
       version: 1,
       components: [
@@ -309,7 +309,7 @@ describe('Before you ship', () => {
         },
       ],
     });
-    expect(() => compile(nested({ inner: [] }))).toThrow(DefinitionError);
+    expect(compile(nested({ inner: [] })).defaults).toEqual({ outer: [{ inner: [] }] });
     expect(compile(nested({})).defaults).toEqual({ outer: [{ inner: [] }] });
   });
 
