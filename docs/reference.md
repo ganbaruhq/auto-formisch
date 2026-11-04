@@ -161,17 +161,18 @@ The schema describes only the built-ins, and takes any other `type` or Rule name
 
 `@auto-formisch/core` runs anywhere Valibot does, with no React, DOM, Node API or Formisch. `@auto-formisch/react` re-exports all of it.
 
-| Export                                        | What it does                                                                                              |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `compile(definition, { fieldTypes, rules }?)` | Loads and checks a Definition, and returns a `CompiledForm`. Throws `DefinitionError`.                    |
-| `lock(compiled, values)`                      | Returns a new `CompiledForm` with Locked Fields, by data path. Throws `LockError`.                        |
-| `validateForm(compiled, input, { lang }?)`    | Validates in one request's language. Returns `{ value }` or `{ errors: { message, path }[] }`.            |
-| `defineFieldType`, `defineRule`               | Register a custom Field Type or Rule. Throw `TypeError` for an invalid registration.                      |
-| `setRequiredMessage(message, lang?)`          | Sets the required message for a language, or with no language; `deleteRequiredMessage(lang?)` removes it. |
-| `shownPages(compiled, input)`                 | The indexes of the Wizard Pages shown for `input`.                                                        |
-| `pageOf(compiled, path)`                      | The index of the Page holding the Field at a data path.                                                   |
-| `pageErrors(compiled, errors, pages)`         | The errors on those Pages, plus errors no Page holds.                                                     |
-| `DefinitionError`, `LockError`                | Errors with `errors: { message, path }[]`.                                                                |
+| Export                                                   | What it does                                                                                                                         |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `compile(definition, { fieldTypes, rules }?)`            | Loads and checks a Definition, and returns a `CompiledForm`. Throws `DefinitionError`.                                               |
+| `lock(compiled, values)`                                 | Returns a new `CompiledForm` with Locked Fields, by data path. Throws `LockError`.                                                   |
+| `validateForm(compiled, input, { lang }?)`               | Validates in one request's language. Returns `{ value }` or `{ errors: { message, path }[] }`.                                       |
+| `defineFieldType`, `defineRule`                          | Register a custom Field Type or Rule. Throw `TypeError` for an invalid registration.                                                 |
+| `setRequiredMessage(message, lang?)`                     | Sets the required message for a language, or with no language; `deleteRequiredMessage(lang?)` removes it.                            |
+| `shownPages(compiled, input)`                            | The indexes of the Wizard Pages shown for `input`.                                                                                   |
+| `pageOf(compiled, path)`                                 | The index of the Page holding the Field at a data path.                                                                              |
+| `pageErrors(compiled, errors, pages)`                    | The errors on those Pages, plus errors no Page holds.                                                                                |
+| `DefinitionError`, `LockError`                           | Errors with `errors: { message, path }[]`.                                                                                           |
+| `rootComponents`, `fieldsIn`, `isLayout`, `hasDataScope` | For Renderers: a Definition's root Components, a data scope's Fields through Layouts, and the two kinds of Components with children. |
 
 A `CompiledForm` has:
 

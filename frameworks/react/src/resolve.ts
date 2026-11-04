@@ -1,10 +1,12 @@
-import type {
-  Component,
-  ContentNode,
-  FieldNode,
-  FormDefinition,
-  FormError,
-  PathKey,
+import {
+  hasDataScope,
+  isLayout,
+  type Component,
+  type ContentNode,
+  type FieldNode,
+  type FormDefinition,
+  type FormError,
+  type PathKey,
 } from '@auto-formisch/core';
 import { AutoFormError } from './AutoFormError';
 import type { FieldOverride, Overrides, WidgetEntry } from './contracts';
@@ -106,7 +108,7 @@ export function resolveWidgets(
 }
 
 const isValueField = (node: FieldNode | ContentNode): boolean =>
-  node.type !== 'object' && node.type !== 'repeater' && node.type !== 'content';
+  !hasDataScope(node) && node.type !== 'content';
 
 /** Every Field and Content in Definition order, including Repeater templates. */
 function locate(
@@ -116,21 +118,12 @@ function locate(
 ): Located[] {
   return components.flatMap((node, index): Located[] => {
     const location = [...at, index];
-    switch (node.type) {
-      case 'section':
-      case 'tabs':
-      case 'tab':
-      case 'page':
-        return locate(node.components, [...location, 'components'], scope);
-      case 'content':
-        return [{ node, location }];
-      default: {
-        const path = [...scope, node.name];
-        const self = { node, location, path: path.join('.') };
-        if (node.type !== 'object' && node.type !== 'repeater') return [self];
-        return [self, ...locate(node.components, [...location, 'components'], path)];
-      }
-    }
+    if (isLayout(node)) return locate(node.components, [...location, 'components'], scope);
+    if (node.type === 'content') return [{ node, location }];
+    const path = [...scope, node.name];
+    const self = { node, location, path: path.join('.') };
+    if (!hasDataScope(node)) return [self];
+    return [self, ...locate(node.components, [...location, 'components'], path)];
   });
 }
 

@@ -1,4 +1,10 @@
-import type { Component, FieldNode, ObjectField, RepeaterField } from './definition';
+import {
+  hasDataScope,
+  type Component,
+  type FieldNode,
+  type ObjectField,
+  type RepeaterField,
+} from './definition';
 import type { PathKey } from './errors';
 import { fieldsIn } from './fields';
 
@@ -59,7 +65,7 @@ export function treeOf(components: readonly Component[]): FormTree {
       // The loader also builds a tree for a Definition it is about to reject,
       // where `components` may be missing.
       const children = ('components' in component && component.components) || [];
-      if (component.type === 'object' || component.type === 'repeater') {
+      if (hasDataScope(component)) {
         const inner = scopeFor(children, component, scope);
         scopes.set(component, inner);
         visit(children, inner, component);

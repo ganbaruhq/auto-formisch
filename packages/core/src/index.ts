@@ -42,6 +42,8 @@ export type {
   ValueFieldBase,
   WizardDefinition,
 } from './definition';
+export { hasDataScope, isLayout, rootComponents } from './definition';
+export { fieldsIn } from './fields';
 export { DefinitionError, type FormError, type PathKey } from './errors';
 export {
   defineFieldType,

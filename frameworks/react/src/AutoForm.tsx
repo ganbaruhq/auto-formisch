@@ -10,7 +10,16 @@ import {
   type ReactNode,
 } from 'react';
 import { Form, getErrors, getInput, submit, useField } from '@formisch/react';
-import type { CompiledForm, Component, FormOutput, PathKey, ValueField } from '@auto-formisch/core';
+import {
+  hasDataScope,
+  isLayout,
+  rootComponents,
+  type CompiledForm,
+  type Component,
+  type FormOutput,
+  type PathKey,
+  type ValueField,
+} from '@auto-formisch/core';
 import { Components } from './Components';
 import { conditionSource, RenderContext, useRenderContext, type ConditionSource } from './context';
 import { FieldWrapper } from './FieldWrapper';
@@ -196,7 +205,7 @@ function RenderedForm({
   const rootScope = useMemo(
     () => ({
       path: [],
-      components: compiled.definition.pages ?? compiled.definition.components,
+      components: rootComponents(compiled.definition),
       parent: null,
     }),
     [compiled],
@@ -363,11 +372,10 @@ function hasHiddenWidget(compiled: CompiledForm, widgetOf: WidgetResolver): bool
   const any = (components: readonly Component[]): boolean =>
     components.some((node) => {
       if (node.type === 'content') return false;
-      if (node.type === 'object' || node.type === 'repeater') return any(node.components);
-      if ('components' in node) return any(node.components);
+      if (hasDataScope(node) || isLayout(node)) return any(node.components);
       return isHiddenWidget(widgetOf(node).node);
     });
-  return any(compiled.definition.pages ?? compiled.definition.components);
+  return any(rootComponents(compiled.definition));
 }
 
 /**
@@ -392,7 +400,7 @@ function unfillableHidden(
       if (node.type === 'content') continue;
       if (node.type === 'object') walk(node.components, [...path, node.name], record[node.name]);
       else if (node.type === 'repeater') walk(node.components, [...path, node.name], undefined);
-      else if ('components' in node) walk(node.components, path, value);
+      else if (isLayout(node)) walk(node.components, path, value);
       else if (
         isHiddenWidget(widgetOf(node).node) &&
         node.required !== undefined &&
@@ -405,7 +413,7 @@ function unfillableHidden(
       }
     }
   };
-  walk(compiled.definition.pages ?? compiled.definition.components, [], input);
+  walk(rootComponents(compiled.definition), [], input);
   return found;
 }
 
@@ -428,7 +436,7 @@ function HiddenWidgetErrors() {
   const showsErrorsAt = useShowsErrorsAt();
   // Up to date: the `ConditionsProvider` re-renders first on the same input.
   const fields = shownFields(
-    form.definition.pages ?? form.definition.components,
+    rootComponents(form.definition),
     source.get(),
     root.input,
     presentedHidden(widgetOf),

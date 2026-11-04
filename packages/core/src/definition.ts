@@ -289,8 +289,28 @@ export interface WizardDefinition extends DefinitionBase {
 export type FormDefinition = SinglePageDefinition | WizardDefinition;
 
 /**
- * The root Components of a Definition: its `components`, or its Pages, which
- * are Layouts in the root data scope.
+ * For a Renderer: the root Components of a Definition, its `components` or
+ * its Pages, which are Layouts in the root data scope.
  */
 export const rootComponents = (definition: FormDefinition): readonly Component[] =>
   definition.pages ?? definition.components;
+
+const LAYOUT_TYPES: ReadonlySet<string> = new Set<LayoutNode['type']>([
+  'section',
+  'tabs',
+  'tab',
+  'page',
+]);
+
+/** For a Renderer: a Layout, which arranges other Components and adds no data path. */
+export const isLayout = (component: { readonly type: string }): component is LayoutNode =>
+  LAYOUT_TYPES.has(component.type);
+
+/**
+ * For a Renderer: an `object` or a Repeater, a Field whose Components make a
+ * data scope of their own (one per row, for a Repeater).
+ */
+export const hasDataScope = (component: {
+  readonly type: string;
+}): component is ObjectField | RepeaterField =>
+  component.type === 'object' || component.type === 'repeater';

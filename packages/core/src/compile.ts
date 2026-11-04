@@ -54,11 +54,15 @@ export interface CompiledForm<TOutput extends FormOutput = FormOutput> extends S
    */
   readonly defaults: Record<string, unknown>;
   /**
-   * For a Renderer: the store's starting input for a record passed as
+   * Renderer-facing, not for applications, which pass `initialInput` to the
+   * Renderer instead: the store's starting input for a record passed as
    * `initialInput`, which replaces every `default`. See `NormalizedInput`.
    */
   readonly normalize: (record: unknown) => NormalizedInput;
-  /** For a Renderer: a new row of a Repeater of this form, from its template's defaults. */
+  /**
+   * Renderer-facing, not for applications: a new row of a Repeater of this
+   * form, from its template's defaults, for the Renderer's Add.
+   */
   readonly newRow: (repeater: RepeaterField) => Record<string, unknown>;
   /**
    * The root pipe `skeleton -> prep -> typedObject` (ADR 0002), for Formisch

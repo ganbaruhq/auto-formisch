@@ -1,13 +1,16 @@
 import { createContext } from 'react';
 import { getErrors, getInput, setErrors } from '@formisch/react';
-import type {
-  CompiledForm,
-  Component,
-  ConditionState,
-  FormError,
-  PathKey,
-  RepeaterField,
-  ValueField,
+import {
+  fieldsIn,
+  isLayout,
+  rootComponents,
+  type CompiledForm,
+  type Component,
+  type ConditionState,
+  type FormError,
+  type PathKey,
+  type RepeaterField,
+  type ValueField,
 } from '@auto-formisch/core';
 import type { WidgetResolver } from './resolve';
 import type { AutoFormStore } from './useAutoForm';
@@ -87,8 +90,7 @@ export function shownFields(
           break;
         }
         default:
-          // Any other Component with `components` is a Layout, which adds no path.
-          if ('components' in node) walk(node.components, scope);
+          if (isLayout(node)) walk(node.components, scope);
           else {
             shown.push({
               path: [...scope, node.name],
@@ -119,12 +121,9 @@ const activeFields = (compiled: CompiledForm, store: AutoFormStore, widgetOf: Wi
   const state = compiled.conditions.evaluate(input);
   const { definition } = compiled;
   // A Wizard's Pages are Layouts: a Field on another Page counts as shown.
-  return shownFields(
-    definition.pages ?? definition.components,
-    state,
-    input,
-    presentedHidden(widgetOf),
-  ).filter((field) => !field.disabled);
+  return shownFields(rootComponents(definition), state, input, presentedHidden(widgetOf)).filter(
+    (field) => !field.disabled,
+  );
 };
 
 /**
@@ -203,17 +202,8 @@ export function firstErrorTarget(
 }
 
 /** The names of the Fields in `components`, looking through Layouts only. */
-export function namesIn(components: readonly Component[]): Set<string> {
-  const names = new Set<string>();
-  const walk = (list: readonly Component[]) => {
-    for (const node of list) {
-      if ('name' in node) names.add(node.name);
-      else if ('components' in node) walk(node.components);
-    }
-  };
-  walk(components);
-  return names;
-}
+export const namesIn = (components: readonly Component[]): Set<string> =>
+  new Set(fieldsIn(components).map((field) => field.name));
 
 /** Whether `path` names a Field below `scope` whose top-level name is in `names`. */
 export function leadsInto(path: Path, scope: Path, names: ReadonlySet<string>): boolean {
