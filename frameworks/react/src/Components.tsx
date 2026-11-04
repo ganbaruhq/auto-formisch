@@ -26,6 +26,7 @@ import type {
 import type { ContentProps, ObjectProps, RepeaterProps, RepeaterRow } from './contracts';
 import { useCondition, useRenderContext } from './context';
 import { Field } from './Field';
+import { arrayPath, storePath } from './paths';
 import { FocusTargetContext, keyOf, leadsInto, namesIn } from './submission';
 import { DataScopeContext } from './useFormValue';
 import { ShowErrorsContext } from './Wizard';
@@ -145,7 +146,7 @@ function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scop
   // below change; the scope's store always exists. The counts read through
   // its result: Formisch marks `useField` free of side effects, so a
   // production bundle drops a call whose result is unused, subscription and all.
-  const scopeField = useField(store, { path: scope as never });
+  const scopeField = useField(store, { path: storePath(scope) });
 
   const names = node.components.map((tab) => namesIn(tab.components));
   const focusTarget = useContext(FocusTargetContext);
@@ -176,7 +177,7 @@ function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scop
               : [...names[index]].reduce(
                   (count, name) =>
                     count +
-                    getDeepErrorEntries(store, { path: [...scopeField.path, name] } as never)
+                    getDeepErrorEntries(store, { path: storePath([...scopeField.path, name]) })
                       .length,
                   0,
                 ),
@@ -232,10 +233,8 @@ function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
   const Widget = entry.component as ComponentType<RepeaterProps>;
   const parent = useContext(DataScopeContext);
   const path = [...scope, declared.name];
-  // Paths come from a JSON Definition, so they cannot be typed against the
-  // schema, whose input type has no arrays.
-  const arrayPath = path as never;
-  const array = useFieldArray(store, { path: arrayPath });
+  const fieldArray = arrayPath(path);
+  const array = useFieldArray(store, { path: fieldArray });
   const key = keyOf(path);
   const focusRef = useCallback(
     (element: HTMLElement | null) => {
@@ -261,15 +260,15 @@ function Repeater({ node: declared, scope }: NestedProps<RepeaterField>) {
         <Components components={declared.components} scope={[...path, index]} />
       </DataScopeContext>
     ),
-    remove: unlessDisabled(() => remove(store, { path: arrayPath, at: index })),
-    moveTo: (to) => unlessDisabled(() => move(store, { path: arrayPath, from: index, to }))(),
+    remove: unlessDisabled(() => remove(store, { path: fieldArray, at: index })),
+    moveTo: (to) => unlessDisabled(() => move(store, { path: fieldArray, from: index, to }))(),
   }));
   return (
     <Widget
       rows={rows}
       // Always explicit values: Formisch may reuse the stores of a removed row.
       add={unlessDisabled(() =>
-        insert(store, { path: arrayPath, initialInput: form.newRow(declared) as never }),
+        insert(store, { path: fieldArray, initialInput: form.newRow(declared) as never }),
       )}
       canAdd={!disabled && (max === undefined || rows.length < max)}
       disabled={disabled}

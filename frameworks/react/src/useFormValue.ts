@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react';
 import { useField } from '@formisch/react';
 import type { Component, PathKey } from '@auto-formisch/core';
 import { useRenderContext } from './context';
+import { ROOT_PATH } from './paths';
 
 /**
  * One data scope as rendered: the root, an `object`, or one Repeater row.
@@ -34,9 +35,8 @@ export function useFormValue<T = unknown>(path: string): T | undefined {
   const scope = useContext(DataScopeContext);
   if (scope === null) throw new Error('useFormValue must be called inside <AutoForm>');
   // The whole input, so that an `object` read as a whole follows every Field
-  // in it, and their Conditions. The root path `[]` names the whole form,
-  // which the schema's path type cannot express.
-  const root = useField(store, { path: [] as never });
+  // in it, and their Conditions.
+  const root = useField(store, { path: ROOT_PATH });
   const state = form.conditions.evaluate(root.input);
   // The resolver Conditions use, so both read the same Field the same way.
   const found = state.locate(path, scope.path);

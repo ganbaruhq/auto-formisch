@@ -34,6 +34,7 @@ import type {
   WidgetEntry,
   WidgetMap,
 } from './contracts';
+import { ROOT_PATH, storePath } from './paths';
 import { resolveWidgets, type WidgetResolver } from './resolve';
 import {
   firstErrorTarget,
@@ -173,9 +174,8 @@ function ConditionsProvider({
   readonly source: ReturnType<typeof conditionSource>;
   readonly children: ReactNode;
 }) {
-  // The root path `[]` names the whole form, which the schema's path type
-  // cannot express. Reading its input subscribes this component to all of it.
-  const root = useField(store, { path: [] as never });
+  // Reading the root's input subscribes this component to all of it.
+  const root = useField(store, { path: ROOT_PATH });
   const { conditions } = compiled;
   if (conditions.readsValues) source.set(conditions.evaluate(root.input));
   useLayoutEffect(() => {
@@ -199,7 +199,7 @@ function RenderedForm({
 }: RenderedProps & { readonly conditions: ConditionSource }) {
   // A Formisch hook, so that the store's root errors and `isSubmitting`, read
   // below, re-render this component.
-  const root = useField(store, { path: [] as never });
+  const root = useField(store, { path: ROOT_PATH });
   const idPrefix = useId();
   const focusElements = useRef<FocusElements>(new Map()).current;
   const rootScope = useMemo(
@@ -431,7 +431,7 @@ function HiddenWidgetErrors() {
   const { form, store, widgetOf, conditions: source } = useRenderContext();
   // A Formisch hook makes this component re-render when what it reads below
   // changes: the rows of the form, and the errors of those Fields.
-  const root = useField(store, { path: [] as never });
+  const root = useField(store, { path: ROOT_PATH });
   // On a Wizard, only the errors of attempted Pages show.
   const showsErrorsAt = useShowsErrorsAt();
   // Up to date: the `ConditionsProvider` re-renders first on the same input.
@@ -443,7 +443,7 @@ function HiddenWidgetErrors() {
   );
   return fields.flatMap(({ path, node, hidden }) =>
     hidden && showsErrorsAt(path)
-      ? (getErrors(store, { path } as never) ?? []).map((error, index) => (
+      ? (getErrors(store, { path: storePath(path) }) ?? []).map((error, index) => (
           <div key={`${keyOf(path)}#${index}`}>
             {namedError(widgetOf(node as ValueField).node as ValueField, error)}
           </div>

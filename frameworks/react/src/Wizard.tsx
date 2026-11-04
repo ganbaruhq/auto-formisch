@@ -20,6 +20,7 @@ import {
 } from '@auto-formisch/core';
 import { Components } from './Components';
 import { useRenderContext, useSelectedCondition, type ConditionSource } from './context';
+import { ROOT_PATH, storePath } from './paths';
 import type { Wizard } from './contracts';
 import type { AutoFormStore } from './useAutoForm';
 
@@ -71,7 +72,9 @@ const openPage = (current: number, shown: readonly number[]): number =>
  * holds. `root` is the path of the root Field, `[]`, when a render reads it.
  */
 const errorPages = (compiled: CompiledForm, store: AutoFormStore, root?: readonly PathKey[]) =>
-  getDeepErrorEntries(store, { path: root } as never).map((entry) => pageOf(compiled, entry.path));
+  getDeepErrorEntries(store, { path: storePath(root ?? []) }).map((entry) =>
+    pageOf(compiled, entry.path),
+  );
 
 interface WizardOptions {
   readonly compiled: CompiledForm;
@@ -252,7 +255,7 @@ export function useWizard(): Wizard | null {
   // A Formisch hook, so that the errors read below subscribe this component.
   // They read through its result: Formisch marks `useField` free of side
   // effects, so a production bundle drops a call whose result is unused.
-  const root = useField(store, { path: [] as never });
+  const root = useField(store, { path: ROOT_PATH });
   if (controller === null) return null;
   const { compiled, pages, shown, current, attempted, next, back, goTo } = controller;
   const onPages = errorPages(compiled, store, root.path);

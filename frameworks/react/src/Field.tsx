@@ -3,6 +3,7 @@ import { useField } from '@formisch/react';
 import type { PathKey, ValueField } from '@auto-formisch/core';
 import type { InputProps, WidgetProps } from './contracts';
 import { useCondition, useRenderContext } from './context';
+import { storePath } from './paths';
 import { isHiddenWidget, keyOf } from './submission';
 import { ShowErrorsContext } from './Wizard';
 
@@ -29,8 +30,7 @@ export function Field({ node: declared, scope }: FieldProps) {
     focusElements,
   } = useRenderContext();
   const path = [...scope, declared.name];
-  // Paths come from a JSON Definition, so they cannot be typed against the schema.
-  const field = useField(store, { path: path as [string] });
+  const field = useField(store, { path: storePath(path) });
   const key = keyOf(path);
   // Only the Renderer keeps the element, not Formisch, so that a failed
   // submit moves focus once, to the first error in Definition order (AF-34):

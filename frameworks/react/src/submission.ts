@@ -12,6 +12,7 @@ import {
   type RepeaterField,
   type ValueField,
 } from '@auto-formisch/core';
+import { storePath } from './paths';
 import type { WidgetResolver } from './resolve';
 import type { AutoFormStore } from './useAutoForm';
 
@@ -175,8 +176,7 @@ export function placeErrors(
     byField.set(key, entry);
   }
   for (const { path, messages } of byField.values()) {
-    // Paths come from a JSON Definition, so they cannot be typed against the schema.
-    setErrors(store, { path, errors: messages } as never);
+    setErrors(store, { path: storePath(path), errors: messages as [string, ...string[]] });
   }
   if (general.length > 0) setErrors(store, { errors: general as [string, ...string[]] });
 }
@@ -192,7 +192,7 @@ export function firstErrorTarget(
   elements: FocusElements,
 ): FocusTarget | null {
   for (const { path } of currentFields(compiled, store, widgetOf)) {
-    if ((getErrors(store, { path } as never) ?? []).length === 0) continue;
+    if ((getErrors(store, { path: storePath(path) }) ?? []).length === 0) continue;
     const element = elements.get(keyOf(path));
     if (element !== undefined && element.isConnected && !element.matches(':disabled')) {
       return { path };
