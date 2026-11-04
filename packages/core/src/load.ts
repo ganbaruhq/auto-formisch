@@ -14,8 +14,14 @@ import {
 } from './definition';
 import { builtinComponents, gridSize, type ComponentSpec } from './components';
 import { DefinitionError, toFormErrors, type FormError, type PathKey } from './errors';
-import { checkSchema, collapsed, copyJson, type CustomFieldTypeSpec } from './extensions';
-import { fieldKeys, type FieldTypeSpec } from './field-types';
+import {
+  checkSchema,
+  collapsed,
+  copyJson,
+  customShape,
+  type CustomFieldTypeSpec,
+} from './extensions';
+import { fieldKeys, type FieldTypeSpec, type ValueShape } from './field-types';
 import { isEmpty } from './empty';
 import { fieldsIn } from './fields';
 import { builtins, isCustom, type Registry } from './registry';
@@ -81,6 +87,8 @@ export interface Loaded {
   readonly definition: FormDefinition;
   /** Built once per node on load; a custom Field Type's already collapsed. */
   readonly valueSchemas: ReadonlyMap<Component, v.GenericSchema>;
+  /** The JavaScript type of each value Field's value, which a Widget relies on. */
+  readonly shapes: ReadonlyMap<Component, ValueShape>;
 }
 
 /** `loadDefinition`, keeping the value schemas it built for `compile`. */
@@ -91,6 +99,7 @@ export function load(input: unknown, registry: Registry): Loaded {
   return {
     definition: deepFreeze(definition as unknown as FormDefinition),
     valueSchemas: loader.valueSchemas,
+    shapes: loader.shapes,
   };
 }
 
@@ -99,6 +108,7 @@ class Loader {
   /** The Definition path of every loaded Component, for errors found after reading. */
   private readonly paths = new Map<Component, Path>();
   readonly valueSchemas = new Map<Component, v.GenericSchema>();
+  readonly shapes = new Map<Component, ValueShape>();
   /** Fields whose `rules` failed to load, so a `default` is not run through them. */
   private readonly brokenRules = new WeakSet<object>();
 
@@ -232,6 +242,7 @@ class Loader {
         ? spec.value(field as unknown as FieldNode)
         : undefined;
     if (schema !== undefined) this.valueSchemas.set(field as unknown as Component, schema);
+    if (spec.shape !== undefined) this.shapes.set(field as unknown as Component, spec.shape);
     if (!rulesLoaded) this.brokenRules.add(field);
     if (has(field, 'default')) {
       const loaded = field as unknown as ValueField;
@@ -258,6 +269,10 @@ class Loader {
       return this.fail(path, `Field Type "${spec.type}" could not build its schema: ${reason}`);
     }
     checkSchema(schema, `The schema of Field Type "${spec.type}"`);
+    this.shapes.set(
+      field as unknown as Component,
+      customShape(spec.type, schema as v.GenericSchema),
+    );
     return collapsed(schema as v.GenericSchema);
   }
 

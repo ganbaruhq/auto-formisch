@@ -10,7 +10,7 @@ import {
 } from './builder/pipe';
 import { builtinComponents } from './components';
 import type { ChoiceValue, CustomField } from './definition';
-import { builtinFieldTypes, fieldKeys, type FieldTypeSpec } from './field-types';
+import { builtinFieldTypes, fieldKeys, type FieldTypeSpec, type ValueShape } from './field-types';
 import { builtinRules, type RuleSpec } from './rules';
 
 /*
@@ -526,6 +526,19 @@ export const collapsed = (schema: v.GenericSchema): v.GenericSchema =>
       }
     }),
   );
+
+/**
+ * The JavaScript type a custom Field Type's schema expects: a value passes when
+ * the schema reports no type issue, only failed constraints such as
+ * `v.maxValue`, which stop no Widget from showing it.
+ */
+export const customShape = (type: string, schema: v.GenericSchema): ValueShape => ({
+  is: (value) => {
+    const { issues } = v.safeParse(schema, value);
+    return issues === undefined || issues.every((issue) => issue.kind !== 'schema');
+  },
+  expected: `a value of the Field Type "${type}"`,
+});
 
 /** A copy, so that freezing the Definition never freezes the caller's input. */
 export function copyJson(value: unknown): unknown {

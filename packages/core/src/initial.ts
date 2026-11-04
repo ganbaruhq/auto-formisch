@@ -1,7 +1,7 @@
 import type { Component, RepeaterField } from './definition';
 import { isEmpty } from './empty';
 import type { PathKey } from './errors';
-import { builtinFieldTypes } from './field-types';
+import { builtinFieldTypes, shapeMessage } from './field-types';
 import { fieldsIn, isRecord } from './fields';
 
 /*
@@ -73,7 +73,7 @@ export interface NormalizedInput {
 export function normalize(components: readonly Component[], record: unknown): NormalizedInput {
   const warnings: InputWarning[] = [];
   const drop = (path: readonly PathKey[], expected: string, value: unknown) => {
-    warnings.push({ message: `Expected ${expected}, not ${describe(value)}; left empty`, path });
+    warnings.push({ message: `${shapeMessage(expected, value)}; left empty`, path });
   };
 
   const scope = (list: readonly Component[], value: unknown, path: readonly PathKey[]): Row => {
@@ -113,12 +113,6 @@ export function normalize(components: readonly Component[], record: unknown): No
 
   return { input: scope(components, record, []), warnings };
 }
-
-const describe = (value: unknown): string => {
-  if (value === null) return 'null';
-  if (Array.isArray(value)) return 'a list';
-  return typeof value === 'object' ? 'an object' : `a ${typeof value}`;
-};
 
 /**
  * A deep copy of a JSON value, so that a Widget that changes an array or

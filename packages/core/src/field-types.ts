@@ -33,6 +33,16 @@ export interface ValueShape {
   readonly expected: string;
 }
 
+/** Why a value is not of the `expected` JavaScript type, such as `Expected a string, not a number`. */
+export const shapeMessage = (expected: string, value: unknown): string =>
+  `Expected ${expected}, not ${describe(value)}`;
+
+const describe = (value: unknown): string => {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'a list';
+  return typeof value === 'object' ? 'an object' : `a ${typeof value}`;
+};
+
 const isString = (value: unknown) => typeof value === 'string';
 const isChoiceValue = (value: unknown) =>
   typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value));

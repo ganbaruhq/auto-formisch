@@ -141,6 +141,23 @@ describe('lock on the server', () => {
     });
   });
 
+  it('accepts a value of the right JavaScript type that its Field would reject', () => {
+    // A record saved before a choice was removed, a limit tightened or a Rule added.
+    const form = lock(
+      root(
+        { type: 'choice', name: 'plan', choices: ['basic', 'pro'] },
+        { type: 'number', name: 'seats', rules: [{ type: 'max_value', requirement: 10 }] },
+        { type: 'multi_choice', name: 'tags', choices: [1, 2] },
+        { type: 'date', name: 'born' },
+        { type: 'text', name: 'code', rules: [{ type: 'min_length', requirement: 5 }] },
+      ),
+      { plan: 'legacy', seats: 50, tags: [3, 3], born: '2024-02-30', code: 'ab' },
+    );
+    expect(form['~standard'].validate({})).toEqual({
+      value: { plan: 'legacy', seats: 50, tags: [3, 3], born: '2024-02-30', code: 'ab' },
+    });
+  });
+
   it('copies the values it locks', () => {
     const values = { multi: ['a'] };
     const form = lock(root({ type: 'multi_choice', name: 'multi', choices: ['a', 'b'] }), values);
@@ -238,26 +255,23 @@ describe('lock rejects', () => {
     ]);
   });
 
-  it('a value of the wrong type for its Field', () => {
+  it('a value of the wrong JavaScript type for its Field', () => {
     expect(
       lockErrors(form(), {
         name: 5,
         age: '5',
-        kind: 'c',
-        tags: [1, 1],
-        born: '2024-02-30',
+        kind: true,
+        tags: 'a',
+        born: 20240229,
         'address.country': ['VN'],
       }),
     ).toEqual([
-      { message: 'Invalid type: Expected string but received 5', path: ['name'] },
-      { message: 'Invalid type: Expected number but received "5"', path: ['age'] },
-      { message: 'Invalid type: Expected ("a" | "b") but received "c"', path: ['kind'] },
-      { message: expect.any(String), path: ['tags'] },
-      { message: 'Invalid date: Received "2024-02-30"', path: ['born'] },
-      {
-        message: 'Invalid type: Expected string but received Array',
-        path: ['address.country'],
-      },
+      { message: 'Expected a string, not a number', path: ['name'] },
+      { message: 'Expected a number, not a string', path: ['age'] },
+      { message: 'Expected a string or a number, not a boolean', path: ['kind'] },
+      { message: 'Expected a list of strings or numbers, not a string', path: ['tags'] },
+      { message: 'Expected a string, not a number', path: ['born'] },
+      { message: 'Expected a string, not a list', path: ['address.country'] },
     ]);
   });
 

@@ -11,6 +11,7 @@ import {
   type ValueField,
 } from './definition';
 import { toFormErrors, type FormError } from './errors';
+import type { ValueShape } from './field-types';
 import { fieldsIn } from './fields';
 import { defaultsOf, newRowOf, normalize, type NormalizedInput } from './initial';
 import { load } from './load';
@@ -92,10 +93,11 @@ export function compile<TOutput extends FormOutput>(
 export function compile(input: unknown, options?: LoadOptions): CompiledForm;
 export function compile(input: unknown, options?: LoadOptions): CompiledForm {
   const registry = registryOf(options);
-  const { definition, valueSchemas } = load(input, registry);
+  const { definition, valueSchemas, shapes } = load(input, registry);
   return compiledForm(definition, conditionsOf(rootComponents(definition)), {
     registry,
     valueSchemas,
+    shapes,
     locks: new Map(),
   });
 }
@@ -104,8 +106,8 @@ export function compile(input: unknown, options?: LoadOptions): CompiledForm {
 export interface CompiledInternals {
   /** The same form with these Locked Fields. */
   readonly relock: (locks: Locks) => CompiledForm;
-  /** The typed value schema of a value Field of this form, without `rules`. */
-  readonly valueSchema: (field: ValueField) => v.GenericSchema;
+  /** The JavaScript type of a value Field's value, which `lock` checks. */
+  readonly shape: (field: ValueField) => ValueShape;
 }
 
 const internals = new WeakMap<object, CompiledInternals>();
@@ -122,6 +124,7 @@ export const internalsOf = (form: unknown): CompiledInternals | undefined =>
 interface Typing {
   readonly registry: Registry;
   readonly valueSchemas: ReadonlyMap<Component, v.GenericSchema>;
+  readonly shapes: ReadonlyMap<Component, ValueShape>;
   readonly locks: Locks;
 }
 
@@ -134,7 +137,7 @@ function compiledForm(
   base: FormConditions,
   typing: Typing,
 ): CompiledForm {
-  const { locks, valueSchemas } = typing;
+  const { locks } = typing;
   const conditions: FormConditions =
     locks.size === 0
       ? base
@@ -174,8 +177,8 @@ function compiledForm(
   };
   internals.set(compiled, {
     relock: (next) => compiledForm(definition, base, { ...typing, locks: next }),
-    // Built on load for every value Field of a Definition that loaded.
-    valueSchema: (field) => valueSchemas.get(field)!,
+    // Set on load for every value Field of a Definition that loaded.
+    shape: (field) => typing.shapes.get(field)!,
   });
   return compiled;
 }

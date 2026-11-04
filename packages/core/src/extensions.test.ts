@@ -283,16 +283,28 @@ describe('lock on a custom Field Type', () => {
     visible: { field: 'score', operator: 'lt', value: 3 },
   });
 
-  it('checks the value with the type schema, collapsed to the data path', () => {
-    try {
-      lock(compile(rated, extensions), { score: 9 });
-      throw new Error('Expected lock to throw');
-    } catch (error) {
-      expect(error).toBeInstanceOf(LockError);
-      expect((error as LockError).errors).toEqual([
-        { message: 'Invalid value: Expected <=5 but received 9', path: ['score'] },
-      ]);
+  it('checks the JavaScript type its schema expects, not its constraints', () => {
+    for (const [values, path] of [
+      [{ score: '9' }, 'score'],
+      [{ home: { lat: 'x', lng: 0 } }, 'home'],
+    ] as const) {
+      try {
+        lock(compile(root(score(), { type: 'place', name: 'home' }), extensions), values);
+        throw new Error('Expected lock to throw');
+      } catch (error) {
+        expect(error).toBeInstanceOf(LockError);
+        expect((error as LockError).errors).toEqual([
+          {
+            message: `Expected a value of the Field Type "${path === 'score' ? 'rating' : 'place'}", not ${path === 'score' ? 'a string' : 'an object'}`,
+            path: [path],
+          },
+        ]);
+      }
     }
+    // Out of range for the schema, but a number: locked as it is.
+    expect(lock(compile(rated, extensions), { score: 9 })['~standard'].validate({})).toEqual({
+      value: { score: 9 },
+    });
   });
 
   it('overwrites a forged value before Conditions run, and outputs the Locked one', () => {

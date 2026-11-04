@@ -1,8 +1,8 @@
-import * as v from 'valibot';
 import { internalsOf, type CompiledForm, type FormOutput } from './compile';
 import { rootComponents, type ValueField } from './definition';
 import { isEmpty } from './empty';
 import type { FormError, PathKey } from './errors';
+import { shapeMessage } from './field-types';
 import { copy } from './initial';
 import { deepFreeze } from './load';
 import type { Lock } from './locks';
@@ -37,15 +37,17 @@ const DATA_PATH = /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
  * still make it Inactive. `lock` beats `initialInput` and `default`.
  *
  * Keys are data paths such as `address.country`, to single-value Fields
- * outside Repeaters. An empty value locks the Field empty. Never pass a value
+ * outside Repeaters. An empty value locks the Field empty. A value needs only
+ * the JavaScript type of its Field, such as a string for a `choice`: a choice
+ * since removed, or a value outside a Rule, locks as it is. Never pass a value
  * that came from the client, such as from the URL. Build the form once for
  * client and server, for instance in a `formFor(record)` function; on the
  * client a new result needs a new `key` on `AutoForm`.
  *
  * @throws {LockError} with every error as `{message, path}`, where `path` is
  *   the key of `values`: for a path to an `object`, a Repeater or a Field in
- *   one, an unknown path, a value of the wrong type, or a form that is
- *   already Locked.
+ *   one, an unknown path, a value of the wrong JavaScript type, or a form
+ *   that is already Locked.
  */
 export function lock<TOutput extends FormOutput>(
   compiled: CompiledForm<TOutput>,
@@ -88,12 +90,12 @@ export function lock<TOutput extends FormOutput>(
       continue;
     }
     const value = values[key];
-    if (!isEmpty(value)) {
-      const result = v.safeParse(internals.valueSchema(field), value);
-      if (!result.success) {
-        for (const issue of result.issues) fail(issue.message);
-        continue;
-      }
+    // Only the JavaScript type its Widget relies on: a record may hold a choice
+    // since removed, or a value a Rule added later rejects (ADR 0003).
+    const shape = internals.shape(field);
+    if (!isEmpty(value) && !shape.is(value)) {
+      fail(shapeMessage(shape.expected, value));
+      continue;
     }
     locks.set(field, { path: key.split('.'), value: deepFreeze(copy(value)) });
   }
