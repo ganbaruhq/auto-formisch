@@ -11,6 +11,8 @@ export default defineConfig({
           environment: 'jsdom',
         },
       },
+      // The code samples of the docs, run against the built packages.
+      { test: { name: 'docs', include: ['docs/**/*.test.{ts,tsx}'], environment: 'jsdom' } },
     ],
   },
   // Vendored from addyosmani/agent-skills; keep byte-identical to upstream.

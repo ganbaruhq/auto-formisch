@@ -1,23 +1,30 @@
 # @auto-formisch/core
 
-Framework-neutral loader and compiler for Auto Formisch Form Definitions. It runs on a server or in a Worker with only Valibot: no React, DOM, Node APIs or Formisch.
+Framework-neutral loader, compiler and validator for Auto Formisch Form Definitions. It runs on a server or in a Worker with only Valibot: no React, DOM, Node APIs or Formisch.
+
+```sh
+pnpm add @auto-formisch/core valibot
+```
+
+<!-- example: docs/examples/contact-server.ts#server -->
 
 ```ts
 import { compile } from '@auto-formisch/core';
+import definition from './contact.json';
+import { saveContact } from './app';
 
-const form = compile(storedDefinition); // throws DefinitionError with every {message, path}
-const result = form['~standard'].validate(requestBody);
-// { value } or { issues: [{ message, path }] }
-```
+const form = compile(definition);
 
-A JSON Schema for format version 1 ships at `schema/v1.json`; reference it from a Definition for editor autocomplete:
-
-```json
-{
-  "$schema": "https://cdn.jsdelivr.net/npm/@auto-formisch/core/schema/v1.json",
-  "version": 1,
-  "components": []
+export async function handleContact(request: Request): Promise<Response> {
+  const result = form['~standard'].validate(await request.json());
+  if (result.issues) return Response.json({ errors: result.issues }, { status: 422 });
+  await saveContact(result.value);
+  return new Response(null, { status: 204 });
 }
 ```
 
-See the [repository README](../../README.md).
+It also holds the Fluent Builder, `lock`, `defineFieldType` and `defineRule`, and ships a JSON Schema for format version 1 at `schema/v1.json`, for a Definition's `$schema`.
+
+- [Guide](../../docs/guide.md), and [Before you ship](../../docs/guide.md#before-you-ship)
+- [Reference](../../docs/reference.md)
+- [Version policy](../../README.md#versions) and [changelog](CHANGELOG.md)
