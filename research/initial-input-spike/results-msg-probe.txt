@@ -1,0 +1,14 @@
+1 defaults [["name","Invalid input: Received symbol"],["code","Invalid type: Expected string but received 5"],["email","Invalid length: Expected >=3 but received 1"],["custom","From definition"]] STD ["Invalid input: Received symbol","Invalid type: Expected string but received 5","Invalid length: Expected >=3 but received 1","From definition"]
+2 definition msg [["name","Bat buoc"],["code","Invalid type: Expected string but received 5"],["email","Invalid length: Expected >=3 but received 1"],["custom","From definition"]] STD ["Bat buoc","Invalid type: Expected string but received 5","Invalid length: Expected >=3 but received 1","From definition"]
+3 no lang [["name","Invalid input: Received symbol"],["code","Invalid type: Expected string but received 5"],["email","Invalid length: Expected >=3 but received 1"],["custom","From definition"]] STD ["Invalid input: Received symbol","Invalid type: Expected string but received 5","Invalid length: Expected >=3 but received 1","From definition"]
+4 lang via parse config [["name","CHECK-VI"],["code","SCHEMA-VI"],["email","Toi thieu 3"],["custom","From definition"]] STD ["Invalid input: Received symbol","Invalid type: Expected string but received 5","Invalid length: Expected >=3 but received 1","From definition"]
+5 lang via global config (same no-config call as Formisch) [["name","CHECK-VI"],["code","SCHEMA-VI"],["email","Toi thieu 3"],["custom","From definition"]] STD ["CHECK-VI","SCHEMA-VI","Toi thieu 3","From definition"]
+6 global message [["name","GLOBAL-EN"],["code","GLOBAL-EN"],["email","GLOBAL-EN"],["custom","From definition"]] STD ["GLOBAL-EN","GLOBAL-EN","GLOBAL-EN","From definition"]
+7 issue [
+  {
+    kind: 'validation',
+    type: 'check',
+    expected: null,
+    received: 'symbol'
+  }
+]

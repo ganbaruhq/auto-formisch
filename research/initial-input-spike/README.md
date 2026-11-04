@@ -14,3 +14,7 @@ Chạy lại từ thư mục này:
 pnpm install --ignore-workspace
 npx vitest run test/initial-input.test.tsx
 ```
+
+## Validation messages
+
+Bằng chứng cho ticket `AF-14`: `msg-probe.mjs`, kết quả ở `results-msg-probe.txt`. Chạy bằng `node msg-probe.mjs` trên Valibot trực tiếp, chưa qua `useForm`.
