@@ -320,11 +320,17 @@ class Loader {
    * A Repeater `default`: a non-empty list of rows, each checked against the
    * template, and the whole list through the Repeater's Rules, such as
    * `min_items`. A row may leave out keys, which take their Field's default.
+   * In a row, a nested Repeater's list may be empty: a row with no inner rows.
    */
-  private repeaterDefault(field: RepeaterField, input: unknown, path: Path): Node[] | undefined {
+  private repeaterDefault(
+    field: RepeaterField,
+    input: unknown,
+    path: Path,
+    inRow = false,
+  ): Node[] | undefined {
     const list = this.array(input, path);
     if (list === undefined) return undefined;
-    if (list.length === 0) return this.fail(path, 'A default cannot be empty');
+    if (list.length === 0 && !inRow) return this.fail(path, 'A default cannot be empty');
     const rows = list.map((row, index) => this.rowDefault(field.components, row, [...path, index]));
     if (!this.brokenRules.has(field) && field.rules !== undefined) {
       this.value(
@@ -351,7 +357,8 @@ class Loader {
       // Field names are never `__proto__`, so `out[key]` is a plain key.
       if (field === undefined) this.fail(at, `Unknown key ${JSON.stringify(key)}`);
       else if (field.type === 'object') out[key] = this.rowDefault(field.components, row[key], at);
-      else if (field.type === 'repeater') out[key] = this.repeaterDefault(field, row[key], at);
+      else if (field.type === 'repeater')
+        out[key] = this.repeaterDefault(field, row[key], at, true);
       else out[key] = this.valueDefault(field, row[key], at);
     }
     return out;

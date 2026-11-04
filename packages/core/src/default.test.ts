@@ -153,7 +153,6 @@ describe('Repeater default', () => {
               { a: 'x', b: 1 },
               { a: 5, o: { n: 'one', m: 1 } },
               { a: '  ', o: [], inner: [{ c: 'no' }] },
-              { inner: [] },
             ],
           },
           template,
@@ -168,8 +167,25 @@ describe('Repeater default', () => {
       { message: 'A default cannot be empty', path: at(2, 'a') },
       { message: 'Expected an object', path: at(2, 'o') },
       { message: 'Invalid type: Expected boolean but received "no"', path: at(2, 'inner', 0, 'c') },
-      { message: 'A default cannot be empty', path: at(3, 'inner') },
     ]);
+  });
+
+  it('lets a row hold an empty list for a nested Repeater, still checked by its Rules', () => {
+    const inner = (rules: object = {}) => [
+      { type: 'repeater', name: 'inner', components: [{ type: 'text', name: 'c' }], ...rules },
+    ];
+    const definition = rows({ default: [{ inner: [] }, { inner: [{ c: 'x' }] }] }, inner());
+    const compiled = compile(definition);
+    expect(compiled.definition).toEqual(definition);
+    expect(compiled.defaults).toEqual({ value: [{ inner: [] }, { inner: [{ c: 'x' }] }] });
+    expect(
+      loadErrors(
+        rows(
+          { default: [{ inner: [] }] },
+          inner({ rules: [{ type: 'min_items', requirement: 1 }] }),
+        ),
+      ),
+    ).toEqual([{ message: 'Invalid length: Expected >=1 but received 0', path: at(0, 'inner') }]);
   });
 
   it('passes the Repeater Rules as a whole', () => {

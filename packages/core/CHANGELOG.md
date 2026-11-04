@@ -21,3 +21,4 @@
 - `validateForm(compiled, input, { lang })` validates in the language of one request and returns `{ value }` or `{ errors }` of `{ message, path }`, the shape `onSubmit` may return. New exports `validateForm`, `ValidateOptions` and `ValidationResult`.
 - A Field's Rules run in Definition order and stop at the first that fails, so a custom Rule after a failed `max_length` never sees the overlong value.
 - A list submitted where an object belongs (an `object`, a Repeater row or the root input), even `[]`, is an error at that path instead of reading as `{}`.
+- A Repeater `default` row may give a nested Repeater an empty list (`inner: []`); the nested Repeater's Rules still check it.
