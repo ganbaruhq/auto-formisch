@@ -198,8 +198,10 @@ describe('Locked Fields', () => {
     });
   });
 
-  it('throws a LockError for a value its Field rejects', () => {
-    expect(() => formFor({ id: 'x', type: 'robot' as 'person' })).toThrow(LockError);
+  it('throws a LockError for a value of the wrong JavaScript type', () => {
+    expect(() => formFor({ id: 'x', type: true as unknown as 'person' })).toThrow(LockError);
+    // Only the type counts: a choice since removed still locks.
+    expect(() => formFor({ id: 'x', type: 'robot' as 'person' })).not.toThrow();
     expect(() => lock(formFor({ id: 'x', type: 'person' }), {})).toThrow(LockError);
   });
 });
@@ -245,7 +247,7 @@ describe('Before you ship', () => {
     expect(validate(terms(true), {}).issues).toEqual([{ message: 'Required', path: ['terms'] }]);
   });
 
-  it('runs a custom Rule even when a max_length beside it fails', () => {
+  it('never runs a custom Rule after a max_length that fails', () => {
     let calls = 0;
     const counted = defineRule({
       type: 'counted',
@@ -269,6 +271,8 @@ describe('Before you ship', () => {
       { rules: [counted] },
     );
     expect(code['~standard'].validate({ code: 'x'.repeat(10) }).issues).toHaveLength(1);
+    expect(calls).toBe(0);
+    expect(code['~standard'].validate({ code: 'abc' })).toEqual({ value: { code: 'abc' } });
     expect(calls).toBe(1);
   });
 

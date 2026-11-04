@@ -151,7 +151,9 @@ describe('AutoForm and ~standard.validate agree', () => {
       (text) => form['~standard'].validate(text === undefined ? {} : { code: text }).issues,
     );
     expect(outcomes.filter((issues) => issues === undefined)).toHaveLength(1);
-    expect(outcomes.some((issues) => issues !== undefined && issues.length > 1)).toBe(true);
+    // Required, then each Rule in turn: every one of them is the error of some input.
+    const messages = new Set(outcomes.flatMap((issues) => issues?.map((i) => i.message) ?? []));
+    expect(messages.size).toBeGreaterThanOrEqual(4);
   });
 
   for (const text of typed) {
