@@ -4,6 +4,7 @@ import { toFormErrors } from './errors';
 import { builtinFieldTypes } from './field-types';
 import { fieldsIn } from './fields';
 import { loadDefinition } from './load';
+import { getRequiredMessage, type RequiredMessage } from './messages';
 import { MISSING, prep } from './prep';
 import { builtinRules } from './rules';
 import type { StandardSchemaV1 } from './standard';
@@ -103,6 +104,7 @@ function typedObjectOf(components: readonly Component[]) {
     Object.fromEntries(fieldsIn(components).map((field) => [field.name, typedLeaf(field)])),
   );
 }
+
 /**
  * A value Field: the required check, then the Field Type's value schema, then
  * its Rules. An `object` or Repeater: its own typed objects, then its Rules.
@@ -128,5 +130,16 @@ function typedLeaf(field: FieldNode): v.GenericSchema {
 const ruleActions = (rules: readonly RuleNode[] = []) =>
   rules.map((rule) => builtinRules.get(rule.type)!.action(rule.requirement, rule.message));
 
-// `setRequiredMessage` slots in between the two.
-const requiredMessage = (field: ValueField): string => field.requiredMessage ?? 'Required';
+/**
+ * `requiredMessage`, then `setRequiredMessage` for the issue's language, then
+ * `Required`. Always a message of the action's own, so neither Valibot's
+ * defaults nor its specific, schema or global messages can show the symbol.
+ */
+const requiredMessage =
+  (field: ValueField): RequiredMessage =>
+  (issue) => {
+    if (field.requiredMessage !== undefined) return field.requiredMessage;
+    const message = getRequiredMessage(issue.lang);
+    if (message === undefined) return 'Required';
+    return typeof message === 'function' ? message(issue) : message;
+  };

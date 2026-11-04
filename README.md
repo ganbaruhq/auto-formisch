@@ -89,6 +89,34 @@ await store(result.value);
 
 `compiled['~standard']` is a Standard Schema whose issues are `{message, path}` with a plain key path; the client and the server get the same result. `compiled.schema` is the underlying Valibot pipe, for `v.safeParse` with a per-request config. Read its errors only as `{message, path}`.
 
+### Validation messages
+
+Messages go through Valibot; there is no catalog of our own. From highest priority:
+
+1. A Rule's `message` and a Field's `requiredMessage` in the Definition.
+2. Valibot's `setSpecificMessage`, then `setSchemaMessage`, then `setGlobalMessage`.
+3. Valibot's defaults, which are technical English such as `Invalid length: Expected >=3 but received 1`. A form for end users should register its own messages, or use [`@valibot/i18n`](https://github.com/open-circle/valibot/tree/main/packages/i18n).
+
+A required error is the exception: it resolves through `requiredMessage`, then `setRequiredMessage`, then `Required`, so Valibot's `setGlobalMessage` and messages for `v.check` don't reach it.
+
+```ts
+import * as v from 'valibot';
+import { setRequiredMessage } from '@auto-formisch/core';
+import '@valibot/i18n/de';
+
+setRequiredMessage('This field is required');
+setRequiredMessage('Pflichtfeld', 'de');
+v.setSpecificMessage(v.minLength, (issue) => `Tối thiểu ${issue.requirement}`, 'vi');
+
+// In the browser, Formisch reads the global language.
+v.setGlobalConfig({ lang: 'de' });
+// On a server answering in several languages, pass it per request;
+// `~standard.validate` takes no language and uses the global one.
+const result = await v.safeParseAsync(form.schema, input, { lang: 'de' });
+```
+
+Like Valibot, a message set for one language doesn't fall back to another; `deleteRequiredMessage(lang?)` removes one.
+
 ### Supported so far
 
 - Value Fields: every value Field takes `label`, `description`, `widget`, `required` and `requiredMessage`, and is optional by default.

@@ -8,3 +8,4 @@
 - The `number`, `boolean`, `choice`, `multi_choice` and `date` Field Types, and the `url`, `min_value`, `max_value`, `integer`, `accepted`, `min_items` and `max_items` Rules.
 - The `object` and `repeater` Fields, each its own data scope, with no `required`; they always output `{}` and `[]` at least. `min_items` and `max_items` apply to a `repeater`. `FieldNode` now includes them; the single-value Fields are `ValueField`.
 - Load errors are thrown together as a `DefinitionError` of `{message, path}`.
+- `setRequiredMessage(message, lang?)` and `deleteRequiredMessage(lang?)`: a required error resolves through `requiredMessage`, then `setRequiredMessage`, then `Required`, and never shows the internal value. Other messages go through Valibot, with the Definition's `message` first.
