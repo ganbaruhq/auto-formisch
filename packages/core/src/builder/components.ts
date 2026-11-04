@@ -165,28 +165,13 @@ export function tab<const C extends readonly Child[], const P extends Pipe<'tab'
   return apply({ type: 'tab', label }, pipe, { components });
 }
 
-/**
- * One Page of a Wizard, optionally labelled; only `wizard()` holds Pages. Adds
- * no data path.
- */
-export function page<const C extends readonly Child[], const P extends Pipe<'page'> = []>(
-  components: C,
-  pipe?: P,
-): Layout<PageLayout, C, P>;
+/** One Page of a Wizard, with the label that names it; only `wizard()` holds Pages. Adds no data path. */
 export function page<const C extends readonly Child[], const P extends Pipe<'page'> = []>(
   label: string,
   components: C,
   pipe?: P,
-): Layout<PageLayout, C, P>;
-export function page(
-  ...args: [Child[], Pipe<'page'>?] | [string, Child[], Pipe<'page'>?]
-): PageLayout {
-  if (typeof args[0] === 'string') {
-    const [label, components, pipe] = args as [string, Child[], Pipe<'page'>?];
-    return apply({ type: 'page', label }, pipe, { components });
-  }
-  const [components, pipe] = args as [Child[], Pipe<'page'>?];
-  return apply({ type: 'page' }, pipe, { components });
+): Layout<PageLayout, C, P> {
+  return apply({ type: 'page', label }, pipe, { components });
 }
 
 /** Fixed plain text, never read as HTML or Markdown. */

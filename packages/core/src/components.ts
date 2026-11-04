@@ -61,8 +61,9 @@ const tab: ComponentSpec = {
 
 const page: ComponentSpec = {
   type: 'page',
+  // A Page is a named group that takes focus, so it always needs a name.
   keys: { label: v.string(), description: v.string(), columns: gridSize },
-  required: [],
+  required: ['label'],
   children: {},
   // Only the root's `pages` holds Pages, so a Page never sits inside another
   // Component or in a data scope of its own.

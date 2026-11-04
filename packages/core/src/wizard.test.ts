@@ -4,7 +4,6 @@ import {
   compile,
   DefinitionError,
   description,
-  label,
   notEmpty,
   page as buildPage,
   pageErrors,
@@ -34,6 +33,7 @@ function loadErrors(definition: unknown): readonly FormError[] {
 const wizard = (...pages: unknown[]) => ({ version: 1, pages });
 const page = (components: unknown[], extra: object = {}) => ({
   type: 'page',
+  label: 'Page',
   ...extra,
   components,
 });
@@ -111,8 +111,14 @@ describe('a Wizard Definition', () => {
       { message: 'Invalid type: Expected string but received 1', path: ['pages', 0, 'label'] },
       { message: 'Invalid value: Expected >=1 but received 0', path: ['pages', 0, 'columns'] },
     ]);
-    expect(loadErrors(wizard({ type: 'page' }))).toEqual([
+    expect(loadErrors(wizard({ type: 'page', label: 'Empty' }))).toEqual([
       { message: 'Missing key "components"', path: ['pages', 0, 'components'] },
+    ]);
+  });
+
+  it('needs a label on every Page, which names its group, like a Tab', () => {
+    expect(loadErrors(wizard({ type: 'page', components: [text('a')] }))).toEqual([
+      { message: 'Missing key "label"', path: ['pages', 0, 'label'] },
     ]);
   });
 
@@ -156,14 +162,14 @@ describe('the Fluent Builder', () => {
   it('writes Pages as the same plain Definition as JSON', () => {
     const built = buildWizard([
       buildPage('Contact', [buildText('name', [required()])], [description('Who you are')]),
-      buildPage([buildText('city')], [visible(notEmpty('name')), columns(2), label('Address')]),
+      buildPage('Address', [buildText('city')], [visible(notEmpty('name')), columns(2)]),
     ]);
     const json = wizard(
       page([text('name', { required: true })], { label: 'Contact', description: 'Who you are' }),
       page([text('city')], {
+        label: 'Address',
         visible: { field: 'name', operator: 'not_empty' },
         columns: 2,
-        label: 'Address',
       }),
     );
     expect(JSON.parse(JSON.stringify(built))).toEqual(json);
@@ -176,7 +182,7 @@ describe('the Fluent Builder', () => {
   it('checks a built Wizard like JSON', () => {
     expect(() => buildWizard([])).toThrow(DefinitionError);
     try {
-      buildWizard([buildPage([buildText('a')], [visible(notEmpty('nope'))])]);
+      buildWizard([buildPage('A', [buildText('a')], [visible(notEmpty('nope'))])]);
       expect.unreachable();
     } catch (error) {
       expect((error as DefinitionError).errors).toEqual([

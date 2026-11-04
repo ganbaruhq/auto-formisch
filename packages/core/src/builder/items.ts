@@ -13,8 +13,8 @@ import {
  * `description`, they sit in the pipe beside the Rules.
  */
 
-export const label = (text: string): PipeItem<FieldType | 'section' | 'page'> =>
-  set({ label: text });
+/** A Tab's and a Page's label is the first argument of `tab` and `page`. */
+export const label = (text: string): PipeItem<FieldType | 'section'> => set({ label: text });
 
 export const description = (text: string): PipeItem<FieldType | 'section' | 'tab' | 'page'> =>
   set({ description: text });

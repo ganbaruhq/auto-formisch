@@ -175,10 +175,12 @@ describe('lock on the server', () => {
         pages: [
           {
             type: 'page',
+            label: 'Type',
             components: [{ type: 'choice', name: 'type', choices: ['person', 'company'] }],
           },
           {
             type: 'page',
+            label: 'Company',
             visible: { field: 'type', operator: 'eq', value: 'company' },
             components: [{ type: 'text', name: 'taxId', required: true }],
           },

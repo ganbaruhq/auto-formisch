@@ -128,7 +128,7 @@ The Fluent Builder writes Conditions with `all`, `any`, `not`, `eq`, `neq`, `isI
 | `section` | `label`, `description`, `columns`, `visible`, `colSpan`    | A `fieldset` with a `legend` when labelled, else a `div`.               |
 | `tabs`    | `visible`, `colSpan`; `components` holds one `tab` or more | A WAI-ARIA tab list. Every panel stays mounted, so its Fields validate. |
 | `tab`     | `label` (required), `description`, `columns`, `visible`    | Only directly inside `tabs`. Hidden Tabs leave the list.                |
-| `page`    | `label`, `description`, `columns`, `visible`               | Only in the root `pages`.                                               |
+| `page`    | `label` (required), `description`, `columns`, `visible`    | Only in the root `pages`. Its label names its focusable group.          |
 | `content` | `text` (required), `widget`, `visible`, `colSpan`          | Shows `text` as plain text, never as HTML.                              |
 
 Every Layout takes a `components` list, which may be empty except on `tabs`. A Layout adds no data path: moving a Field in or out of one changes neither its path nor the output.

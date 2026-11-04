@@ -1759,9 +1759,9 @@
       }
     },
     "page": {
-      "description": "One step of a Wizard; it sits only in the root `pages`. All Pages share the root data scope.",
+      "description": "One step of a Wizard; it sits only in the root `pages`. All Pages share the root data scope. Its `label` names its group, so it is required.",
       "type": "object",
-      "required": ["type", "components"],
+      "required": ["type", "label", "components"],
       "properties": {
         "type": {
           "const": "page",

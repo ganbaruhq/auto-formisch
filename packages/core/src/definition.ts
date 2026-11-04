@@ -242,7 +242,8 @@ export interface PageLayout {
   readonly type: 'page';
   /** A hidden Page leaves the Wizard's navigation, and its Fields are Inactive. */
   readonly visible?: Condition;
-  readonly label?: string;
+  /** Names the Page's group and its step in the navigation. Required. */
+  readonly label: string;
   readonly description?: string;
   readonly columns?: number;
   readonly components: readonly Component[];

@@ -312,14 +312,19 @@ describe('Accessibility of a Wizard', () => {
       version: 1,
       pages: [
         { type: 'page', label: 'Start', components: [{ type: 'text', name: 'a', label: 'A' }] },
-        { type: 'page', components: [{ type: 'text', name: 'b', label: 'B', required: true }] },
+        {
+          type: 'page',
+          label: 'More',
+          components: [{ type: 'text', name: 'b', label: 'B', required: true }],
+        },
       ],
     });
     const { container } = render(<AutoForm form={short} onSubmit={() => {}} />);
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Next' }));
-    // A Page without a label is an unnamed group, which axe accepts.
-    await waitFor(() => expect(document.activeElement?.getAttribute('role')).toBe('group'));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('group', { name: 'More' })),
+    );
     expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
     expect(await axeViolations(container)).toEqual([]);
   });

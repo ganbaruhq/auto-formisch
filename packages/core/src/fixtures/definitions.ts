@@ -256,7 +256,7 @@ const everyPageKey = {
   $schema: SCHEMA_URL,
   version: 1,
   pages: [
-    { type: 'page', components: [{ type: 'boolean', name: 'more' }] },
+    { type: 'page', label: 'P', components: [{ type: 'boolean', name: 'more' }] },
     {
       type: 'page',
       visible: leaf('more', 'eq', true),
@@ -282,12 +282,13 @@ export const validDefinitions: Readonly<Record<string, unknown>> = {
     pages: [
       {
         type: 'page',
+        label: 'Empty',
         components: [
           { type: 'section', components: [] },
           { type: 'tabs', components: [{ type: 'tab', label: 'Empty', components: [] }] },
         ],
       },
-      { type: 'page', components: [] },
+      { type: 'page', label: 'P', components: [] },
     ],
   },
   'with nested Repeaters and objects': root(
@@ -419,7 +420,11 @@ export const invalidDefinitions: readonly InvalidDefinition[] = [
   },
   {
     name: 'with both components and pages',
-    definition: { version: 1, components: [], pages: [{ type: 'page', components: [] }] },
+    definition: {
+      version: 1,
+      components: [],
+      pages: [{ type: 'page', label: 'P', components: [] }],
+    },
     error: 'A Definition has "components" or "pages", not both',
   },
   {
@@ -587,12 +592,15 @@ export const invalidDefinitions: readonly InvalidDefinition[] = [
   },
   {
     name: 'with a Page in components',
-    definition: root({ type: 'page', components: [] }),
+    definition: root({ type: 'page', label: 'P', components: [] }),
     error: 'A "page" goes directly inside "pages"',
   },
   {
     name: 'with a Page inside a Section',
-    definition: root({ type: 'section', components: [{ type: 'page', components: [] }] }),
+    definition: root({
+      type: 'section',
+      components: [{ type: 'page', label: 'P', components: [] }],
+    }),
     error: 'A "page" goes directly inside "pages"',
   },
   {
@@ -632,8 +640,8 @@ export const invalidDefinitions: readonly InvalidDefinition[] = [
     definition: {
       version: 1,
       pages: [
-        { type: 'page', components: [text('x')] },
-        { type: 'page', components: [text('x')] },
+        { type: 'page', label: 'P', components: [text('x')] },
+        { type: 'page', label: 'P', components: [text('x')] },
       ],
     },
     error: 'Duplicate name "x"',
@@ -668,8 +676,13 @@ export const invalidDefinitions: readonly InvalidDefinition[] = [
     error: 'Unknown key "colSpan"',
   },
   {
+    name: 'with a Page without a label',
+    definition: { version: 1, pages: [{ type: 'page', components: [] }] },
+    error: 'Missing key "label"',
+  },
+  {
     name: 'with colSpan on a Page',
-    definition: { version: 1, pages: [{ type: 'page', colSpan: 1, components: [] }] },
+    definition: { version: 1, pages: [{ type: 'page', label: 'P', colSpan: 1, components: [] }] },
     error: 'Unknown key "colSpan"',
   },
   {

@@ -111,8 +111,12 @@ describe('output inference', () => {
   it('infers a Wizard: Pages flatten into one output, a hidden Page makes its Fields optional', () => {
     const steps = wizard([
       page('Contact', [text('name', [required()]), choice('kind', ['person', 'company'])]),
-      page([text('taxId', [required()])], [visible(eq('kind', 'company')), label('Company')]),
-      page([repeater('rows', [text('street', [required()])])], [columns(2), description('d')]),
+      page('Company', [text('taxId', [required()])], [visible(eq('kind', 'company'))]),
+      page(
+        'Address',
+        [repeater('rows', [text('street', [required()])])],
+        [columns(2), description('d')],
+      ),
     ]);
     type Steps = {
       name: string;
@@ -184,11 +188,15 @@ describe('pipe items are typed by the Field they sit on', () => {
       // @ts-expect-error Content is never disabled
       content('Note', [disabled()]),
       // @ts-expect-error a Page is never in a grid
-      page([text('x')], [colSpan(1)]),
+      page('P', [text('x')], [colSpan(1)]),
       // @ts-expect-error a Page is never disabled
-      page([text('x')], [disabled()]),
+      page('P', [text('x')], [disabled()]),
+      // @ts-expect-error a Page's label is its first argument
+      page('P', [text('x')], [label('Q')]),
+      // @ts-expect-error a Page always has a label
+      page([text('x')]),
     ];
-    expect(wrong).toHaveLength(13);
+    expect(wrong).toHaveLength(15);
     // @ts-expect-error a Wizard holds Pages only
     const notPages = () => wizard([text('x')]);
     expect(notPages).toBeTypeOf('function');

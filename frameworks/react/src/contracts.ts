@@ -145,7 +145,7 @@ export interface TabsLayoutProps {
 export interface WizardPage {
   /** Its index in the Definition's `pages`, the same whichever Pages are hidden. */
   readonly index: number;
-  readonly label?: string;
+  readonly label: string;
   /** How many Fields on the Page show errors: always 0 until the Page is attempted. */
   readonly errorCount: number;
   readonly isCurrent: boolean;

@@ -77,7 +77,7 @@ function holding(type: string): { definition: Node; node: Node } {
     node.components = [{ type: 'text', name: 'x' }];
   }
   if (type === 'section' || type === 'tab' || type === 'page') node.components = [];
-  if (type === 'tab') node.label = 'Tab';
+  if (type === 'tab' || type === 'page') node.label = 'Label';
   if (type === 'content') node.text = 'Hi';
   if (type === 'tabs') node.components = [{ type: 'tab', label: 'Tab', components: [] }];
   if (type === 'page') return { definition: { version: 1, pages: [node] }, node };
