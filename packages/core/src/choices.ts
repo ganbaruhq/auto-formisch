@@ -27,6 +27,10 @@ export const choicesSchema: v.GenericSchema<unknown, readonly Choice[]> = v.pipe
     }
     for (const issue of choiceIssues(list)) addIssue(issue);
   }),
+  // A copy, so the loader freezes its own objects, never the caller's.
+  v.transform((list) =>
+    list.map((item): unknown => (typeof item === 'object' ? { ...item } : item)),
+  ),
 ) as v.GenericSchema<unknown, readonly Choice[]>;
 
 function* choiceIssues(list: readonly unknown[]): Generator<Issue> {

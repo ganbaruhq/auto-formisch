@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { compile, DefinitionError, type FormError } from './index';
+import { compile, DefinitionError, type ChoiceField, type FormError } from './index';
 
 const validate = (definition: unknown, input: unknown) =>
   compile(definition)['~standard'].validate(input);
@@ -497,6 +497,22 @@ describe('Form Definition with every value Field Type: round trip', () => {
   it('keeps every key of a stored Definition unchanged', () => {
     const stored = JSON.stringify(everyType);
     expect(JSON.stringify(compile(JSON.parse(stored)).definition)).toBe(stored);
+  });
+
+  it('copies choices, so the input is neither frozen nor able to change the form', () => {
+    const input = JSON.parse(JSON.stringify(everyType));
+    const compiled = compile(input);
+    const country = input.components[3];
+    expect(Object.isFrozen(country.choices[1])).toBe(false);
+    country.choices[1].value = 'FR';
+    country.choices.push('JP');
+    expect(compiled.definition).toEqual(everyType);
+    expect(Object.isFrozen((compiled.definition.components[3] as ChoiceField).choices[1])).toBe(
+      true,
+    );
+    expect(
+      compiled['~standard'].validate({ age: 30, terms: true, country: 'FR' }).issues,
+    ).toHaveLength(1);
   });
 
   it('validates the same way after a JSON round trip', () => {
