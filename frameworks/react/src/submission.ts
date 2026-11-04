@@ -113,11 +113,8 @@ const valueAt = (input: unknown, path: Path): unknown =>
     input,
   );
 
-/**
- * The shown, active Fields that have a Field Wrapper, for the store's current
- * input: the ones that can show an error of their own (AF-10).
- */
-const currentFields = (compiled: CompiledForm, store: AutoFormStore, widgetOf: WidgetResolver) => {
+/** The shown, active Fields for the store's current input. */
+const activeFields = (compiled: CompiledForm, store: AutoFormStore, widgetOf: WidgetResolver) => {
   const input = getInput(store);
   const state = compiled.conditions.evaluate(input);
   const { definition } = compiled;
@@ -127,8 +124,22 @@ const currentFields = (compiled: CompiledForm, store: AutoFormStore, widgetOf: W
     state,
     input,
     presentedHidden(widgetOf),
-  ).filter((field) => !field.hidden && !field.disabled);
+  ).filter((field) => !field.disabled);
 };
+
+/**
+ * The shown, active Fields that have a Field Wrapper, for the store's current
+ * input: the ones that can show an error of their own (AF-10).
+ */
+const currentFields = (compiled: CompiledForm, store: AutoFormStore, widgetOf: WidgetResolver) =>
+  activeFields(compiled, store, widgetOf).filter((field) => !field.hidden);
+
+/**
+ * An error of a Field the `hidden` Widget presents, as the general error
+ * region shows it: named, since the Field has no label of its own on screen.
+ */
+export const namedError = (node: ValueField, message: string): string =>
+  `${node.label ?? node.name}: ${message}`;
 
 /**
  * Puts errors returned by `onSubmit` on the shown Field their path names.
@@ -145,14 +156,18 @@ export function placeErrors(
   errors: readonly FormError[],
 ): void {
   const fields = new Map(
-    currentFields(compiled, store, widgetOf).map((field) => [keyOf(field.path), field]),
+    activeFields(compiled, store, widgetOf).map((field) => [keyOf(field.path), field]),
   );
   const byField = new Map<string, { path: Path; messages: string[] }>();
   const general: string[] = [];
   for (const error of errors) {
     const field = Array.isArray(error.path) ? fields.get(keyOf(error.path)) : undefined;
-    if (field === undefined) {
-      general.push(error.message);
+    if (field === undefined || field.hidden) {
+      general.push(
+        field === undefined
+          ? error.message
+          : namedError(widgetOf(field.node as ValueField).node as ValueField, error.message),
+      );
       continue;
     }
     const key = keyOf(field.path);

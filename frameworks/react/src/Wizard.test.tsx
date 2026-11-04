@@ -457,7 +457,7 @@ describe('Wizard: Widgets and overrides', () => {
     await onPage('Two');
     expect(screen.getByRole('alert').textContent).toBe('');
     await click('Submit');
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Required'));
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('id: Required'));
   });
 
   it('seeds every Page from defaults, and from initialInput', async () => {

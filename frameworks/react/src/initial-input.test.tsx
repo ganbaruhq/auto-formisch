@@ -470,7 +470,8 @@ describe('the hidden Widget', () => {
     const { user, submit, onSubmit } = setup(contacts, { initialInput: record });
     await user.click(button('Add', group('Contacts')));
     await submit();
-    await waitFor(() => expect(alertText()).toEqual(['Required']));
+    // Named, since the Field has no Field Wrapper of its own.
+    await waitFor(() => expect(alertText()).toEqual(['id: Required']));
     expect(onSubmit).not.toHaveBeenCalled();
     await user.click(button('Remove', row(2)));
     await waitFor(() => expect(alertText()).toEqual([]));
@@ -482,7 +483,43 @@ describe('the hidden Widget', () => {
       onSubmit: () => ({ errors: [{ message: 'Not yours', path: ['contacts', 1, 'id'] }] }),
     });
     await submit();
-    await waitFor(() => expect(alertText()).toEqual(['Not yours']));
+    await waitFor(() => expect(alertText()).toEqual(['id: Not yours']));
+  });
+
+  it('names the Field by its label, after overrides, in the general error region', async () => {
+    const { submit } = setup(root({ type: 'text', name: 'ref', label: 'Ref', required: true }), {
+      overrides: { ref: { widget: 'hidden', label: 'Reference' } },
+    });
+    await submit();
+    await waitFor(() => expect(alertText()).toEqual(['Reference: Required']));
+  });
+
+  it('warns on mount when it is required with no default, so a user can never fill it', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const token = { type: 'text', name: 'token', widget: 'hidden', required: true };
+      render(<AutoForm form={root(token)} onSubmit={() => {}} />);
+      expect(warn.mock.calls).toEqual([
+        [
+          'Auto Formisch: "token" uses the hidden Widget and is required, but has no default; a user can never fill it in',
+        ],
+      ]);
+      cleanup();
+      warn.mockClear();
+      // A default, or a value to edit, fills it.
+      render(<AutoForm form={root({ ...token, default: 't' })} onSubmit={() => {}} />);
+      render(<AutoForm form={root(token)} initialInput={{ token: 't' }} onSubmit={() => {}} />);
+      expect(warn).not.toHaveBeenCalled();
+      // A row added later starts without it, whatever the record holds.
+      render(<AutoForm form={contacts} initialInput={record} onSubmit={() => {}} />);
+      expect(warn.mock.calls).toEqual([
+        [
+          'Auto Formisch: "contacts.id" uses the hidden Widget and is required, but has no default; a user can never fill it in',
+        ],
+      ]);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('applies only to a Field with one value', () => {

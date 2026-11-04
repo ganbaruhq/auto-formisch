@@ -651,7 +651,7 @@ export function NewCustomer(props: {
 - `initialInput` replaces every `default`: a key the record lacks starts empty, since the user may have cleared it on purpose. A Repeater row added later still starts from its Fields' defaults.
 - It is read only when the form mounts. Change the React `key` to switch record, and likewise to switch form: a new `form` without a remount throws an `AutoFormError`.
 - A record saved under an older Definition still opens. Every `object` and Repeater gets its full shape, keys with no Field are dropped, and a value of the wrong JavaScript type for its Field, such as a number in a `text`, starts empty with a `console.warn`. For a custom Field Type, the type is what passes its schema's type checks, leaving out constraints such as `v.maxValue`. A value of the right type is kept even when it is outside `choices` or breaks a Rule, so that submitting reports it. The accepted cost: an optional Field whose stored value had the wrong type silently loses it on the next save.
-- The `hidden` Widget keeps a value with no UI and no Field Wrapper, such as a row's `id`. The Field stays active and in the output, and its errors show in the general error region. The client can still change it, so check on the server that the `id` belongs to the record.
+- The `hidden` Widget keeps a value with no UI and no Field Wrapper, such as a row's `id`. The Field stays active and in the output, and its errors show in the general error region, named by the Field's label or name, such as `id: Required`. A required `hidden`-Widget Field with no `default` logs a `console.warn` on mount, since a user can never fill it in: one outside a Repeater only while the starting input has no value for it, one in a Repeater's rows always, as Add starts a row without it. The client can still change it, so check on the server that the `id` belongs to the record.
 - `useAutoForm(form, { initialInput })` takes it too; passing both `store` and `initialInput` to `<AutoForm>` throws.
 
 ### Replace, don't merge
@@ -953,5 +953,5 @@ The behaviours most likely to surprise you in production, in one place:
 - **`accepted` needs `required`**, since Rules skip an empty value.
 - **Server errors from `onSubmit` clear at the next input** anywhere in the form, not only in their own Field.
 - **`lock` checks only the JavaScript type.** A choice since removed from `choices` locks as it is and reaches the output; check the value yourself if that matters.
-- **A `hidden` Widget's errors go to the general error region.** On a Wizard Page, such an error blocks Next with a message the user can't act on, so make sure the value is valid before the form opens.
+- **A `hidden` Widget's errors go to the general error region**, named by the Field, such as `id: Required`. On a Wizard Page, such an error blocks Next with a message the user can't act on, so make sure the value is valid before the form opens; a required one with no `default` warns on mount.
 - **Bundle size.** Unused Fluent Builder functions are left out of a bundle, but the loader always includes every built-in Field Type and Rule, since a stored JSON Definition may use any of them.

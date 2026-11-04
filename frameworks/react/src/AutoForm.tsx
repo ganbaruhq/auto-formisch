@@ -8,8 +8,15 @@ import {
   type ComponentType,
   type ReactNode,
 } from 'react';
-import { Form, getErrors, submit, useField } from '@formisch/react';
-import type { CompiledForm, Component, ConditionState, FormOutput } from '@auto-formisch/core';
+import { Form, getErrors, getInput, submit, useField } from '@formisch/react';
+import type {
+  CompiledForm,
+  Component,
+  ConditionState,
+  FormOutput,
+  PathKey,
+  ValueField,
+} from '@auto-formisch/core';
 import { Components } from './Components';
 import { RenderContext, useRenderContext } from './context';
 import { FieldWrapper } from './FieldWrapper';
@@ -30,6 +37,7 @@ import {
   FocusTargetContext,
   isHiddenWidget,
   keyOf,
+  namedError,
   placeErrors,
   presentedHidden,
   shownFields,
@@ -168,6 +176,15 @@ function Rendered({
     [compiled, store, idPrefix, focusElements, widgets, layouts, fieldWrapper, overrides, labels],
   );
   const hasHidden = useMemo(() => hasHiddenWidget(compiled, base.widgetOf), [compiled, base]);
+  useEffect(() => {
+    if (!hasHidden) return;
+    for (const path of unfillableHidden(compiled, base.widgetOf, getInput(store))) {
+      console.warn(
+        `Auto Formisch: "${path}" uses the hidden Widget and is required, but has no default; a user can never fill it in`,
+      );
+    }
+    // On mount only, like the initialInput warnings.
+  }, []);
   const conditions = useConditions(compiled, store);
   const context = useMemo(() => ({ ...base, conditions }), [base, conditions]);
   // A Wizard opens the Page of the first error before focusing it.
@@ -321,6 +338,51 @@ function hasHiddenWidget(compiled: CompiledForm, widgetOf: WidgetResolver): bool
 }
 
 /**
+ * The data paths, without row indexes, of the `hidden`-Widget Fields that are
+ * required and have no `default`: the user can never give them a value. One
+ * outside a Repeater is fine while the starting input holds its value, as an
+ * edited record does; one in a Repeater's rows is not, since Add starts a row
+ * without it.
+ */
+function unfillableHidden(
+  compiled: CompiledForm,
+  widgetOf: WidgetResolver,
+  input: unknown,
+): string[] {
+  const found: string[] = [];
+  const walk = (components: readonly Component[], path: readonly string[], value: unknown) => {
+    const record = (typeof value === 'object' && value !== null ? value : {}) as Record<
+      PathKey,
+      unknown
+    >;
+    for (const node of components) {
+      if (node.type === 'content') continue;
+      if (node.type === 'object') walk(node.components, [...path, node.name], record[node.name]);
+      else if (node.type === 'repeater') walk(node.components, [...path, node.name], undefined);
+      else if ('components' in node) walk(node.components, path, value);
+      else if (
+        isHiddenWidget(widgetOf(node).node) &&
+        node.required !== undefined &&
+        node.required !== false &&
+        node.default === undefined &&
+        !compiled.locked.has(node) &&
+        isBlank(record[node.name])
+      ) {
+        found.push([...path, node.name].join('.'));
+      }
+    }
+  };
+  walk(compiled.definition.pages ?? compiled.definition.components, [], input);
+  return found;
+}
+
+const isBlank = (value: unknown) =>
+  value === undefined ||
+  value === null ||
+  (typeof value === 'string' && value.trim() === '') ||
+  (Array.isArray(value) && value.length === 0);
+
+/**
  * The errors of the shown Fields that the `hidden` Widget presents, which
  * have no Field Wrapper to show them, in Definition order.
  */
@@ -337,10 +399,12 @@ function HiddenWidgetErrors() {
     root.input,
     presentedHidden(widgetOf),
   );
-  return fields.flatMap(({ path, hidden }) =>
+  return fields.flatMap(({ path, node, hidden }) =>
     hidden && showsErrorsAt(path)
       ? (getErrors(store, { path } as never) ?? []).map((error, index) => (
-          <div key={`${keyOf(path)}#${index}`}>{error}</div>
+          <div key={`${keyOf(path)}#${index}`}>
+            {namedError(widgetOf(node as ValueField).node as ValueField, error)}
+          </div>
         ))
       : [],
   );
