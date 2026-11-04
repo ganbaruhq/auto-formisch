@@ -6,13 +6,17 @@ import { useRenderContext } from './context';
 
 interface FieldProps {
   readonly node: ValueField;
-  /** The Field's data path. Layouts add no segment. */
-  readonly path: readonly PathKey[];
+  /** The data path of the scope the Field sits in. Layouts add no segment. */
+  readonly scope: readonly PathKey[];
 }
 
-/** Renders one single-value Field: its Widget inside the Field Wrapper. */
-export function Field({ node, path }: FieldProps) {
-  const { store, widgets, fieldWrapper: Wrapper, idPrefix } = useRenderContext();
+/**
+ * Renders one single-value Field: its Widget inside the Field Wrapper. A
+ * disabled Field is Inactive, so it is never required.
+ */
+export function Field({ node, scope }: FieldProps) {
+  const { store, conditions, widgets, fieldWrapper: Wrapper, idPrefix } = useRenderContext();
+  const path = [...scope, node.name];
   // Paths come from a JSON Definition, so they cannot be typed against the schema.
   const field = useField(store, { path: path as [string] });
 
@@ -26,7 +30,8 @@ export function Field({ node, path }: FieldProps) {
   const descriptionId = `${id}-description`;
   const errorsId = `${id}-errors`;
   const errors = field.errors ?? [];
-  const required = node.required === true;
+  const disabled = conditions.isDisabled(node, scope);
+  const required = !disabled && conditions.isRequired(node, scope);
   const describedBy = [
     node.description !== undefined ? descriptionId : undefined,
     errors.length > 0 ? errorsId : undefined,
@@ -47,7 +52,7 @@ export function Field({ node, path }: FieldProps) {
     onChange: field.onChange,
     inputProps,
     errors,
-    disabled: false,
+    disabled,
     readOnly: false,
     required,
     node,
@@ -61,7 +66,7 @@ export function Field({ node, path }: FieldProps) {
       description={node.description}
       errors={errors}
       required={required}
-      disabled={false}
+      disabled={disabled}
       readOnly={false}
       group={entry.group === true}
       labelFor={id}

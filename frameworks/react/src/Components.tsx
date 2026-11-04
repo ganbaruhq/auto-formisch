@@ -28,7 +28,13 @@ interface ComponentsProps {
  * fallback of `--af-columns`, so an application can change it in a media query.
  */
 export function Components({ components, scope, columns }: ComponentsProps) {
-  const children = components.map((node, index) => {
+  const { conditions } = useRenderContext();
+  // A hidden Component is left out before the grid wraps it, so it takes no
+  // cell. Its values stay in the store and come back when it reappears.
+  const shown = components.flatMap((node, index) =>
+    conditions.isVisible(node, scope) ? [{ node, index }] : [],
+  );
+  const children = shown.map(({ node, index }) => {
     // A name is unique in its scope and never starts with '#'.
     const key = 'name' in node ? node.name : `#${index}`;
     const element = <ComponentNode node={node} scope={scope} />;
@@ -69,29 +75,41 @@ function ComponentNode({ node, scope }: { readonly node: Component; readonly sco
     case 'content':
       return <Content node={node} />;
     case 'object':
-      return <ObjectGroup node={node} path={[...scope, node.name]} />;
+      return <ObjectGroup node={node} scope={scope} />;
     case 'repeater':
-      return <Repeater node={node} path={[...scope, node.name]} />;
+      return <Repeater node={node} scope={scope} />;
     default:
-      return <Field node={node} path={[...scope, node.name]} />;
+      return <Field node={node} scope={scope} />;
   }
 }
 
-/** Keeps the active Tab and renders every Tab, so inactive ones stay mounted. */
+/**
+ * Keeps the active Tab and renders every shown Tab, so inactive ones stay
+ * mounted. A hidden Tab leaves the list; while the active one is hidden, the
+ * first shown Tab is active.
+ */
 function Tabs({ node, scope }: { readonly node: TabsLayout; readonly scope: Scope }) {
-  const { layouts } = useRenderContext();
+  const { layouts, conditions } = useRenderContext();
   const [activeKey, setActiveKey] = useState('0');
   const { tabs: TabsLayout, tab: TabLayout } = layouts;
-  const tabs = node.components.map((tab, index) => ({
-    key: String(index),
-    label: tab.label,
-    children: (
-      <TabLayout node={tab}>
-        <Components components={tab.components} scope={scope} columns={tab.columns} />
-      </TabLayout>
-    ),
-  }));
-  return <TabsLayout tabs={tabs} activeKey={activeKey} onActiveChange={setActiveKey} />;
+  const tabs = node.components.flatMap((tab, index) =>
+    conditions.isVisible(tab, scope)
+      ? [
+          {
+            key: String(index),
+            label: tab.label,
+            children: (
+              <TabLayout node={tab}>
+                <Components components={tab.components} scope={scope} columns={tab.columns} />
+              </TabLayout>
+            ),
+          },
+        ]
+      : [],
+  );
+  if (tabs.length === 0) return null;
+  const active = tabs.some((tab) => tab.key === activeKey) ? activeKey : tabs[0].key;
+  return <TabsLayout tabs={tabs} activeKey={active} onActiveChange={setActiveKey} />;
 }
 
 /** Content: looked up in the Widget map by `widget ?? type`, like a Field. */
@@ -106,15 +124,17 @@ function Content({ node }: { readonly node: ContentNode }) {
 
 interface NestedProps<N> {
   readonly node: N;
-  /** The data path of this Field, and so of the scope of its children. */
-  readonly path: readonly PathKey[];
+  /** The data path of the scope this Field sits in. */
+  readonly scope: Scope;
 }
 
 /** An `object`: its Widget around its Components, which add `name` to their path. */
-function ObjectGroup({ node, path }: NestedProps<ObjectField>) {
+function ObjectGroup({ node, scope }: NestedProps<ObjectField>) {
+  const { conditions } = useRenderContext();
+  const path = [...scope, node.name];
   const Widget = useNestedWidget<ObjectProps>(node, path);
   return (
-    <Widget node={node} disabled={false}>
+    <Widget node={node} disabled={conditions.isDisabled(node, scope)}>
       <Components components={node.components} scope={path} />
     </Widget>
   );
@@ -123,29 +143,35 @@ function ObjectGroup({ node, path }: NestedProps<ObjectField>) {
 /**
  * A Repeater: its Widget with one entry per row of the Formisch field array.
  * A row's `key` comes from Formisch's `items`, so a row's values, errors, DOM
- * and local state go with it when it moves.
+ * and local state go with it when it moves. While it is disabled, adding,
+ * removing and reordering rows do nothing, whatever the Widget shows.
  */
-function Repeater({ node, path }: NestedProps<RepeaterField>) {
-  const { store } = useRenderContext();
+function Repeater({ node, scope }: NestedProps<RepeaterField>) {
+  const { store, conditions } = useRenderContext();
+  const path = [...scope, node.name];
   const Widget = useNestedWidget<RepeaterProps>(node, path);
   // Paths come from a JSON Definition, so they cannot be typed against the
   // schema, whose input type has no arrays.
   const arrayPath = path as never;
   const array = useFieldArray(store, { path: arrayPath });
+  const disabled = conditions.isDisabled(node, scope);
+  const unlessDisabled = (change: () => void) => () => {
+    if (!disabled) change();
+  };
   const max = maxItems(node);
   const rows = array.items.map((key, index): RepeaterRow => ({
     key,
     index,
     children: <Components components={node.components} scope={[...path, index]} />,
-    remove: () => remove(store, { path: arrayPath, at: index }),
-    moveTo: (to) => move(store, { path: arrayPath, from: index, to }),
+    remove: unlessDisabled(() => remove(store, { path: arrayPath, at: index })),
+    moveTo: (to) => unlessDisabled(() => move(store, { path: arrayPath, from: index, to }))(),
   }));
   return (
     <Widget
       rows={rows}
-      add={() => insert(store, { path: arrayPath })}
-      canAdd={max === undefined || rows.length < max}
-      disabled={false}
+      add={unlessDisabled(() => insert(store, { path: arrayPath }))}
+      canAdd={!disabled && (max === undefined || rows.length < max)}
+      disabled={disabled}
       errors={array.errors ?? []}
       node={node}
     />

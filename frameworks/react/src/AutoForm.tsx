@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react';
-import { Form, useForm } from '@formisch/react';
+import { Form, getInput, useForm } from '@formisch/react';
 import type { CompiledForm, FormOutput } from '@auto-formisch/core';
 import { Components } from './Components';
 import { RenderContext } from './context';
@@ -28,15 +28,23 @@ export function AutoForm<TOutput extends FormOutput = FormOutput>({
   const compiled = form as unknown as CompiledForm;
   const store = useForm({ schema: compiled.schema, validate: 'submit', revalidate: 'input' });
   const idPrefix = useId();
+  // Read here, in the component that owns `useForm`, so that this render
+  // subscribes to the input and every change re-evaluates the Conditions. Only
+  // a form with Conditions reads it, so a form without them never re-renders
+  // as a whole on input.
+  const { conditions } = compiled;
+  const input = conditions.readsValues ? getInput(store) : undefined;
+  const state = useMemo(() => conditions.evaluate(input), [conditions, input]);
   const context = useMemo(
     () => ({
       store,
+      conditions: state,
       widgets: defaultWidgets,
       layouts: defaultLayouts,
       fieldWrapper: FieldWrapper,
       idPrefix,
     }),
-    [store, idPrefix],
+    [store, state, idPrefix],
   );
 
   return (

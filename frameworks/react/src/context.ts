@@ -1,11 +1,13 @@
 import { createContext, useContext, type ComponentType } from 'react';
 import type { FormStore } from '@formisch/react';
-import type { CompiledForm } from '@auto-formisch/core';
+import type { CompiledForm, ConditionState } from '@auto-formisch/core';
 import type { FieldWrapperProps, LayoutMap, WidgetEntry } from './contracts';
 
 /** What every rendered Component of one form reads. */
 export interface RenderContext {
   readonly store: FormStore<CompiledForm['schema']>;
+  /** What the Conditions decide for the current input, from `prep`'s own evaluator. */
+  readonly conditions: ConditionState;
   readonly widgets: Readonly<Record<string, WidgetEntry>>;
   readonly layouts: LayoutMap;
   readonly fieldWrapper: ComponentType<FieldWrapperProps>;
