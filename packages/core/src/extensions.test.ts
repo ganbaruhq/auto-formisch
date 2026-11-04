@@ -13,6 +13,8 @@ import {
   gt,
   isEmpty,
   isIn,
+  lock,
+  LockError,
   label,
   minLength,
   neq,
@@ -270,6 +272,46 @@ describe('custom Field Type', () => {
         path: ['components', 2, 'default'],
       },
     ]);
+  });
+});
+
+describe('lock on a custom Field Type', () => {
+  const rated = root(score({ required: true }), {
+    type: 'text',
+    name: 'why',
+    required: true,
+    visible: { field: 'score', operator: 'lt', value: 3 },
+  });
+
+  it('checks the value with the type schema, collapsed to the data path', () => {
+    try {
+      lock(compile(rated, extensions), { score: 9 });
+      throw new Error('Expected lock to throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(LockError);
+      expect((error as LockError).errors).toEqual([
+        { message: 'Invalid value: Expected <=5 but received 9', path: ['score'] },
+      ]);
+    }
+  });
+
+  it('overwrites a forged value before Conditions run, and outputs the Locked one', () => {
+    const locked = lock(compile(rated, extensions), { score: 2 });
+    expect(locked['~standard'].validate({ score: 5 })).toEqual({
+      issues: [{ message: 'Required', path: ['why'] }],
+    });
+    expect(locked['~standard'].validate({ score: 5, why: 'Slow' })).toEqual({
+      value: { score: 2, why: 'Slow' },
+    });
+  });
+
+  it('locks an object value of a custom Field Type', () => {
+    const locked = lock(compile(root({ type: 'place', name: 'home' }), extensions), {
+      home: { lat: 1, lng: 2 },
+    });
+    expect(locked['~standard'].validate({ home: { lat: 0, lng: 0 } })).toEqual({
+      value: { home: { lat: 1, lng: 2 } },
+    });
   });
 });
 

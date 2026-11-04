@@ -129,6 +129,28 @@ const form = useMemo(() => compile(definition), []);
 - The `hidden` Widget (`"widget": "hidden"`) keeps a value with no UI and no Field Wrapper, such as a row's `id` so the server can match rows after a reorder. The Field stays active and in the output, and its errors show in the general error region. The client can still change the value, so the server must check it.
 - Formisch's `reset(store, { initialInput })` also works on the store from `useAutoForm`, but skips this normalization: a missing key makes an `object` or Repeater `undefined`. Read "unsaved changes" from the store's `isDirty`, knowing that an object value compares by reference, a row removed and added again stays dirty, and `getDirtyPaths` names a whole Repeater rather than the row Field that changed.
 
+### Locked Fields
+
+A value the server knows for one record, such as `type = company`, can be Locked with `lock(compiled, values)`: the user sees it read-only and cannot change it, but it still drives Conditions and is in the output. Build the form in one function that client and server share:
+
+```tsx
+const compiled = compile(definition);
+const formFor = (record: Company) => lock(compiled, { type: record.type });
+
+// Client: a new lock result needs a new key.
+const form = useMemo(() => formFor(record), [record.id]);
+<AutoForm key={record.id} form={form} initialInput={record} onSubmit={save} />;
+
+// Server
+formFor(record)['~standard'].validate(body);
+```
+
+- Keys are data paths such as `'address.country'`, to single-value Fields outside Repeaters. An empty value locks a Field empty. `lock` throws a `LockError` of `{message, path}` for an `object`, a Repeater or a Field inside one, an unknown path, a value its Field Type rejects (a choice outside `choices` included), or a form that is already Locked.
+- The Locked value beats `initialInput` and `default`. On the server, it replaces whatever the body holds before Conditions run, so a forged value changes nothing. A server that does not call `lock` gets no protection, and a value read from the URL or other client input must never be passed to it.
+- A Locked Field skips `required` and its Rules: the application answers for the value, so an old record never blocks a user on a Field they cannot fix. A Condition can still make it Inactive; it is then missing from the output like any Inactive Field.
+- The default Widgets show it with native `readonly` (text, number, date) or, where HTML has none, native `disabled` (select, radio, checkbox, multi-choice), which also takes it out of the tab order. Widgets and the Field Wrapper get `readOnly: true`. A Widget that ignores `readOnly` still cannot change the value: the Renderer passes it the Locked value and drops its `onChange`.
+- `compiled.locked` maps the Locked Fields' declared nodes to their values, for Renderers.
+
 ### Customizing the Renderer
 
 Each of these props replaces the defaults on its own; none changes the Definition or validation.

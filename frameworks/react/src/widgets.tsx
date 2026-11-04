@@ -137,8 +137,8 @@ function BooleanCheckbox({
       role={role}
       checked={value === true}
       aria-checked={role === undefined ? undefined : value === true}
-      disabled={disabled}
-      // A checkbox has no native read-only state.
+      disabled={disabled || readOnly}
+      // No native read-only state, so a Locked one is disabled.
       aria-readonly={readOnly || undefined}
       onChange={(event) => {
         if (!readOnly) onChange(event.currentTarget.checked);
@@ -193,8 +193,8 @@ export function Select({
     <select
       {...inputProps}
       value={selected === -1 ? '' : String(selected)}
-      disabled={disabled}
-      // A select has no native read-only state.
+      disabled={disabled || readOnly}
+      // No native read-only state, so a Locked one is disabled.
       aria-readonly={readOnly || undefined}
       onChange={(event) => {
         if (readOnly) return;
@@ -256,7 +256,7 @@ export function Radios({
               type="radio"
               value={String(index)}
               checked={option.value === value}
-              disabled={disabled}
+              disabled={disabled || readOnly}
               onChange={() => {
                 if (!readOnly) onChange(option.value);
               }}
@@ -291,8 +291,8 @@ export function MultiSelect({
       {...inputProps}
       multiple
       value={selected}
-      disabled={disabled}
-      // A select has no native read-only state.
+      disabled={disabled || readOnly}
+      // No native read-only state, so a Locked one is disabled.
       aria-readonly={readOnly || undefined}
       onChange={(event) => {
         if (readOnly) return;
@@ -345,8 +345,8 @@ export function Checkboxes({
               id={optionId}
               type="checkbox"
               checked={checked.has(option.value)}
-              disabled={disabled}
-              // A checkbox has no native read-only state.
+              disabled={disabled || readOnly}
+              // No native read-only state, so a Locked one is disabled.
               aria-readonly={readOnly || undefined}
               onChange={(event) => {
                 if (!readOnly) toggle(option.value, event.currentTarget.checked);

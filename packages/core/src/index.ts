@@ -52,6 +52,7 @@ export {
   type Rule,
 } from './extensions';
 export type { InputWarning, NormalizedInput } from './initial';
+export { lock, LockError } from './lock';
 export type { LoadOptions } from './registry';
 export { deleteRequiredMessage, setRequiredMessage, type RequiredMessage } from './messages';
 export type { StandardSchemaV1 } from './standard';

@@ -14,10 +14,13 @@ interface FieldProps {
 
 /**
  * Renders one single-value Field: its Widget inside the Field Wrapper. A
- * disabled Field is Inactive, so it is never required.
+ * disabled Field is Inactive, so it is never required. A Locked Field is
+ * read-only: its Widget gets the Locked value, and its changes go nowhere,
+ * whether or not the Widget honours `readOnly`.
  */
 export function Field({ node: declared, scope }: FieldProps) {
   const {
+    form,
     store,
     conditions,
     widgetOf,
@@ -52,7 +55,9 @@ export function Field({ node: declared, scope }: FieldProps) {
   const errors = (useContext(ShowErrorsContext) && field.errors) || [];
   // The declared node, which the evaluator knows; `node` has the overrides.
   const disabled = conditions.isDisabled(declared, scope);
-  const required = !disabled && conditions.isRequired(declared, scope);
+  // Locks never reach into Repeater rows, so the declared node is enough.
+  const readOnly = form.locked.has(declared);
+  const required = !disabled && !readOnly && conditions.isRequired(declared, scope);
   const describedBy = [
     node.description !== undefined ? descriptionId : undefined,
     errors.length > 0 ? errorsId : undefined,
@@ -69,12 +74,12 @@ export function Field({ node: declared, scope }: FieldProps) {
     'aria-required': required || undefined,
   };
   const widgetProps: WidgetProps = {
-    value: field.input,
-    onChange: field.onChange,
+    value: readOnly ? form.locked.get(declared) : field.input,
+    onChange: readOnly ? ignore : field.onChange,
     inputProps,
     errors,
     disabled,
-    readOnly: false,
+    readOnly,
     required,
     node,
   };
@@ -91,7 +96,7 @@ export function Field({ node: declared, scope }: FieldProps) {
       errors={errors}
       required={required}
       disabled={disabled}
-      readOnly={false}
+      readOnly={readOnly}
       group={entry.group === true}
       labelFor={id}
       descriptionId={descriptionId}
@@ -101,3 +106,6 @@ export function Field({ node: declared, scope }: FieldProps) {
     </Wrapper>
   );
 }
+
+/** The `onChange` of a Locked Field. */
+const ignore = () => {};
