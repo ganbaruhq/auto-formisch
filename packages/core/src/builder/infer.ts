@@ -52,11 +52,18 @@ export interface Typed<TInfo extends ComponentInfo> {
   readonly '~types'?: TInfo;
 }
 
-/** A Form Definition that knows the output it validates to. */
-export interface TypedDefinition<TOutput> extends FormDefinition {
+/**
+ * A Form Definition that knows the output it validates to. `TDefinition` is
+ * the kind of Definition: `form()` gives one with `components`, `wizard()`
+ * one with `pages`.
+ */
+export type TypedDefinition<
+  TOutput,
+  TDefinition extends FormDefinition = FormDefinition,
+> = TDefinition & {
   /** Type-level only; never present at runtime. */
   readonly '~types'?: { readonly output: TOutput };
-}
+};
 
 /** The output type of a Definition built by `form()`. */
 export type InferOutput<T> = T extends TypedDefinition<infer TOutput> ? TOutput : never;

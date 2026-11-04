@@ -688,7 +688,7 @@ describe('evaluation', () => {
     for (const input of odd) {
       expect(() => validate(form, input)).not.toThrow();
       const state = compile(form).conditions.evaluate(input);
-      const { components } = compile(form).definition;
+      const components = compile(form).definition.components!;
       for (const component of components) {
         expect(() => state.isVisible(component, [])).not.toThrow();
         expect(() => state.isVisible(component, ['r', 99, 'zz'])).not.toThrow();

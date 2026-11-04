@@ -211,8 +211,22 @@ export interface TabLayout {
   readonly components: readonly Component[];
 }
 
+/**
+ * One Page of a Wizard, directly in the root's `pages`. Only one Page is shown
+ * at a time, but the Wizard validates as one whole form. Adds no data path.
+ */
+export interface PageLayout {
+  readonly type: 'page';
+  /** A hidden Page leaves the Wizard's navigation, and its Fields are Inactive. */
+  readonly visible?: Condition;
+  readonly label?: string;
+  readonly description?: string;
+  readonly columns?: number;
+  readonly components: readonly Component[];
+}
+
 /** A Component that only arranges other Components. */
-export type LayoutNode = SectionLayout | TabsLayout | TabLayout;
+export type LayoutNode = SectionLayout | TabsLayout | TabLayout | PageLayout;
 
 /** Fixed plain text. Never read as HTML or Markdown. */
 export interface ContentNode {
@@ -227,9 +241,32 @@ export interface ContentNode {
 /** Any node in a Form Definition's tree. */
 export type Component = FieldNode | LayoutNode | ContentNode;
 
-/** A loaded, version 1 Form Definition. */
-export interface FormDefinition {
+interface DefinitionBase {
   readonly $schema?: string;
   readonly version: typeof DEFINITION_VERSION;
-  readonly components: readonly Component[];
 }
+
+/** A form shown all at once, from its root `components`. */
+export interface SinglePageDefinition extends DefinitionBase {
+  readonly components: readonly Component[];
+  readonly pages?: never;
+}
+
+/** A Wizard: a form made of root `pages`, shown one at a time. */
+export interface WizardDefinition extends DefinitionBase {
+  readonly pages: readonly PageLayout[];
+  readonly components?: never;
+}
+
+/**
+ * A loaded, version 1 Form Definition. The root has `components` or `pages`,
+ * never both.
+ */
+export type FormDefinition = SinglePageDefinition | WizardDefinition;
+
+/**
+ * The root Components of a Definition: its `components`, or its Pages, which
+ * are Layouts in the root data scope.
+ */
+export const rootComponents = (definition: FormDefinition): readonly Component[] =>
+  definition.pages ?? definition.components;

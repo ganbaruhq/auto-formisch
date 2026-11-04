@@ -8,11 +8,14 @@ import type {
   MultiChoiceField,
   NumberField,
   ObjectField,
+  PageLayout,
   RepeaterField,
+  SinglePageDefinition,
   SectionLayout,
   TabLayout,
   TabsLayout,
   TextField,
+  WizardDefinition,
 } from '../definition';
 import { DEFINITION_VERSION } from '../definition';
 import { loadDefinition } from '../load';
@@ -157,6 +160,30 @@ export function tab<const C extends readonly Component[], const P extends Pipe<'
   return apply({ type: 'tab', label }, pipe, { components });
 }
 
+/**
+ * One Page of a Wizard, optionally labelled; only `wizard()` holds Pages. Adds
+ * no data path.
+ */
+export function page<const C extends readonly Component[], const P extends Pipe<'page'> = []>(
+  components: C,
+  pipe?: P,
+): Layout<PageLayout, C, P>;
+export function page<const C extends readonly Component[], const P extends Pipe<'page'> = []>(
+  label: string,
+  components: C,
+  pipe?: P,
+): Layout<PageLayout, C, P>;
+export function page(
+  ...args: [Component[], Pipe<'page'>?] | [string, Component[], Pipe<'page'>?]
+): PageLayout {
+  if (typeof args[0] === 'string') {
+    const [label, components, pipe] = args as [string, Component[], Pipe<'page'>?];
+    return apply({ type: 'page', label }, pipe, { components });
+  }
+  const [components, pipe] = args as [Component[], Pipe<'page'>?];
+  return apply({ type: 'page' }, pipe, { components });
+}
+
 /** Fixed plain text, never read as HTML or Markdown. */
 export function content(text: string, pipe?: Pipe<'content'>): ContentNode {
   return apply({ type: 'content', text }, pipe);
@@ -172,6 +199,18 @@ export function content(text: string, pipe?: Pipe<'content'>): ContentNode {
  */
 export function form<const C extends readonly Component[]>(
   components: C,
-): TypedDefinition<ShapeOf<C>> {
-  return loadDefinition({ version: DEFINITION_VERSION, components });
+): TypedDefinition<ShapeOf<C>, SinglePageDefinition> {
+  return loadDefinition({ version: DEFINITION_VERSION, components }) as SinglePageDefinition;
+}
+
+/**
+ * Like `form()`, for a Wizard: a form made of `pages`, shown one at a time and
+ * validated as one whole form. Its Pages share one data scope.
+ *
+ * @throws {DefinitionError} with every error as `{message, path}`.
+ */
+export function wizard<const P extends readonly PageLayout[]>(
+  pages: P,
+): TypedDefinition<ShapeOf<P>, WizardDefinition> {
+  return loadDefinition({ version: DEFINITION_VERSION, pages }) as WizardDefinition;
 }

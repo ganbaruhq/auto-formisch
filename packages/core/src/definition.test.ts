@@ -68,7 +68,7 @@ describe('Form Definition: round trip', () => {
   it('exposes a frozen Definition', () => {
     const compiled = compile(definition);
     expect(Object.isFrozen(compiled.definition)).toBe(true);
-    expect(Object.isFrozen(compiled.definition.components[0])).toBe(true);
+    expect(Object.isFrozen(compiled.definition.components![0])).toBe(true);
   });
 });
 
@@ -107,7 +107,7 @@ describe('Form Definition: rejected on load', () => {
 
   it('rejects missing or malformed components', () => {
     expect(loadErrors({ version: 1 })).toEqual([
-      { message: 'Missing key "components"', path: ['components'] },
+      { message: 'Missing key "components" or "pages"', path: ['components'] },
     ]);
     expect(loadErrors({ version: 1, components: {} })).toEqual([
       { message: 'Expected an array', path: ['components'] },

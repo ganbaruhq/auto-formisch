@@ -1,7 +1,13 @@
 import * as v from 'valibot';
 import type { TypedDefinition } from './builder/infer';
 import { conditionsOf, type FormConditions } from './conditions';
-import type { Component, FieldNode, FormDefinition, ValueField } from './definition';
+import {
+  rootComponents,
+  type Component,
+  type FieldNode,
+  type FormDefinition,
+  type ValueField,
+} from './definition';
 import { toFormErrors } from './errors';
 import { builtinFieldTypes } from './field-types';
 import { fieldsIn } from './fields';
@@ -59,7 +65,7 @@ export function compile<TOutput extends FormOutput>(
 export function compile(input: unknown): CompiledForm;
 export function compile(input: unknown): CompiledForm {
   const definition = loadDefinition(input);
-  const conditions = conditionsOf(definition.components);
+  const conditions = conditionsOf(rootComponents(definition));
   const schema = buildSchema(definition, conditions);
   return {
     definition,
@@ -81,7 +87,7 @@ function buildSchema(
   definition: FormDefinition,
   conditions: FormConditions,
 ): v.GenericSchema<Record<string, unknown>, FormOutput> {
-  const { components } = definition;
+  const components = rootComponents(definition);
   return v.pipe(
     skeletonOf(components),
     v.transform((input) => prep(components, conditions.evaluate(input), input)),

@@ -35,10 +35,12 @@ interface Parent {
 }
 
 const ROOT: Parent = { type: 'root', hasColumns: false };
+/** The root's `pages`: Pages only, all in the root data scope. */
+const PAGES: Parent = { type: 'pages', hasColumns: false, only: 'page' };
 
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const RESERVED_NAMES = new Set(['__proto__', 'prototype', 'constructor']);
-const ROOT_KEYS = new Set(['$schema', 'version', 'components']);
+const ROOT_KEYS = new Set(['$schema', 'version', 'components', 'pages']);
 const RULE_KEYS = new Set(['type', 'requirement', 'message']);
 /** The Condition keys of a value Field. An `object` or Repeater has no `required`. */
 const CONDITION_KEYS: readonly string[] = ['visible', 'disabled', 'required'];
@@ -89,11 +91,18 @@ class Loader {
       );
     }
     this.unknownKeys(node, ROOT_KEYS, []);
-    if (!has(node, 'components')) this.fail(['components'], 'Missing key "components"');
+    if (!has(node, 'components') && !has(node, 'pages')) {
+      this.fail(['components'], 'Missing key "components" or "pages"');
+    } else if (has(node, 'components') && has(node, 'pages')) {
+      this.fail(['pages'], 'A Definition has "components" or "pages", not both');
+    }
     return this.copy(node, ROOT_KEYS, (key, value) => {
       if (key === '$schema') return this.value(v.string(), value, ['$schema']);
-      if (key !== 'components') return value;
-      const components = this.components(value, ['components'], new Set(), ROOT);
+      if (key === 'version') return value;
+      const components = this.components(value, [key], new Set(), key === 'pages' ? PAGES : ROOT);
+      if (key === 'pages' && Array.isArray(value) && value.length === 0) {
+        this.fail(['pages'], 'A Wizard needs at least one "page"');
+      }
       this.errors.push(...checkConditions(components, (component) => this.paths.get(component)!));
       return components;
     });
