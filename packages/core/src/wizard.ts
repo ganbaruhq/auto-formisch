@@ -5,8 +5,9 @@ import { fieldsIn } from './fields';
 
 /*
  * Pure functions over a Wizard's Pages. A Wizard always validates as one whole
- * form; Pages only decide which errors block a step and which are shown. A
- * Renderer navigates with these, and a server can check one step with them.
+ * form; Pages only decide which errors block moving to the next Page and
+ * which are shown. A Renderer navigates with these, and a server can check
+ * one Page with them.
  */
 
 /**
@@ -44,9 +45,9 @@ export function pageOf(form: CompiledForm, path: readonly PathKey[]): number | u
 }
 
 /**
- * The errors on the Pages at `pages`, such as those a step up to some Page
- * must clear. An error no Page holds is kept too: no step can show it, yet it
- * fails the whole form.
+ * The errors on the Pages at `pages`, such as those that moving forward to
+ * some Page must clear. An error no Page holds is kept too: no Page can show
+ * it, yet it fails the whole form.
  */
 export function pageErrors(
   form: CompiledForm,

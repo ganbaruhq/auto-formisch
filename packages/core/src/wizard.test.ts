@@ -145,7 +145,7 @@ describe('a Wizard Definition', () => {
     ]);
   });
 
-  it('validates as one whole form: every Page at once, with no step logic', () => {
+  it('validates as one whole form: every Page at once, with no logic per Page', () => {
     expect(validate(contactAndAddress, {})).toEqual({
       issues: [
         { message: 'Required', path: ['name'] },
@@ -251,10 +251,10 @@ describe('the Page of a path', () => {
     expect(pageErrors(compiled, errors, [1])).toEqual([errors[0], errors[2]]);
   });
 
-  it('lets a server check one step: validate the whole form, then keep its Pages’ errors', () => {
-    const steps = compile(contactAndAddress);
-    const issues = steps['~standard'].validate({ name: 'Ada' }).issues ?? [];
-    expect(pageErrors(steps, issues, [0])).toEqual([]);
-    expect(pageErrors(steps, issues, [0, 1])).toEqual([{ message: 'Required', path: ['city'] }]);
+  it('lets a server check one Page: validate the whole form, then keep its Pages’ errors', () => {
+    const compiled = compile(contactAndAddress);
+    const issues = compiled['~standard'].validate({ name: 'Ada' }).issues ?? [];
+    expect(pageErrors(compiled, issues, [0])).toEqual([]);
+    expect(pageErrors(compiled, issues, [0, 1])).toEqual([{ message: 'Required', path: ['city'] }]);
   });
 });
