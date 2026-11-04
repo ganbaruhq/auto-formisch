@@ -62,6 +62,24 @@ A Form Definition is plain JSON. Store it, send it to a Worker, or write it by h
 
 `compile` checks the Definition and throws a `DefinitionError` whose `errors` lists every problem as `{message, path}`: an unknown key (such as `requried`), an unknown `type` or Rule, or a `version` other than `1`. It never evaluates code from a Definition.
 
+### Editor support: `$schema`
+
+`@auto-formisch/core` ships a JSON Schema (draft-07) for each format version, at `schema/v<version>.json` in the package. Point a Definition's optional `$schema` at it to get autocomplete, hover help and errors in an editor:
+
+```json
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@auto-formisch/core/schema/v1.json",
+  "version": 1,
+  "components": []
+}
+```
+
+The URL is the schema's `$id` and stays the same across package versions: a package keeps shipping `schema/v1.json` after later format versions are added. Offline, use the installed copy, such as `./node_modules/@auto-formisch/core/schema/v1.json` (with pnpm, only when `@auto-formisch/core` is a direct dependency). `compile` accepts `$schema` as any string and ignores it.
+
+The loader is the one judge of a Definition. The schema describes every built-in `type`, Rule, Condition and `default`, and catches most mistakes, but some only the loader can see: duplicate names across the tree, `colSpan` wider than its parent's `columns`, Condition references, operators and values that depend on the Field read, cycles, a `default` that fails its own Rules or `choices`, and impossible dates such as `2023-02-29`.
+
+Custom Field Types and Rules: the schema describes only the built-ins and takes any other `type` or Rule name loosely, so `"type": "txet"` is not flagged in the editor and only `compile` rejects it. An unknown `type` must still look like a custom Field: a lower-case `type` (`^[a-z][a-z0-9_]*$`), a `name`, no `rules`, and the shared Field keys (`label`, `widget`, `visible`, `required`, ...) typed as on built-ins; its own options can be anything. An unknown Rule must still be `{type, requirement?, message?}` and sit on a Field Type that takes `rules`. Registering a type or Rule with `compile` doesn't change the schema; a generated schema for an application's own registrations could be added later without changing this one.
+
 ### In code: the Fluent Builder
 
 Write the same Definition with Valibot-style functions and pipes. Rules, metadata (`label`, `description`, `placeholder`, `widget`, `columns`, `colSpan`, `defaultValue`) and Conditions (`visible`, `required`, `disabled`) all go in the pipe:

@@ -4,6 +4,7 @@
   "description": "Framework-neutral loader, compiler and validator for Auto Formisch Form Definitions.",
   "files": [
     "dist",
+    "schema",
     "CHANGELOG.md"
   ],
   "type": "module",
